@@ -16,10 +16,8 @@ void main() {
 	float deltaT = 16.6666 * timeScale;
 
 	vec4 p = particleData[gl_VertexID];
-	vec2 pos = vec2(p.x, p.y);
-	vec2 vel = vec2(p.z, p.w);
-
-	p.xy += normalize(attractor - pos) / 100.0f;
+	vec2 pos = p.xy;
+	vec2 vel = p.zw;
 
 	vec2 dir = attractor - pos;
 	float distSquared = max(dot(dir, dir), minDistanceToAttractor);

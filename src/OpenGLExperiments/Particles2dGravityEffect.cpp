@@ -98,7 +98,7 @@ void Particles2dGravityEffect::drawGUI()
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.0, 1000.0);
 	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 10.0);
-	ImGui::ColorPicker4("", runtimeParams.Color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoLabel);
+	ImGui::ColorPicker4("", runtimeParams.Color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoLabel);
 	ImGui::End();
 }
 

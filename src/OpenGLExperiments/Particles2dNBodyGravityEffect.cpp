@@ -8,7 +8,7 @@ Particles2dNBodyGravityEffect::Particles2dNBodyGravityEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dNBodyGravityEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 10000;
+	startupParams.ParticlesCount = 20000;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -88,8 +88,8 @@ void Particles2dNBodyGravityEffect::drawGUI()
 	ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, -1.0, 10.0);
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.0, 1000.0);
-	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 10.0);
-	ImGui::ColorPicker4("", runtimeParams.Color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoLabel);
+	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 5.0);
+	ImGui::ColorPicker4("", runtimeParams.Color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoLabel);
 	ImGui::End();
 }
 
