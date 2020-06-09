@@ -13,12 +13,12 @@ Particles2dNBodyGravityEffect::Particles2dNBodyGravityEffect(GLFWwindow* window)
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
 	runtimeParams.VelocityDamping = 0.999;
-	runtimeParams.MinDistanceToAttractor = 500.0;
+	runtimeParams.MinDistanceToAttractor = 50.0;
 	runtimeParams.TimeScale = 1.0;
-	runtimeParams.Color[0] = 1.0;
-	runtimeParams.Color[1] = 1.0;
-	runtimeParams.Color[2] = 1.0;
-	runtimeParams.Color[3] = 1.0;
+	runtimeParams.Color[0] = 0.196;
+	runtimeParams.Color[1] = 0.05;
+	runtimeParams.Color[2] = 0.941;
+	runtimeParams.Color[3] = 0.9;
 }
 
 Particles2dNBodyGravityEffect::~Particles2dNBodyGravityEffect()
@@ -87,7 +87,7 @@ void Particles2dNBodyGravityEffect::drawGUI()
 	ImGui::Begin("Runtime params");
 	ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, -1.0, 10.0);
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
-	ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.0, 1000.0);
+	ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.01, 100.0);
 	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 5.0);
 	ImGui::ColorPicker4("", runtimeParams.Color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoLabel);
 	ImGui::End();

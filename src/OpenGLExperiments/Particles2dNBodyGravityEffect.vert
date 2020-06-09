@@ -12,25 +12,33 @@ layout(std430, binding = 0) buffer SSBO
 	vec4 particleData[];
 };
 
+vec2 getBodyToBodyAcceleration(vec2 b1, vec2 b2)
+{
+	vec2 dir = b2 - b1;
+	
+	float distSquared = max(dot(dir, dir), minDistanceToAttractor);
+	float distSixth = distSquared * distSquared * distSquared;
+	float invDistCube = 1.0f / sqrt(distSixth) * forceScale;
+
+	return dir * invDistCube;
+}
+
 void main() {
-	float deltaT = 0.166666 * timeScale;
+	float deltaT = 0.08 * timeScale;
 
 	vec4 p = particleData[gl_VertexID];
 	vec2 pos = p.xy;
 	vec2 vel = p.zw;
 
-	for (int i = 0; i < 20000; i++)
+	vec2 acc = vec2(0.0);
+	for (int i = 0; i < 20000; i += 4)
 	{
-		vec4 p2 = particleData[i];
-		vec2 pos2 = vec2(p2.x, p2.y) + vec2(0.01);
-		//vec2 pos2 = vec2(500, 500);
-	
-		vec2 dir = pos2 - pos;
-		float distSquared = max(dot(dir, dir), minDistanceToAttractor);
-		float F = forceScale / distSquared;
-
-		vel += F * normalize(dir) * deltaT;
+		acc += getBodyToBodyAcceleration(pos, particleData[i].xy);
+		acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);
+		acc += getBodyToBodyAcceleration(pos, particleData[i+2].xy);
+		acc += getBodyToBodyAcceleration(pos, particleData[i+3].xy);
 	}
+	vel += acc * deltaT;
 	vel *= velocityDamping;
 	pos += vel * deltaT;
 
