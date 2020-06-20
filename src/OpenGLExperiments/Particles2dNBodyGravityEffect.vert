@@ -1,11 +1,13 @@
 #version 460 core
 
+// zero is replaced at runtime with an actual value
+#define particlesCount 0
+
 layout(location = 0) uniform vec2 screenSize;
 layout(location = 1) uniform float forceScale;
 layout(location = 2) uniform float velocityDamping;
 layout(location = 3) uniform float minDistanceToAttractor;
 layout(location = 4) uniform float timeScale;
-layout(location = 5) uniform int particlesCount;
 
 layout(std430, binding = 0) buffer SSBO
 {
@@ -31,7 +33,7 @@ void main() {
 	vec2 vel = p.zw;
 
 	vec2 acc = vec2(0.0);
-	for (int i = 0; i < 20000; i += 4)
+	for (int i = 0; i < particlesCount; i += 4)
 	{
 		acc += getBodyToBodyAcceleration(pos, particleData[i].xy);
 		acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);

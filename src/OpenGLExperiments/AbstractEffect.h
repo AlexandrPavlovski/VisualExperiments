@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -25,6 +26,12 @@ public:
 	virtual void windowSizeCallback(int width, int height);
 
 protected:
+	struct ShaderParams
+	{
+		const char* Placeholder;
+		const char* Value;
+	};
+
 	GLFWwindow* window;
 	GLint windowWidth, windowHeight;
 
@@ -36,6 +43,6 @@ protected:
 	int checkShaderCompileErrors(GLuint shader);
 	int checkShaderPrgramLinkErrors(GLuint shaderProgram);
 
-	GLuint createShaderProgramFromFiles();
+	GLuint createShaderProgramFromFiles(std::vector<ShaderParams> vertShaderParams = std::vector<ShaderParams>(), std::vector<ShaderParams> fragShaderParams = std::vector<ShaderParams>());
 	std::string readShaderFromFile(const char* shaderFilePath);
 };

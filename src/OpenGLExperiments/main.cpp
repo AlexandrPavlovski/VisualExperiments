@@ -197,18 +197,8 @@ int main()
 		std::cout << "Failed to initialize GLEW" << std::endl;
 		return -1;
 	}
+	useSelectedEffect();
 
-	try
-	{
-		useSelectedEffect();
-	}
-	catch (...)
-	{
-		std::cout << "Failed to initialize effect" << std::endl;
-		delete effect;
-		glfwTerminate();
-		return -1;
-	}
 
 	// ------ GUI setup ------ //
 

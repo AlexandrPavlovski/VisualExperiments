@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <regex>
 
 AbstractEffect::AbstractEffect(GLFWwindow* window)
 {
@@ -95,10 +96,19 @@ void AbstractEffect::hotReloadShaders()
 	}
 }
 
-GLuint AbstractEffect::createShaderProgramFromFiles()
+GLuint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> vertShaderParams, std::vector<ShaderParams> fragShaderParams)
 {
 	std::string vertexShaderStr = readShaderFromFile(vertexShaderFilePath);
 	std::string fragmentShaderStr = readShaderFromFile(fragmentShaderFilePath);
+
+	for (auto p : vertShaderParams)
+	{
+		vertexShaderStr = std::regex_replace(vertexShaderStr, std::regex(p.Placeholder), p.Value);
+	}
+	for (auto p : fragShaderParams)
+	{
+		fragmentShaderStr = std::regex_replace(fragmentShaderStr, std::regex(p.Placeholder), p.Value);
+	}
 
 	GLuint newShaderProgram = glCreateProgram();
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);

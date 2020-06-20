@@ -1,5 +1,6 @@
 #include "Particles2dNBodyGravityEffect.h"
 
+#include <string>
 
 Particles2dNBodyGravityEffect::Particles2dNBodyGravityEffect(GLFWwindow* window)
 	:AbstractEffect(window)
@@ -53,7 +54,13 @@ void Particles2dNBodyGravityEffect::initialize()
 	particlesData.clear();
 	currentParticlesCount = startupParams.ParticlesCount;
 
-	GLuint newShaderProgram = createShaderProgramFromFiles();
+	std::string pcs = "#define particlesCount " + std::to_string(currentParticlesCount);
+	const char* pcch = pcs.c_str();
+	std::vector<ShaderParams> vertShaderParams
+	{
+		ShaderParams {"#define particlesCount 0", pcch}
+	};
+	GLuint newShaderProgram = createShaderProgramFromFiles(vertShaderParams);
 	if (newShaderProgram == 0)
 	{
 		throw "Initialize failed";
@@ -81,7 +88,7 @@ void Particles2dNBodyGravityEffect::draw(GLdouble deltaTime)
 void Particles2dNBodyGravityEffect::drawGUI()
 {
 	ImGui::Begin("Startup params");
-	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 100000, 1000000);
+	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 1000, 10000);
 	ImGui::End();
 
 	ImGui::Begin("Runtime params");
@@ -105,5 +112,5 @@ void Particles2dNBodyGravityEffect::restart()
 
 void Particles2dNBodyGravityEffect::keyCallback(int key, int scancode, int action, int mode)
 {
-	
+
 }
