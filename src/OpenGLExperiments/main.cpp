@@ -14,18 +14,20 @@
 #include "AbstractEffect.h"
 #include "Particles2dGravityEffect.h"
 #include "Particles2dNBodyGravityEffect.h"
+#include "FractalEffect.h"
 
 
 bool isVsyncEnabled = true;
 
-const int effectsCount = 2;
+const int effectsCount = 3;
 AbstractEffect* effect;
 const char* effectNames[effectsCount] = 
 {
 	"2D One Attractor Gravity",
 	"2D N-Body Gravity",
+	"Fractals"
 };
-int currentEffectIndex = 1;
+int currentEffectIndex = 2;
 
 GLFWwindow* window;
 bool isFullscreen = false;
@@ -49,6 +51,9 @@ void useSelectedEffect()
 		break;
 	case 1:
 		effect = new Particles2dNBodyGravityEffect(window);
+		break;
+	case 2:
+		effect = new FractalEffect(window);
 		break;
 	default:
 		throw "Not supported effect";
@@ -121,10 +126,6 @@ void windowSizeCallback(GLFWwindow* window, int width, int height)
 
 void drawGUI()
 {
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
-
 	ImGui::Begin("Main controlls");
 	ImGui::Text("Toggle GUI: G");
 	ImGui::Text("Toggle fullscreen: F11");
@@ -156,9 +157,6 @@ void drawGUI()
 	ImGui::End();
 
 	effect->drawGUI();
-
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 int main()
@@ -180,6 +178,7 @@ int main()
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
+		getchar();
 		return -1;
 	}
 	glfwSetWindowPos(window, WindowPosX, WindowPosY);
@@ -195,9 +194,22 @@ int main()
 	if (glewInit()  != GLEW_OK)
 	{
 		std::cout << "Failed to initialize GLEW" << std::endl;
+		getchar();
 		return -1;
 	}
-	useSelectedEffect();
+
+	try
+	{
+		useSelectedEffect();
+	}
+	catch (...)
+	{
+		std::cout << "Failed to initialize effect" << std::endl;
+		delete effect;
+		glfwTerminate();
+		getchar();
+		return -1;
+	}
 
 
 	// ------ GUI setup ------ //
@@ -230,10 +242,16 @@ int main()
 		io = ImGui::GetIO();
 
 		effect->draw(io.DeltaTime);
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 		if (isGUI)
 		{
 			drawGUI();
 		}
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		if (!isFullscreen)
 		{

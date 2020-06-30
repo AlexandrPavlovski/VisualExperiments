@@ -16,6 +16,9 @@
     <Filter Include="Effects\Particles2dNBodyGravityEffect">
       <UniqueIdentifier>{a6e539ac-833b-453d-a554-f954414f5c84}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Effects\FractalEffect">
+      <UniqueIdentifier>{45876e7d-6b3f-4682-b04e-11f6bbf8d946}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -45,6 +48,9 @@
     </ClCompile>
     <ClCompile Include="Particles2dNBodyGravityEffect.cpp">
       <Filter>Effects\Particles2dNBodyGravityEffect</Filter>
+    </ClCompile>
+    <ClCompile Include="FractalEffect.cpp">
+      <Filter>Effects\FractalEffect</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -81,6 +87,9 @@
     <ClInclude Include="Particles2dNBodyGravityEffect.h">
       <Filter>Effects\Particles2dNBodyGravityEffect</Filter>
     </ClInclude>
+    <ClInclude Include="FractalEffect.h">
+      <Filter>Effects\FractalEffect</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Particles2dGravityEffect.frag">
@@ -89,13 +98,17 @@
     <CopyFileToFolders Include="Particles2dGravityEffect.vert">
       <Filter>Effects\Particles2dGravityEffect</Filter>
     </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Particles2dNBodyGravityEffect.vert">
+    <CopyFileToFolders Include="Particles2dNBodyGravityEffect.frag">
       <Filter>Effects\Particles2dNBodyGravityEffect</Filter>
-    </None>
-    <None Include="Particles2dNBodyGravityEffect.frag">
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Particles2dNBodyGravityEffect.vert">
       <Filter>Effects\Particles2dNBodyGravityEffect</Filter>
-    </None>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="FractalEffect.frag">
+      <Filter>Effects\FractalEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="FractalEffect.vert">
+      <Filter>Effects\FractalEffect</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>
