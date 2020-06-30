@@ -14,7 +14,7 @@
 #include "AbstractEffect.h"
 #include "Particles2dGravityEffect.h"
 #include "Particles2dNBodyGravityEffect.h"
-#include "FractalEffect.h"
+#include "Fractal2dEffect.h"
 
 
 bool isVsyncEnabled = true;
@@ -53,7 +53,7 @@ void useSelectedEffect()
 		effect = new Particles2dNBodyGravityEffect(window);
 		break;
 	case 2:
-		effect = new FractalEffect(window);
+		effect = new Fractal2dEffect(window);
 		break;
 	default:
 		throw "Not supported effect";
@@ -110,6 +110,16 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 	}
 
 	effect->keyCallback(key, scancode, action, mode);
+}
+
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+	effect->mouseButtonCallback(button, action, mods);
+}
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	effect->scrollCallback(xoffset, yoffset);
 }
 
 void windowSizeCallback(GLFWwindow* window, int width, int height)
@@ -185,6 +195,8 @@ int main()
 	glfwMakeContextCurrent(window);
 
 	glfwSetKeyCallback(window, keyCallback);
+	glfwSetMouseButtonCallback(window, mouseButtonCallback);
+	glfwSetScrollCallback(window, scrollCallback);
 	glfwSetWindowSizeCallback(window, windowSizeCallback);
 	
 	windowSizeCallback(window, WindowWidth, WindowHeight);

@@ -79,6 +79,16 @@ void AbstractEffect::keyCallback(int key, int scancode, int action, int mode)
 	
 }
 
+void AbstractEffect::mouseButtonCallback(int button, int action, int mods)
+{
+
+}
+
+void AbstractEffect::scrollCallback(double xoffset, double yoffset)
+{
+
+}
+
 void AbstractEffect::windowSizeCallback(int width, int height)
 {
 	windowWidth = width;

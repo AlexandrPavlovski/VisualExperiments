@@ -150,7 +150,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AbstractEffect.cpp" />
-    <ClCompile Include="FractalEffect.cpp" />
+    <ClCompile Include="Fractal2dEffect.cpp" />
     <ClCompile Include="imgui.cpp" />
     <ClCompile Include="imgui_demo.cpp" />
     <ClCompile Include="imgui_draw.cpp" />
@@ -163,7 +163,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AbstractEffect.h" />
-    <ClInclude Include="FractalEffect.h" />
+    <ClInclude Include="Fractal2dEffect.h" />
     <ClInclude Include="imconfig.h" />
     <ClInclude Include="imgui.h" />
     <ClInclude Include="imgui_impl_glfw.h" />
@@ -192,10 +192,10 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="FractalEffect.frag">
+    <CopyFileToFolders Include="Fractal2dEffect.frag">
       <FileType>Document</FileType>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="FractalEffect.vert">
+    <CopyFileToFolders Include="Fractal2dEffect.vert">
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>

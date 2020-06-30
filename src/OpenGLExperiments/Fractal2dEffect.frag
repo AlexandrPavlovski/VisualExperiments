@@ -1,14 +1,17 @@
 #version 460 core
 
-// zero is replaced at runtime with an actual value
-#define iterations 512
+// this value is replaced at runtime with an actual value
+#define iterations 0
+
+layout(location = 0) uniform vec2 uViewPos;
+layout(location = 1) uniform float uViewZoom;
 
 out vec4 color;
 
 void main() {
 	int n = 0;
 	vec2 z = vec2(0.0);
-	vec2 c = vec2(gl_FragCoord.x / 1280.0, gl_FragCoord.y / 800.0);
+	vec2 c = vec2(gl_FragCoord.xy / uViewZoom) + uViewPos;
 
 	for	(int i = 0; i < iterations; i++)
 	{
@@ -27,6 +30,6 @@ void main() {
 		n = 0;
 	}
 
-	float col = sqrt(float(n) / iterations);
-	color = vec4(col, col, col, 1.0);
+	vec3 intensity = vec3(sqrt(float(n) / iterations));
+	color = vec4(intensity, 1.0);
 }

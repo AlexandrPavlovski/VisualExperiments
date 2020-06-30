@@ -23,6 +23,8 @@ public:
 	void hotReloadShaders();
 
 	virtual void keyCallback(int key, int scancode, int action, int mode);
+	virtual void mouseButtonCallback(int button, int action, int mods);
+	virtual void scrollCallback(double xoffset, double yoffset);
 	virtual void windowSizeCallback(int width, int height);
 
 protected:

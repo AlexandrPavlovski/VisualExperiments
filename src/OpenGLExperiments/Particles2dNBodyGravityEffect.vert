@@ -3,7 +3,7 @@
 // zero is replaced at runtime with an actual value
 #define particlesCount 0
 
-layout(location = 0) uniform vec2 screenSize;
+layout(location = 0) uniform vec2 windowSize;
 layout(location = 1) uniform float forceScale;
 layout(location = 2) uniform float velocityDamping;
 layout(location = 3) uniform float minDistanceToAttractor;
@@ -45,9 +45,9 @@ void main() {
 	pos += vel * deltaT;
 
 	// teleportation at screen bounds
-	pos = mod(mod(pos, screenSize) + vec2(screenSize), vec2(screenSize));
+	pos = mod(mod(pos, windowSize) + vec2(windowSize), vec2(windowSize));
 
-	vec2 normalizedPos = (pos - screenSize / 2) / (screenSize / 2);
+	vec2 normalizedPos = (pos - windowSize / 2) / (windowSize / 2);
 	normalizedPos.y = -normalizedPos.y;
 	gl_Position = vec4(normalizedPos, 0.0, 1.0);
 
