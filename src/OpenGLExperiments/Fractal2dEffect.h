@@ -24,24 +24,30 @@ public:
 	virtual void scrollCallback(double xoffset, double yoffset);
 
 private:
-	struct InitialParams
-	{
-		GLfloat viewPosX;
-		GLfloat viewPosY;
-		GLfloat viewZoom;
-	};
-	InitialParams initialParams;
-
 	struct StartupParams
 	{
 		int Iterations;
+		int AntiAliasing;
+		bool isDoublePrecision;
 	};
-	StartupParams startupParams;
 
-	bool isLeftMouseBtnDown = false;
+	struct RuntimeParams
+	{
+		GLdouble viewPosX, viewPosY, viewZoom;
+		GLfloat a1, a2, a3;
+	};
+
+	StartupParams startupParams;
+	RuntimeParams runtimeParams;
+
+	bool isDoublePrecision;
+	bool isRightMouseBtnDown = false;
 	GLdouble cursorPosX, cursorPosY;
-	GLfloat viewPosX, viewPosY, viewZoom, zoomSpeed;
+	GLdouble zoomSpeed;
 
 	std::vector<GLfloat> trianglesData;
 	GLuint vao = 0, ssbo = 0;
+
+	const char* fragmentShaderFilePathSingle = "Fractal2dSingleEffect.frag";
+	const char* fragmentShaderFilePathDouble = "Fractal2dDoubleEffect.frag";
 };

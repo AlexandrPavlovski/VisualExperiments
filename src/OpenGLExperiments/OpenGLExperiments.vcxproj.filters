@@ -104,10 +104,13 @@
     <CopyFileToFolders Include="Particles2dNBodyGravityEffect.vert">
       <Filter>Effects\Particles2dNBodyGravityEffect</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="Fractal2dEffect.frag">
+    <CopyFileToFolders Include="Fractal2dEffect.vert">
       <Filter>Effects\Fractal2dEffect</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="Fractal2dEffect.vert">
+    <CopyFileToFolders Include="Fractal2dSingleEffect.frag">
+      <Filter>Effects\Fractal2dEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Fractal2dDoubleEffect.frag">
       <Filter>Effects\Fractal2dEffect</Filter>
     </CopyFileToFolders>
   </ItemGroup>

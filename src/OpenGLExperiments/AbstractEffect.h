@@ -30,8 +30,8 @@ public:
 protected:
 	struct ShaderParams
 	{
-		const char* Placeholder;
-		const char* Value;
+		std::string Placeholder;
+		std::string Value;
 	};
 
 	GLFWwindow* window;

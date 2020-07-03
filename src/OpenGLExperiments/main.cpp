@@ -25,7 +25,7 @@ const char* effectNames[effectsCount] =
 {
 	"2D One Attractor Gravity",
 	"2D N-Body Gravity",
-	"Fractals"
+	"2D Fractals"
 };
 int currentEffectIndex = 2;
 

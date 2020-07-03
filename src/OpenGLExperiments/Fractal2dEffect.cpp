@@ -4,15 +4,20 @@ Fractal2dEffect::Fractal2dEffect(GLFWwindow* window)
 	:AbstractEffect(window)
 {
 	vertexShaderFilePath = "Fractal2dEffect.vert";
-	fragmentShaderFilePath = "Fractal2dEffect.frag";
-
-	initialParams = {};
-	initialParams.viewZoom = 2.5;
-	initialParams.viewPosX = -2.3;
-	initialParams.viewPosY = -initialParams.viewZoom / 2;
+	fragmentShaderFilePath = fragmentShaderFilePathSingle;
 
 	startupParams = {};
-	startupParams.Iterations = 1000;
+	startupParams.Iterations = 100;
+	startupParams.AntiAliasing = 1;
+	startupParams.isDoublePrecision = false;
+
+	runtimeParams = {};
+	runtimeParams.viewZoom = 2.5;
+	runtimeParams.viewPosX = -3.0;
+	runtimeParams.viewPosY = -runtimeParams.viewZoom / 2;
+	runtimeParams.a1 = 0;
+	runtimeParams.a2 = 1;
+	runtimeParams.a3 = 0;
 
 	zoomSpeed = 1;
 }
@@ -27,15 +32,22 @@ Fractal2dEffect::~Fractal2dEffect()
 
 void Fractal2dEffect::initialize()
 {
+	if (startupParams.isDoublePrecision)
+	{
+		isDoublePrecision = true;
+		fragmentShaderFilePath = fragmentShaderFilePathDouble;
+	}
+	else
+	{
+		isDoublePrecision = false;
+		fragmentShaderFilePath = fragmentShaderFilePathSingle;
+	}
+
 	// triangle strip
 	trianglesData.push_back(-1.0);trianglesData.push_back(1.0);
 	trianglesData.push_back(1.0);trianglesData.push_back(1.0);
 	trianglesData.push_back(-1.0);trianglesData.push_back(-1.0);
 	trianglesData.push_back(1.0);trianglesData.push_back(-1.0);
-
-	viewZoom = initialParams.viewZoom;
-	viewPosX = initialParams.viewPosX;
-	viewPosY = initialParams.viewPosY;
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -46,11 +58,10 @@ void Fractal2dEffect::initialize()
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-	std::string iterStr = "#define iterations " + std::to_string(startupParams.Iterations);
-	const char* iterChar = iterStr.c_str();
 	std::vector<ShaderParams> fragShaderParams
 	{
-		ShaderParams {"#define iterations 0", iterChar}
+		ShaderParams {"#define iterations 0", "#define iterations " + std::to_string(startupParams.Iterations)},
+		ShaderParams {"#define AA 0", "#define AA " + std::to_string(startupParams.AntiAliasing)}
 	};
 	GLuint newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParams>(), fragShaderParams);
 	if (newShaderProgram == 0)
@@ -67,40 +78,50 @@ void Fractal2dEffect::draw(GLdouble deltaTime)
 	GLdouble oldCursorPosX = cursorPosX, oldCursorPosY = cursorPosY;
 	glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
 
-	GLfloat zoom = windowHeight / viewZoom;
+	GLdouble zoom = windowHeight / runtimeParams.viewZoom;
 
-	if (isLeftMouseBtnDown)
+	if (isRightMouseBtnDown)
 	{
-		GLfloat deltaX = oldCursorPosX - cursorPosX;
-		GLfloat deltaY = cursorPosY - oldCursorPosY;
+		GLdouble deltaX = oldCursorPosX - cursorPosX;
+		GLdouble deltaY = cursorPosY - oldCursorPosY;
 
-		viewPosX += deltaX / zoom;
-		viewPosY += deltaY / zoom;
+		runtimeParams.viewPosX += deltaX / zoom;
+		runtimeParams.viewPosY += deltaY / zoom;
 	}
 
 	// fragment shader params
-	glUniform2f(0, viewPosX, viewPosY);
-	glUniform1f(1, zoom);
+	glUniform2d(0, runtimeParams.viewPosX, runtimeParams.viewPosY);
+	glUniform1d(1, zoom);
+	if (isDoublePrecision == false)
+	{
+		glUniform1f(2, runtimeParams.a1);
+		glUniform1f(3, runtimeParams.a2);
+		glUniform1f(4, runtimeParams.a3);
+	}
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 void Fractal2dEffect::drawGUI()
 {
-	ImGui::Begin("Startup params");
-	ImGui::Text("Pan: Left mouse button");
+	ImGui::Begin("Startup params (Fractals)");
+	ImGui::Text("Pan: Right mouse button");
 	ImGui::Text("Zoom: Scroll");
 	ImGui::Text("Fast Zoom: Left shift + scroll");
-	ImGui::InputInt("Iteratoins", &startupParams.Iterations, 100, 1000);
+	ImGui::InputInt("Iterations", &startupParams.Iterations, 100, 1000);
+	ImGui::InputInt("Anti Aliasing", &startupParams.AntiAliasing, 1, 1);
+	ImGui::Checkbox("Double precision (can go deeper)", &startupParams.isDoublePrecision);
 	ImGui::End();
 
-	//ImGui::Begin("Runtime params");
-	//ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, -1.0, 10.0);
-	//ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
-	//ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.0, 1000.0);
-	//ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 10.0);
-	//ImGui::ColorPicker4("", runtimeParams.Color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoLabel);
-	//ImGui::End();
+	if (isDoublePrecision == false)
+	{
+		ImGui::Begin("Runtime params (Fractals)");
+		ImGui::Text("f(z) = a3*z^3 + a2*z^2 + a1*z + c");
+		ImGui::SliderFloat("a3", &runtimeParams.a3, -5.0, 5.0);
+		ImGui::SliderFloat("a2", &runtimeParams.a2, -5.0, 5.0);
+		ImGui::SliderFloat("a1", &runtimeParams.a1, -5.0, 5.0);
+		ImGui::End();
+	}
 }
 
 void Fractal2dEffect::restart()
@@ -126,13 +147,13 @@ void Fractal2dEffect::keyCallback(int key, int scancode, int action, int mode)
 
 void Fractal2dEffect::mouseButtonCallback(int button, int action, int mods)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 	{
-		isLeftMouseBtnDown = true;
+		isRightMouseBtnDown = true;
 	}
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
 	{
-		isLeftMouseBtnDown = false;
+		isRightMouseBtnDown = false;
 	}
 }
 
@@ -142,24 +163,24 @@ void Fractal2dEffect::scrollCallback(double xoffset, double yoffset)
 	// while in GLFW (0, 0) is top left with bositive direction down
 	GLdouble transfomedCursorPosY = windowHeight - cursorPosY;
 
-	GLfloat zoom = windowHeight / viewZoom;
-	GLfloat beforeZoomCursorPosX = cursorPosX / zoom + viewPosX;
-	GLfloat	beforeZoomCursorPosY = transfomedCursorPosY / zoom + viewPosY;
+	GLdouble zoom = windowHeight / runtimeParams.viewZoom;
+	GLdouble beforeZoomCursorPosX = cursorPosX / zoom + runtimeParams.viewPosX;
+	GLdouble	beforeZoomCursorPosY = transfomedCursorPosY / zoom + runtimeParams.viewPosY;
 
-	GLfloat multiplier = 1 + zoomSpeed / 10;
+	GLdouble multiplier = 1 + zoomSpeed / 10;
 	if (yoffset < 0)
 	{
-		viewZoom *= multiplier;
+		runtimeParams.viewZoom *= multiplier;
 	}
 	else
 	{
-		viewZoom /= multiplier;
+		runtimeParams.viewZoom /= multiplier;
 	}
 
-	zoom = windowHeight / viewZoom;
-	GLfloat afterZoomCursorPosX = cursorPosX / zoom + viewPosX;
-	GLfloat	afterZoomCursorPosY = transfomedCursorPosY / zoom + viewPosY;
+	zoom = windowHeight / runtimeParams.viewZoom;
+	GLdouble afterZoomCursorPosX = cursorPosX / zoom + runtimeParams.viewPosX;
+	GLdouble	afterZoomCursorPosY = transfomedCursorPosY / zoom + runtimeParams.viewPosY;
 
-	viewPosX += beforeZoomCursorPosX - afterZoomCursorPosX;
-	viewPosY += beforeZoomCursorPosY - afterZoomCursorPosY;
+	runtimeParams.viewPosX += beforeZoomCursorPosX - afterZoomCursorPosX;
+	runtimeParams.viewPosY += beforeZoomCursorPosY - afterZoomCursorPosY;
 }

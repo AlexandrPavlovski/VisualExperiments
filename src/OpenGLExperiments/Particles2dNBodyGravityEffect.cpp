@@ -54,11 +54,9 @@ void Particles2dNBodyGravityEffect::initialize()
 	particlesData.clear();
 	currentParticlesCount = startupParams.ParticlesCount;
 
-	std::string pcs = "#define particlesCount " + std::to_string(currentParticlesCount);
-	const char* pcch = pcs.c_str();
 	std::vector<ShaderParams> vertShaderParams
 	{
-		ShaderParams {"#define particlesCount 0", pcch}
+		ShaderParams {"#define particlesCount 0", "#define particlesCount " + std::to_string(currentParticlesCount)}
 	};
 	GLuint newShaderProgram = createShaderProgramFromFiles(vertShaderParams);
 	if (newShaderProgram == 0)
@@ -87,11 +85,11 @@ void Particles2dNBodyGravityEffect::draw(GLdouble deltaTime)
 
 void Particles2dNBodyGravityEffect::drawGUI()
 {
-	ImGui::Begin("Startup params");
+	ImGui::Begin("Startup params (N-body)");
 	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 1000, 10000);
 	ImGui::End();
 
-	ImGui::Begin("Runtime params");
+	ImGui::Begin("Runtime params (N-body)");
 	ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, -1.0, 10.0);
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.01, 100.0);

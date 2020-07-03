@@ -88,12 +88,12 @@ void Particles2dGravityEffect::draw(GLdouble deltaTime)
 
 void Particles2dGravityEffect::drawGUI()
 {
-	ImGui::Begin("Startup params");
+	ImGui::Begin("Startup params (One attractor)");
 	ImGui::Text("Move attractor: A");
 	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 100000, 1000000);
 	ImGui::End();
 
-	ImGui::Begin("Runtime params");
+	ImGui::Begin("Runtime params (One attractor)");
 	ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, -1.0, 10.0);
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.0, 1000.0);
