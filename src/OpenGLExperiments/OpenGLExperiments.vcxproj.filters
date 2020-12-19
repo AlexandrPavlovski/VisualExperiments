@@ -21,7 +21,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="Particles2dGravityEffect.cpp">
       <Filter>Effects\Particles2dGravityEffect</Filter>
     </ClCompile>
@@ -52,6 +51,8 @@
     <ClCompile Include="Fractal2dEffect.cpp">
       <Filter>Effects\Fractal2dEffect</Filter>
     </ClCompile>
+    <ClCompile Include="_main.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Particles2dGravityEffect.h">

@@ -158,6 +158,7 @@
     <ClCompile Include="imgui_impl_opengl3.cpp" />
     <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="_main.cpp" />
     <ClCompile Include="Particles2dGravityEffect.cpp" />
     <ClCompile Include="Particles2dNBodyGravityEffect.cpp" />
   </ItemGroup>
