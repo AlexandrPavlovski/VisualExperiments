@@ -147,11 +147,11 @@ void Fractal2dEffect::keyCallback(int key, int scancode, int action, int mode)
 
 void Fractal2dEffect::mouseButtonCallback(int button, int action, int mods)
 {
-	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
 		isRightMouseBtnDown = true;
 	}
-	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
 	{
 		isRightMouseBtnDown = false;
 	}
@@ -160,7 +160,7 @@ void Fractal2dEffect::mouseButtonCallback(int button, int action, int mods)
 void Fractal2dEffect::scrollCallback(double xoffset, double yoffset)
 {
 	// this is needed because in shader (0, 0) is bottom left with positive direction up
-	// while in GLFW (0, 0) is top left with bositive direction down
+	// while in GLFW (0, 0) is top left with positive direction down
 	GLdouble transfomedCursorPosY = windowHeight - cursorPosY;
 
 	GLdouble zoom = windowHeight / runtimeParams.viewZoom;

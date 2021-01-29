@@ -1,28 +1,27 @@
-#include "Particles2dNBodyGravityEffect.h"
+#include "Particles2dCollisionEffect.h"
 
-#include <string>
-
-Particles2dNBodyGravityEffect::Particles2dNBodyGravityEffect(GLFWwindow* window)
+Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	:AbstractEffect(window)
 {
-	vertexShaderFilePath = "Particles2dNBodyGravityEffect.vert";
-	fragmentShaderFilePath = "Particles2dNBodyGravityEffect.frag";
+	vertexShaderFilePath = "Particles2dCollisionEffect.vert";
+	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 20000;
+	startupParams.ParticlesCount = 4;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
 	runtimeParams.VelocityDamping = 0.999;
-	runtimeParams.MinDistanceToAttractor = 50.0;
+	runtimeParams.MinDistanceToAttractor = 20.0;
 	runtimeParams.TimeScale = 1.0;
-	runtimeParams.Color[0] = 0.196;
-	runtimeParams.Color[1] = 0.05;
-	runtimeParams.Color[2] = 0.941;
-	runtimeParams.Color[3] = 0.9;
+	runtimeParams.Color[0] = 1.0;
+	runtimeParams.Color[1] = 1.0;
+	runtimeParams.Color[2] = 1.0;
+	runtimeParams.Color[3] = 1.0;
+	runtimeParams.Size = 20.0;
 }
 
-Particles2dNBodyGravityEffect::~Particles2dNBodyGravityEffect()
+Particles2dCollisionEffect::~Particles2dCollisionEffect()
 {
 	glDeleteProgram(shaderProgram);
 	glDeleteBuffers(1, &ssbo);
@@ -30,17 +29,42 @@ Particles2dNBodyGravityEffect::~Particles2dNBodyGravityEffect()
 }
 
 
-void Particles2dNBodyGravityEffect::initialize()
+void Particles2dCollisionEffect::initialize()
 {
 	for (int i = 0; i < startupParams.ParticlesCount; i++)
 	{
 		// positions
-		particlesData.push_back(random(0.0, windowWidth));
-		particlesData.push_back(random(0.0, windowHeight));
+		particlesData.push_back(random(100.0, 900.0));
+		particlesData.push_back(random(100.0, 900.0));
 		// velocities
-		particlesData.push_back(0.0);
-		particlesData.push_back(0.0);
+		particlesData.push_back(random(-0.5, 0.5));
+		particlesData.push_back(random(-0.5, 0.5));
 	}
+
+	particlesData.push_back(540.0);/*
+	particlesData.push_back(400.0);
+	particlesData.push_back(0.5);
+	particlesData.push_back(0.0);
+
+	particlesData.push_back(700.0);
+	particlesData.push_back(410.0);
+	particlesData.push_back(0.0);
+	particlesData.push_back(0.0);*/
+
+	//particlesData.push_back(700.0);
+	//particlesData.push_back(420.0);
+	//particlesData.push_back(0.0);
+	//particlesData.push_back(0.0);
+
+	//particlesData.push_back(700.0);
+	//particlesData.push_back(360.0);
+	//particlesData.push_back(0.0);
+	//particlesData.push_back(0.0);
+
+	//particlesData.push_back(700.0);
+	//particlesData.push_back(350.0);
+	//particlesData.push_back(0.0);
+	//particlesData.push_back(0.0);
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -68,22 +92,28 @@ void Particles2dNBodyGravityEffect::initialize()
 	glUseProgram(shaderProgram);
 }
 
-void Particles2dNBodyGravityEffect::draw(GLdouble deltaTime)
+void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 {
+	GLfloat dt = ((GLfloat)deltaTime) * 1000 * runtimeParams.TimeScale;
 	// vertex shader params
 	glUniform2f(0, windowWidth, windowHeight);
 	glUniform1f(1, runtimeParams.ForceScale);
 	glUniform1f(2, runtimeParams.VelocityDamping);
 	glUniform1f(3, runtimeParams.MinDistanceToAttractor);
-	glUniform1f(4, runtimeParams.TimeScale);
+	glUniform1f(4, dt);
+	glUniform1i(5, isPaused && !isAdvanceOneFrame);
+	glUniform1f(6, runtimeParams.Size);
 
 	// fragment shader params
 	glUniform4f(20, runtimeParams.Color[0], runtimeParams.Color[1], runtimeParams.Color[2], runtimeParams.Color[3]);
 
+	glPointSize(runtimeParams.Size);
 	glDrawArrays(GL_POINTS, 0, currentParticlesCount);
+
+	isAdvanceOneFrame = false;
 }
 
-void Particles2dNBodyGravityEffect::drawGUI()
+void Particles2dCollisionEffect::drawGUI()
 {
 	ImGui::Begin("Startup params (N-body)");
 	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 1000, 10000);
@@ -93,12 +123,13 @@ void Particles2dNBodyGravityEffect::drawGUI()
 	ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, -1.0, 10.0);
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.01, 100.0);
-	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, -5.0, 5.0);
+	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 5.0);
+	ImGui::SliderFloat("Size", &runtimeParams.Size, 1.0, 500.0);
 	ImGui::ColorPicker4("", runtimeParams.Color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoLabel);
 	ImGui::End();
 }
 
-void Particles2dNBodyGravityEffect::restart()
+void Particles2dCollisionEffect::restart()
 {
 	glDeleteProgram(shaderProgram);
 	glDeleteBuffers(1, &ssbo);
@@ -108,7 +139,15 @@ void Particles2dNBodyGravityEffect::restart()
 }
 
 
-void Particles2dNBodyGravityEffect::keyCallback(int key, int scancode, int action, int mode)
+void Particles2dCollisionEffect::keyCallback(int key, int scancode, int action, int mode)
 {
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+	{
+		isPaused = !isPaused;
+	}
 
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS && isPaused)
+	{
+		isAdvanceOneFrame = true;
+	}
 }

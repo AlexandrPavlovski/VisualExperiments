@@ -15,19 +15,21 @@
 #include "Particles2dGravityEffect.h"
 #include "Particles2dNBodyGravityEffect.h"
 #include "Fractal2dEffect.h"
+#include "Particles2dCollisionEffect.h"
 
 
 bool isVsyncEnabled = true;
 
-const int effectsCount = 3;
+const int effectsCount = 4;
 AbstractEffect* effect;
-const char* effectNames[effectsCount] = 
+const char* effectNames[effectsCount] =
 {
 	"2D One Attractor Gravity",
 	"2D N-Body Gravity",
-	"2D Fractals"
+	"2D Fractals",
+	"2D Collisions"
 };
-int currentEffectIndex = 2;
+int currentEffectIndex = 3;
 
 GLFWwindow* window;
 bool isFullscreen = false;
@@ -55,8 +57,11 @@ void useSelectedEffect()
 	case 2:
 		effect = new Fractal2dEffect(window);
 		break;
+	case 3:
+		effect = new Particles2dCollisionEffect(window);
+		break;
 	default:
-		throw "Not supported effect";
+		throw "No effect";
 	}
 
 	effect->initialize();
@@ -182,7 +187,7 @@ int main()
 		glfwWindowHint(GLFW_DOUBLEBUFFER, GL_FALSE);
 	}
 
-	
+
 	window = glfwCreateWindow(WindowWidth, WindowHeight, "Particles 2D", NULL, NULL);
 	if (window == NULL)
 	{
@@ -198,12 +203,12 @@ int main()
 	glfwSetMouseButtonCallback(window, mouseButtonCallback);
 	glfwSetScrollCallback(window, scrollCallback);
 	glfwSetWindowSizeCallback(window, windowSizeCallback);
-	
+
 	windowSizeCallback(window, WindowWidth, WindowHeight);
 
 
 	glewExperimental = GL_TRUE;
-	if (glewInit()  != GLEW_OK)
+	if (glewInit() != GLEW_OK)
 	{
 		std::cout << "Failed to initialize GLEW" << std::endl;
 		getchar();
@@ -238,7 +243,7 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 460");
 
-	int nbFrames = 0;
+	float timeFromPrevFpsUpdate = 0.0;
 	const char* windowTitle = "Visual experiments";
 
 	glEnable(GL_BLEND);
@@ -248,10 +253,7 @@ int main()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT);
-
-		io = ImGui::GetIO();
 
 		effect->draw(io.DeltaTime);
 
@@ -267,25 +269,27 @@ int main()
 
 		if (!isFullscreen)
 		{
-			nbFrames++;
-			if (nbFrames >= 60)
+			timeFromPrevFpsUpdate += io.DeltaTime;
+			if (timeFromPrevFpsUpdate >= 1.0)
 			{
 				std::stringstream ss;
 				ss << windowTitle << " | " << io.Framerate << " FPS (" << io.DeltaTime * 1000 << " ms)";
 				glfwSetWindowTitle(window, ss.str().c_str());
 
-				nbFrames = 0;
+				timeFromPrevFpsUpdate -= 1.0;
 			}
 		}
 
-		if (!isVsyncEnabled)
-		{
-			glFlush();
-		}
-		else
+		if (isVsyncEnabled)
 		{
 			glfwSwapBuffers(window);
 		}
+		else
+		{
+			glFlush();
+		}
+
+		glfwPollEvents();
 	}
 
 	// ------ clearing ------ //
@@ -299,6 +303,6 @@ int main()
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
-	
+
 	return 0;
 }

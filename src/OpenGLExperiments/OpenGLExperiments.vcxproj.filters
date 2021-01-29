@@ -19,6 +19,9 @@
     <Filter Include="Effects\Fractal2dEffect">
       <UniqueIdentifier>{45876e7d-6b3f-4682-b04e-11f6bbf8d946}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Effects\Particles2dCollisionEffect">
+      <UniqueIdentifier>{beacfb1e-d8cf-4766-8313-0cff5c7ab759}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Particles2dGravityEffect.cpp">
@@ -51,8 +54,10 @@
     <ClCompile Include="Fractal2dEffect.cpp">
       <Filter>Effects\Fractal2dEffect</Filter>
     </ClCompile>
-    <ClCompile Include="_main.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Particles2dCollisionEffect.cpp">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Particles2dGravityEffect.h">
@@ -91,6 +96,9 @@
     <ClInclude Include="Fractal2dEffect.h">
       <Filter>Effects\Fractal2dEffect</Filter>
     </ClInclude>
+    <ClInclude Include="Particles2dCollisionEffect.h">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Particles2dGravityEffect.frag">
@@ -113,6 +121,12 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="Fractal2dDoubleEffect.frag">
       <Filter>Effects\Fractal2dEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Particles2dCollisionEffect.vert">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Particles2dCollisionEffect.frag">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -42,9 +42,15 @@ protected:
 	GLuint shaderProgram;
 
 	GLfloat random(GLfloat low, GLfloat high);
-	int checkShaderCompileErrors(GLuint shader);
-	int checkShaderPrgramLinkErrors(GLuint shaderProgram);
 
-	GLuint createShaderProgramFromFiles(std::vector<ShaderParams> vertShaderParams = std::vector<ShaderParams>(), std::vector<ShaderParams> fragShaderParams = std::vector<ShaderParams>());
+	GLuint createShaderProgramFromFiles(
+		std::vector<ShaderParams> vertShaderParams = std::vector<ShaderParams>(),
+		std::vector<ShaderParams> fragShaderParams = std::vector<ShaderParams>());
+
+private:
+	GLuint createShader(GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
+	GLint checkShaderCompileErrors(GLuint shader);
+	GLint checkShaderPrgramLinkErrors(GLuint shaderProgram);
+
 	std::string readShaderFromFile(const char* shaderFilePath);
 };

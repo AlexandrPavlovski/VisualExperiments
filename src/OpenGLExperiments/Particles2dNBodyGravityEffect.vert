@@ -33,16 +33,33 @@ void main() {
 	vec2 vel = p.zw;
 
 	vec2 acc = vec2(0.0);
-	for (int i = 0; i < particlesCount; i += 4)
+	if (deltaT > 0)
 	{
-		acc += getBodyToBodyAcceleration(pos, particleData[i].xy);
-		acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);
-		acc += getBodyToBodyAcceleration(pos, particleData[i+2].xy);
-		acc += getBodyToBodyAcceleration(pos, particleData[i+3].xy);
+		for (int i = 0; i < particlesCount; i += 4)
+		{
+			acc += getBodyToBodyAcceleration(pos, particleData[i].xy);
+			acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);
+			acc += getBodyToBodyAcceleration(pos, particleData[i+2].xy);
+			acc += getBodyToBodyAcceleration(pos, particleData[i+3].xy);
+		}
+		vel += acc * deltaT;
+		vel *= velocityDamping;
+		pos += vel * deltaT;
 	}
-	vel += acc * deltaT;
-	vel *= velocityDamping;
-	pos += vel * deltaT;
+	else // time goes backwards
+	{
+		pos += vel * deltaT;
+		vel *= 1 / velocityDamping;
+
+		for (int i = 0; i < particlesCount; i += 4)
+		{
+			acc += getBodyToBodyAcceleration(pos, particleData[i].xy);
+			acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);
+			acc += getBodyToBodyAcceleration(pos, particleData[i+2].xy);
+			acc += getBodyToBodyAcceleration(pos, particleData[i+3].xy);
+		}
+		vel += acc * deltaT;
+	}
 
 	// teleportation at screen bounds
 	pos = mod(mod(pos, windowSize) + vec2(windowSize), vec2(windowSize));
