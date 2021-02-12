@@ -1,0 +1,150 @@
+#version 460 core
+
+// 0 is replaced at runtime with an actual value
+#define particlesCount 0
+
+layout(local_size_x = 64) in;
+
+layout(location = 0) uniform vec2 windowSize;
+layout(location = 1) uniform float forceScale;
+layout(location = 2) uniform float velocityDamping;
+layout(location = 3) uniform float minDistanceToAttractor;
+layout(location = 4) uniform float deltaTime;
+layout(location = 5) uniform bool isPaused;
+layout(location = 6) uniform float particleSize;
+
+layout(std430, binding = 0) buffer SSBO
+{
+	vec4 particleData[];
+};
+
+vec2 bodyToBodyAcceleration(vec2 b1, vec2 b2)
+{
+	vec2 dir = b2 - b1;
+	
+	float distSquared = max(dot(dir, dir), minDistanceToAttractor);
+	float distSixth = distSquared * distSquared * distSquared;
+	float invDistCube = 1.0f / sqrt(distSixth) * forceScale;
+
+	return dir * invDistCube;
+}
+
+vec2 nBodyGravityAcceleration(vec2 pos)
+{
+	vec2 acc = vec2(0.0);
+	for (int i = 0; i <= particlesCount; i += 4)
+	{
+		acc += bodyToBodyAcceleration(pos, particleData[i].xy);
+		acc += bodyToBodyAcceleration(pos, particleData[i+1].xy);
+		acc += bodyToBodyAcceleration(pos, particleData[i+2].xy);
+		acc += bodyToBodyAcceleration(pos, particleData[i+3].xy);
+	}
+	return acc;
+}
+
+vec2 collisionResponse(float x, vec2 norm, vec2 vel)
+{
+	const float k = 1.0;
+	const float b = 0.05;
+
+	float acc = k * x * x - b * dot(norm, vel);
+
+	return acc * norm;
+}
+
+vec2 screenBoundsCollision(vec2 pos, vec2 vel)
+{
+	vec2 acc = vec2(0.0);
+
+	const float halfParticleSize = particleSize / 2;
+	const float leftWall = halfParticleSize;
+	const float rightWall = windowSize.x - halfParticleSize;
+	const float topWall = halfParticleSize;
+	const float bottomWall = windowSize.y - halfParticleSize;
+
+	if (pos.x < leftWall)
+	{
+		acc += collisionResponse(leftWall - pos.x, vec2(1.0, 0.0), vel);
+	}
+	if (pos.y < topWall)
+	{
+		acc += collisionResponse(topWall - pos.y, vec2(0.0, 1.0), vel);
+	}
+	if (pos.x > rightWall)
+	{
+		acc += collisionResponse(pos.x - rightWall, vec2(-1.0, 0.0), vel);
+	}
+	if (pos.y > bottomWall)
+	{
+		acc += collisionResponse(pos.y - bottomWall, vec2(0.0, -1.0), vel);
+	}
+
+	return acc;
+}
+
+vec3 ballToBallCollision(vec2 pos1, vec2 vel1, vec2 pos2)
+{
+	vec3 accPress = vec3(0.0);
+
+	const vec2 posDiff = pos1 - pos2;
+	const float distSquared = dot(posDiff, posDiff);
+	
+	if (distSquared < (particleSize * particleSize))
+	{
+		const float dist = sqrt(distSquared);
+		const vec2 norm = posDiff / dist;
+		const float covered = particleSize - dist;
+
+		accPress.xy = collisionResponse(covered, norm, vel1);
+		accPress.z = covered;
+	}
+
+	return accPress;
+}
+
+vec2 collisionAcceleration(uint tId, vec2 pos, vec2 vel)
+{
+	vec2 acc = screenBoundsCollision(pos, vel);
+	float press = 0.0;
+
+	for (int i = 0; i <= particlesCount; i += 1)
+	{
+		if (i != tId)
+		{
+			vec2 otherPos = particleData[i].xy;
+			vec3 accPress = ballToBallCollision(pos, vel, otherPos);
+			acc += accPress.xy;
+			press += accPress.z;
+		}
+	}
+
+	particleData[particlesCount + tId].x = press;
+	return acc;
+}
+
+void main() {
+	uint tId = gl_GlobalInvocationID.x;
+	float deltaT = deltaTime * 0.04;
+
+	vec4 p = particleData[tId];
+	vec2 pos = p.xy;
+	vec2 vel = p.zw;
+
+	if (!isPaused)
+	{
+		vec2 acc = vec2(0.0, 1.0); // gravity down
+
+		//acc += nBodyGravityAcceleration(pos);
+		acc += collisionAcceleration(tId, pos, vel);
+
+		vel += acc * deltaT;
+		vel *= velocityDamping;
+		pos += vel * deltaT;
+	}
+
+	// teleportation at screen bounds
+//	pos = mod(mod(pos, windowSize) + vec2(windowSize), vec2(windowSize));
+	p.xy = pos;
+	p.zw = vel;
+	particleData[tId] = p;
+}

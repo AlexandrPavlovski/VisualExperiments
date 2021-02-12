@@ -37,9 +37,10 @@ protected:
 	GLFWwindow* window;
 	GLint windowWidth, windowHeight;
 
+	const char* computeShaderFilePath;
 	const char* vertexShaderFilePath;
 	const char* fragmentShaderFilePath;
-	GLuint shaderProgram;
+	GLuint shaderProgram, compShaderProgram;
 
 	GLfloat random(GLfloat low, GLfloat high);
 
@@ -47,10 +48,10 @@ protected:
 		std::vector<ShaderParams> vertShaderParams = std::vector<ShaderParams>(),
 		std::vector<ShaderParams> fragShaderParams = std::vector<ShaderParams>());
 
-private:
-	GLuint createShader(GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
-	GLint checkShaderCompileErrors(GLuint shader);
+	GLuint createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
 	GLint checkShaderPrgramLinkErrors(GLuint shaderProgram);
+private:
+	GLint checkShaderCompileErrors(GLuint shader);
 
 	std::string readShaderFromFile(const char* shaderFilePath);
 };

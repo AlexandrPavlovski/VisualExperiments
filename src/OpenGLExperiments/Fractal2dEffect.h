@@ -45,7 +45,6 @@ private:
 	GLdouble cursorPosX, cursorPosY;
 	GLdouble zoomSpeed;
 
-	std::vector<GLfloat> trianglesData;
 	GLuint vao = 0, ssbo = 0;
 
 	const char* fragmentShaderFilePathSingle = "Fractal2dSingleEffect.frag";

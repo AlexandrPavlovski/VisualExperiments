@@ -129,4 +129,9 @@
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Particles2dCollisionEffect.comp">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </None>
+  </ItemGroup>
 </Project>

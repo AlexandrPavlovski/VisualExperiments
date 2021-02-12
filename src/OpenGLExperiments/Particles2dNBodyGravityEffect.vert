@@ -51,7 +51,7 @@ void main() {
 		pos += vel * deltaT;
 		vel *= 1 / velocityDamping;
 
-		for (int i = 0; i < particlesCount; i += 4)
+		for (int i = 0; i <= particlesCount; i += 4)
 		{
 			acc += getBodyToBodyAcceleration(pos, particleData[i].xy);
 			acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);

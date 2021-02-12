@@ -65,6 +65,9 @@ void useSelectedEffect()
 	}
 
 	effect->initialize();
+
+	// reset to defaults
+	glPointSize(1.0);
 }
 
 void toggleFullscreenWindowed()

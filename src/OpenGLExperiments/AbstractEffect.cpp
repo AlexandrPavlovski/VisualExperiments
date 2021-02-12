@@ -26,7 +26,7 @@ GLfloat AbstractEffect::random(GLfloat low, GLfloat high)
 
 void AbstractEffect::keyCallback(int key, int scancode, int action, int mode)
 {
-	
+
 }
 
 void AbstractEffect::mouseButtonCallback(int button, int action, int mods)
@@ -58,26 +58,24 @@ void AbstractEffect::hotReloadShaders()
 
 GLuint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> vertShaderParams, std::vector<ShaderParams> fragShaderParams)
 {
-	std::string vertexShaderStr = readShaderFromFile(vertexShaderFilePath);
-	std::string fragmentShaderStr = readShaderFromFile(fragmentShaderFilePath);
-
-	GLuint vertexShader = createShader(GL_VERTEX_SHADER, vertShaderParams);
-	GLuint fragmentShader = createShader(GL_FRAGMENT_SHADER, fragShaderParams);
-
-	if (vertexShader == 0 || fragmentShader == 0)
-	{
-		return 0;
-	}
-
 	GLuint newShaderProgram = glCreateProgram();
 
-	glAttachShader(newShaderProgram, vertexShader);
-	glAttachShader(newShaderProgram, fragmentShader);
+	if (vertexShaderFilePath)
+	{
+		if (createShader(newShaderProgram, GL_VERTEX_SHADER, vertShaderParams) == 0)
+		{
+			return 0;
+		}
+	}
+	if (fragmentShaderFilePath)
+	{
+		if (createShader(newShaderProgram, GL_FRAGMENT_SHADER, fragShaderParams) == 0)
+		{
+			return 0;
+		}
+	}
 
 	glLinkProgram(newShaderProgram);
-
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
 
 	if (checkShaderPrgramLinkErrors(newShaderProgram) == -1)
 	{
@@ -89,15 +87,16 @@ GLuint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> ve
 }
 
 
-GLuint AbstractEffect::createShader(GLint shaderType, std::vector<ShaderParams> shaderParams)
+GLuint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams)
 {
 	const char* shaderFilePath;
 	switch (shaderType)
 	{
-		case GL_VERTEX_SHADER: shaderFilePath = vertexShaderFilePath; break;
-		case GL_FRAGMENT_SHADER: shaderFilePath = fragmentShaderFilePath; break;
-		default:
-			throw "No such shader type";
+	case GL_COMPUTE_SHADER: shaderFilePath = computeShaderFilePath; break;
+	case GL_VERTEX_SHADER: shaderFilePath = vertexShaderFilePath; break;
+	case GL_FRAGMENT_SHADER: shaderFilePath = fragmentShaderFilePath; break;
+	default:
+		throw "Shader type is not supported";
 	}
 
 	std::string shaderStr = readShaderFromFile(shaderFilePath);
@@ -114,11 +113,15 @@ GLuint AbstractEffect::createShader(GLint shaderType, std::vector<ShaderParams> 
 
 	if (checkShaderCompileErrors(shader) == -1)
 	{
+		glDeleteProgram(shaderProgram);
 		glDeleteShader(shader);
 		return 0;
 	}
 
-	return shader;
+	glAttachShader(shaderProgram, shader);
+	glDeleteShader(shader);
+
+	return 1;
 }
 
 GLint AbstractEffect::checkShaderCompileErrors(GLuint shader)

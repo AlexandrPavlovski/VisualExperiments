@@ -3,22 +3,23 @@
 Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	:AbstractEffect(window)
 {
+	computeShaderFilePath = "Particles2dCollisionEffect.comp";
 	vertexShaderFilePath = "Particles2dCollisionEffect.vert";
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 4;
+	startupParams.ParticlesCount = 20000;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
 	runtimeParams.VelocityDamping = 0.999;
 	runtimeParams.MinDistanceToAttractor = 20.0;
-	runtimeParams.TimeScale = 1.0;
+	runtimeParams.TimeScale = 0.03;
 	runtimeParams.Color[0] = 1.0;
 	runtimeParams.Color[1] = 1.0;
 	runtimeParams.Color[2] = 1.0;
 	runtimeParams.Color[3] = 1.0;
-	runtimeParams.Size = 20.0;
+	runtimeParams.Size = 10.0;
 }
 
 Particles2dCollisionEffect::~Particles2dCollisionEffect()
@@ -34,35 +35,39 @@ void Particles2dCollisionEffect::initialize()
 	for (int i = 0; i < startupParams.ParticlesCount; i++)
 	{
 		// positions
-		particlesData.push_back(random(100.0, 900.0));
-		particlesData.push_back(random(100.0, 900.0));
+		particlesData.push_back(random(100.0, 700.0));
+		particlesData.push_back(random(100.0, 700.0));
 		// velocities
 		particlesData.push_back(random(-0.5, 0.5));
 		particlesData.push_back(random(-0.5, 0.5));
 	}
-
-	particlesData.push_back(540.0);/*
-	particlesData.push_back(400.0);
-	particlesData.push_back(0.5);
-	particlesData.push_back(0.0);
-
-	particlesData.push_back(700.0);
-	particlesData.push_back(410.0);
-	particlesData.push_back(0.0);
-	particlesData.push_back(0.0);*/
-
-	//particlesData.push_back(700.0);
-	//particlesData.push_back(420.0);
-	//particlesData.push_back(0.0);
-	//particlesData.push_back(0.0);
+	for (int i = 0; i < startupParams.ParticlesCount; i++)
+	{
+		// pressure
+		particlesData.push_back(0.0);
+		// unused
+		particlesData.push_back(0.0);
+		particlesData.push_back(0.0);
+		particlesData.push_back(0.0);
+	}
 
 	//particlesData.push_back(700.0);
-	//particlesData.push_back(360.0);
+	//particlesData.push_back(400.0);
+	//particlesData.push_back(5.0);
+	//particlesData.push_back(0.0);
+
+	//particlesData.push_back(800.0);
+	//particlesData.push_back(400.0);
 	//particlesData.push_back(0.0);
 	//particlesData.push_back(0.0);
 
-	//particlesData.push_back(700.0);
-	//particlesData.push_back(350.0);
+	//particlesData.push_back(0.0);
+	//particlesData.push_back(100.0);
+	//particlesData.push_back(0.0);
+	//particlesData.push_back(0.0);
+
+	//particlesData.push_back(10.0);
+	//particlesData.push_back(10.0);
 	//particlesData.push_back(0.0);
 	//particlesData.push_back(0.0);
 
@@ -82,7 +87,7 @@ void Particles2dCollisionEffect::initialize()
 	{
 		ShaderParams {"#define particlesCount 0", "#define particlesCount " + std::to_string(currentParticlesCount)}
 	};
-	GLuint newShaderProgram = createShaderProgramFromFiles(vertShaderParams);
+	GLuint newShaderProgram = createShaderProgramFromFiles(vertShaderParams, vertShaderParams);
 	if (newShaderProgram == 0)
 	{
 		throw "Initialize failed";
@@ -90,12 +95,28 @@ void Particles2dCollisionEffect::initialize()
 
 	shaderProgram = newShaderProgram;
 	glUseProgram(shaderProgram);
+
+
+	newShaderProgram = glCreateProgram();
+	if (createShader(newShaderProgram, GL_COMPUTE_SHADER, vertShaderParams) == 0)
+	{
+		throw "Compute shader compilation failed";
+	}
+	glLinkProgram(newShaderProgram);
+	if (checkShaderPrgramLinkErrors(newShaderProgram) == -1)
+	{
+		glDeleteProgram(newShaderProgram);
+		throw "Compute shader program linking failed";
+	}
+	compShaderProgram = newShaderProgram;
 }
 
 void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 {
 	GLfloat dt = ((GLfloat)deltaTime) * 1000 * runtimeParams.TimeScale;
-	// vertex shader params
+
+	glUseProgram(compShaderProgram);
+
 	glUniform2f(0, windowWidth, windowHeight);
 	glUniform1f(1, runtimeParams.ForceScale);
 	glUniform1f(2, runtimeParams.VelocityDamping);
@@ -104,6 +125,19 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	glUniform1i(5, isPaused && !isAdvanceOneFrame);
 	glUniform1f(6, runtimeParams.Size);
 
+	glDispatchCompute(ceil(currentParticlesCount / 64.0), 1, 1);
+
+
+	glUseProgram(shaderProgram);
+
+	// vertex shader params
+	glUniform2f(0, windowWidth, windowHeight);
+	glUniform1f(1, runtimeParams.ForceScale);
+	glUniform1f(2, runtimeParams.VelocityDamping);
+	glUniform1f(3, runtimeParams.MinDistanceToAttractor);
+	glUniform1f(4, dt);
+	glUniform1i(5, isPaused && !isAdvanceOneFrame);
+	glUniform1f(6, runtimeParams.Size);
 	// fragment shader params
 	glUniform4f(20, runtimeParams.Color[0], runtimeParams.Color[1], runtimeParams.Color[2], runtimeParams.Color[3]);
 

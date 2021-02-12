@@ -136,13 +136,13 @@ void updatePosition()
 
 void main()
 {
-	if (!isPaused) 
-	{
-		screenBounds();
-		ballToBall();
+//	if (!isPaused) 
+//	{
+//		screenBounds();
+//		ballToBall();
 //		nBodyGravity();
-		updatePosition();
-	}
+//		updatePosition();
+//	}
 
 	vec4 particle = particleData[gl_VertexID];
 	vec2 pos = particle.xy;

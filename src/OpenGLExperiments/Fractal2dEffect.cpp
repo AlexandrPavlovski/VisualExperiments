@@ -43,6 +43,7 @@ void Fractal2dEffect::initialize()
 		fragmentShaderFilePath = fragmentShaderFilePathSingle;
 	}
 
+	std::vector<GLfloat> trianglesData;
 	// triangle strip
 	trianglesData.push_back(-1.0);trianglesData.push_back(1.0);
 	trianglesData.push_back(1.0);trianglesData.push_back(1.0);
