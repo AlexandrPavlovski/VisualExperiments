@@ -64,8 +64,8 @@ void Fractal2dEffect::initialize()
 		ShaderParams {"#define iterations 0", "#define iterations " + std::to_string(startupParams.Iterations)},
 		ShaderParams {"#define AA 0", "#define AA " + std::to_string(startupParams.AntiAliasing)}
 	};
-	GLuint newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParams>(), fragShaderParams);
-	if (newShaderProgram == 0)
+	GLint newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParams>(), fragShaderParams);
+	if (newShaderProgram == -1)
 	{
 		throw "Initialize failed";
 	}

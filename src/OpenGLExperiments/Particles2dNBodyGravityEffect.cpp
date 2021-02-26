@@ -58,18 +58,24 @@ void Particles2dNBodyGravityEffect::initialize()
 	{
 		ShaderParams {"#define particlesCount 0", "#define particlesCount " + std::to_string(currentParticlesCount)}
 	};
-	GLuint newShaderProgram = createShaderProgramFromFiles(vertShaderParams);
-	if (newShaderProgram == 0)
+	GLint newShaderProgram = createShaderProgramFromFiles(vertShaderParams);
+	if (newShaderProgram == -1)
 	{
 		throw "Initialize failed";
 	}
 
 	shaderProgram = newShaderProgram;
 	glUseProgram(shaderProgram);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 }
 
 void Particles2dNBodyGravityEffect::draw(GLdouble deltaTime)
 {
+	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
 	// vertex shader params
 	glUniform2f(0, windowWidth, windowHeight);
 	glUniform1f(1, runtimeParams.ForceScale);

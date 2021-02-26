@@ -128,10 +128,11 @@
     <CopyFileToFolders Include="Particles2dCollisionEffect.frag">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Particles2dCollisionEffect.comp">
+    <CopyFileToFolders Include="FillCellIdAndObjectIdArrays.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </None>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Particles2dCollisionEffect.comp">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

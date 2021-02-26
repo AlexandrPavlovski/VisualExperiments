@@ -29,7 +29,7 @@ vec2 bodyToBodyAcceleration(vec2 b1, vec2 b2)
 	return dir * invDistCube;
 }
 
-vec2 nBodyGravityAcceleration(vec2 pos)
+void nBodyGravityAcceleration(uint tId, vec2 pos)
 {
 	vec2 acc = vec2(0.0);
 	for (int i = 0; i <= particlesCount; i += 4)
@@ -39,17 +39,18 @@ vec2 nBodyGravityAcceleration(vec2 pos)
 		acc += bodyToBodyAcceleration(pos, particleData[i+2].xy);
 		acc += bodyToBodyAcceleration(pos, particleData[i+3].xy);
 	}
-	return acc;
+	
+	particleData[tId + particlesCount].yz += acc;
 }
 
 vec2 collisionResponse(float x, vec2 norm, vec2 vel)
 {
-	const float k = 1.0;
+	const float k = 0.5;
 	const float b = 0.05;
 
-	float acc = k * x * x - b * dot(norm, vel);
+	float acc = k * x - b * dot(vel, norm);
 
-	return acc * norm;
+	return norm * acc;
 }
 
 vec2 screenBoundsCollision(vec2 pos, vec2 vel)
@@ -82,9 +83,12 @@ vec2 screenBoundsCollision(vec2 pos, vec2 vel)
 	return acc;
 }
 
-vec3 ballToBallCollision(vec2 pos1, vec2 vel1, vec2 pos2)
+vec3 ballToBallCollision(uint i, vec2 pos1, vec2 vel1)
 {
-	vec3 accPress = vec3(0.0);
+	vec2 pos2 = particleData[i].xy;
+	vec2 vel2 = particleData[i].zw;
+
+	vec3 accPressure = vec3(0.0);
 
 	const vec2 posDiff = pos1 - pos2;
 	const float distSquared = dot(posDiff, posDiff);
@@ -95,35 +99,71 @@ vec3 ballToBallCollision(vec2 pos1, vec2 vel1, vec2 pos2)
 		const vec2 norm = posDiff / dist;
 		const float covered = particleSize - dist;
 
-		accPress.xy = collisionResponse(covered, norm, vel1);
-		accPress.z = covered;
+		accPressure.xy = collisionResponse(covered, norm, vel1 - vel2);
+		accPressure.z = length(accPressure.xy);
 	}
 
-	return accPress;
-}
-
-vec2 collisionAcceleration(uint tId, vec2 pos, vec2 vel)
-{
-	vec2 acc = screenBoundsCollision(pos, vel);
-	float press = 0.0;
-
-	for (int i = 0; i <= particlesCount; i += 1)
+	if (accPressure.z > 0.0)
 	{
-		if (i != tId)
-		{
-			vec2 otherPos = particleData[i].xy;
-			vec3 accPress = ballToBallCollision(pos, vel, otherPos);
-			acc += accPress.xy;
-			press += accPress.z;
-		}
+		particleData[i + particlesCount].x += accPressure.z;
+		particleData[i + particlesCount].yz += -accPressure.xy;
 	}
 
-	particleData[particlesCount + tId].x = press;
-	return acc;
+	return accPressure;
 }
 
-void main() {
+void collisionAcceleration(uint tId, vec2 pos, vec2 vel)
+{
+	vec2 acc = vec2(0.0);
+	float pressure = 0.0;
+
+	for (uint i = tId + 1; i <= particlesCount; i += 1)
+	{
+		vec3 accPressure = ballToBallCollision(i, pos, vel);
+		acc += accPressure.xy;
+		pressure += accPressure.z;
+
+//		accPressure = ballToBallCollision(i+1, pos, vel);
+//		acc += accPressure.xy;
+//		pressure += accPressure.z;
+//
+//		accPressure = ballToBallCollision(i+2, pos, vel);
+//		acc += accPressure.xy;
+//		pressure += accPressure.z;
+//
+//		accPressure = ballToBallCollision(i+3, pos, vel);
+//		acc += accPressure.xy;
+//		pressure += accPressure.z;
+//
+//		accPressure = ballToBallCollision(i+4, pos, vel);
+//		acc += accPressure.xy;
+//		pressure += accPressure.z;
+//
+//		accPressure = ballToBallCollision(i+5, pos, vel);
+//		acc += accPressure.xy;
+//		pressure += accPressure.z;
+//
+//		accPressure = ballToBallCollision(i+6, pos, vel);
+//		acc += accPressure.xy;
+//		pressure += accPressure.z;
+//
+//		accPressure = ballToBallCollision(i+7, pos, vel);
+//		acc += accPressure.xy;
+//		pressure += accPressure.z;
+	}
+
+	particleData[tId + particlesCount].x += pressure;
+	particleData[tId + particlesCount].yz += acc + screenBoundsCollision(pos, vel);;
+}
+
+void main()
+{
 	uint tId = gl_GlobalInvocationID.x;
+	if (tId >= particlesCount)
+	{
+		return;
+	}
+
 	float deltaT = deltaTime * 0.04;
 
 	vec4 p = particleData[tId];
@@ -132,19 +172,14 @@ void main() {
 
 	if (!isPaused)
 	{
-		vec2 acc = vec2(0.0, 1.0); // gravity down
+		particleData[tId + particlesCount].x = 0;
 
-		//acc += nBodyGravityAcceleration(pos);
-		acc += collisionAcceleration(tId, pos, vel);
-
-		vel += acc * deltaT;
-		vel *= velocityDamping;
-		pos += vel * deltaT;
+		nBodyGravityAcceleration(tId, pos);
+		collisionAcceleration(tId, pos, vel);
+		
+		particleData[tId + particlesCount].yz += vec2(0.0, 0.0); // gravity down
 	}
 
 	// teleportation at screen bounds
 //	pos = mod(mod(pos, windowSize) + vec2(windowSize), vec2(windowSize));
-	p.xy = pos;
-	p.zw = vel;
-	particleData[tId] = p;
 }

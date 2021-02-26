@@ -36,7 +36,8 @@ private:
 		GLfloat MinDistanceToAttractor;
 		GLfloat TimeScale;
 		GLfloat Color[4];
-		GLfloat Size;
+		GLfloat particleSize;
+		GLuint cellSize;
 	};
 
 	StartupParams startupParams;
@@ -47,7 +48,10 @@ private:
 	bool isAdvanceOneFrame = false;
 
 	std::vector<GLfloat> particlesData;
-	GLuint vao = 0, ssbo = 0;
+	GLuint vao = 0, ssbo = 0, ssboObjectId = 0, ssboCellId = 0;
 
 	bool isManualAttractorControlEnabled = false;
+
+
+	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
 };

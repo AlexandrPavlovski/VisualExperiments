@@ -55,18 +55,24 @@ void Particles2dGravityEffect::initialize()
 	particlesData.clear();
 	currentParticlesCount = startupParams.ParticlesCount;
 
-	GLuint newShaderProgram = createShaderProgramFromFiles();
-	if (newShaderProgram == 0)
+	GLint newShaderProgram = createShaderProgramFromFiles();
+	if (newShaderProgram == -1)
 	{
 		throw "Initialize failed";
 	}
 
 	shaderProgram = newShaderProgram;
 	glUseProgram(shaderProgram);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 }
 
 void Particles2dGravityEffect::draw(GLdouble deltaTime)
 {
+	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
 	if (isManualAttractorControlEnabled)
 	{
 		glfwGetCursorPos(window, &runtimeParams.AttractorX, &runtimeParams.AttractorY);

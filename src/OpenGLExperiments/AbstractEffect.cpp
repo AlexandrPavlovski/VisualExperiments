@@ -48,7 +48,7 @@ void AbstractEffect::windowSizeCallback(int width, int height)
 void AbstractEffect::hotReloadShaders()
 {
 	GLuint newShaderProgram = createShaderProgramFromFiles();
-	if (newShaderProgram != 0)
+	if (newShaderProgram != -1)
 	{
 		glDeleteProgram(shaderProgram);
 		shaderProgram = newShaderProgram;
@@ -56,22 +56,22 @@ void AbstractEffect::hotReloadShaders()
 	}
 }
 
-GLuint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> vertShaderParams, std::vector<ShaderParams> fragShaderParams)
+GLint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> vertShaderParams, std::vector<ShaderParams> fragShaderParams)
 {
-	GLuint newShaderProgram = glCreateProgram();
+	GLint newShaderProgram = glCreateProgram();
 
 	if (vertexShaderFilePath)
 	{
-		if (createShader(newShaderProgram, GL_VERTEX_SHADER, vertShaderParams) == 0)
+		if (createShader(newShaderProgram, GL_VERTEX_SHADER, vertShaderParams) == -1)
 		{
-			return 0;
+			return -1;
 		}
 	}
 	if (fragmentShaderFilePath)
 	{
-		if (createShader(newShaderProgram, GL_FRAGMENT_SHADER, fragShaderParams) == 0)
+		if (createShader(newShaderProgram, GL_FRAGMENT_SHADER, fragShaderParams) == -1)
 		{
-			return 0;
+			return -1;
 		}
 	}
 
@@ -80,14 +80,14 @@ GLuint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> ve
 	if (checkShaderPrgramLinkErrors(newShaderProgram) == -1)
 	{
 		glDeleteProgram(newShaderProgram);
-		return 0;
+		return -1;
 	}
 
 	return newShaderProgram;
 }
 
 
-GLuint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams)
+GLint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams)
 {
 	const char* shaderFilePath;
 	switch (shaderType)
@@ -99,6 +99,11 @@ GLuint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::
 		throw "Shader type is not supported";
 	}
 
+	return createShader(shaderFilePath, shaderProgram, shaderType, shaderParams);
+}
+
+GLint AbstractEffect::createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams)
+{
 	std::string shaderStr = readShaderFromFile(shaderFilePath);
 	for (auto p : shaderParams)
 	{
@@ -115,7 +120,7 @@ GLuint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::
 	{
 		glDeleteProgram(shaderProgram);
 		glDeleteShader(shader);
-		return 0;
+		return -1;
 	}
 
 	glAttachShader(shaderProgram, shader);

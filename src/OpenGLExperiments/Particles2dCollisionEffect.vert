@@ -3,6 +3,8 @@
 // zero is replaced at runtime with an actual value
 #define particlesCount 0
 
+layout(std430) buffer;
+
 layout(location = 0) uniform vec2 windowSize;
 layout(location = 1) uniform float forceScale;
 layout(location = 2) uniform float velocityDamping;
@@ -10,11 +12,25 @@ layout(location = 3) uniform float minDistanceToAttractor;
 layout(location = 4) uniform float deltaTime;
 layout(location = 5) uniform bool isPaused;
 layout(location = 6) uniform float particleSize;
+layout(location = 7) uniform uint cellSize;
 
-layout(std430, binding = 0) buffer SSBO
+layout(binding = 0) buffer SSBO
 {
 	vec4 particleData[];
 };
+layout(binding = 1) buffer cells
+{
+	uint cellIds[];
+};
+layout(binding = 2) buffer objects
+{
+	vec4 objectIds[];
+};
+
+
+layout(location = 0) out vec3 particleColor;
+layout(location = 1) out vec3 gridCellColor;
+layout(location = 2) out flat uint isGridCell;
 
 void screenBounds()
 {
@@ -134,22 +150,104 @@ void updatePosition()
 	particleData[gl_VertexID] = vec4(pos, vel);
 }
 
-void main()
+void updateParticle()
 {
-//	if (!isPaused) 
-//	{
-//		screenBounds();
-//		ballToBall();
-//		nBodyGravity();
-//		updatePosition();
-//	}
+	float deltaT = deltaTime * 0.04;
 
 	vec4 particle = particleData[gl_VertexID];
+	vec4 particleSecondHalf = particleData[gl_VertexID + particlesCount];
 	vec2 pos = particle.xy;
 	vec2 vel = particle.zw;
+	vec2 acc = particleSecondHalf.yz;
 
+	if (!isPaused)
+	{
+		vel += acc * deltaT;
+		vel *= velocityDamping;
+		pos += vel * deltaT;
+
+		particle.xy = pos;
+		particle.zw = vel;
+		particleData[gl_VertexID] = particle;
+		particleData[gl_VertexID + particlesCount].yz = vec2(0.0);
+	}
+}
+
+void setParticleColor()
+{
+	float pressure = particleData[gl_VertexID + particlesCount].x / 120.0;
+	pressure = float(gl_VertexID) / float(particlesCount);
+	// gradient for pressure coloring
+	vec3 firstColor =  vec3(0.0, 0.0, 1.0);
+	vec3 middleColor = vec3(0.0, 1.0, 0.0);
+	vec3 endColor =    vec3(1.0, 0.0, 0.0);
+
+	float h = 0.5;
+	vec3 col = mix(mix(firstColor, middleColor, pressure/h), mix(middleColor, endColor, (pressure - h)/(1.0 - h)), step(h, pressure));
+
+	particleColor = vec3(col);
+}
+
+void setGridColor()
+{
+	uint cellIndex = gl_VertexID * 2;
+//	uint shift = uint(mod(gl_VertexID, 2)) * 16;
+//	uint cellId = (cellIds[cellIndex] >> shift) & 255;
+
+	uvec2 cellIdsPacked = uvec2(cellIds[cellIndex], cellIds[cellIndex + 1]);
+	uint hCellId = cellIdsPacked.x & 65535;
+
+	particleData[hCellId + particlesCount * 2].z += 0.7;
+}
+
+vec2 worldToScreen(vec2 worldPos)
+{
 	vec2 windowCenter = windowSize / 2;
-	vec2 normalizedPos = (pos - windowCenter) / windowCenter; // convering to clip space [-1; 1]
-	normalizedPos.y = -normalizedPos.y;
-	gl_Position = vec4(normalizedPos, 0.0, 1.0);
+	vec2 screenPos = (worldPos - windowCenter) / windowCenter; // convering to clip space [-1; 1]
+	screenPos.y = -screenPos.y;
+
+	return screenPos;
+}
+
+void drawParticle()
+{
+	updateParticle();
+	setParticleColor();
+	setGridColor();
+
+	vec2 screenPos = worldToScreen(particleData[gl_VertexID].xy);
+	gl_Position = vec4(screenPos, 0.0, 1.0);
+}
+
+void updateGridCells()
+{
+	uint gridWidth = uint(windowSize.x / cellSize) + 1;
+	uint cellId = gl_VertexID - particlesCount * 2;
+
+	vec4 gridCell = particleData[gl_VertexID];
+
+	gridCell.y = ceil(cellId / gridWidth);
+	gridCell.x = cellId - gridCell.y * gridWidth;
+	gridCell.xy *= cellSize;
+	gridCell.xy += cellSize / 2;
+
+	gridCellColor = vec3(gridCell.z);
+	particleData[gl_VertexID].z = mod(gl_VertexID, 2) / 10 + 0.1;
+
+	vec2 screenPos = worldToScreen(gridCell.xy);
+	gl_Position = vec4(screenPos, 0.0, 1.0);
+}
+
+void main()
+{
+	if (gl_VertexID < particlesCount)
+	{
+		drawParticle();
+		isGridCell = 0;
+	}
+	else
+	{
+		updateGridCells();
+		isGridCell = 1;
+	}
 }

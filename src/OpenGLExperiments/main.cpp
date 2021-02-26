@@ -61,13 +61,15 @@ void useSelectedEffect()
 		effect = new Particles2dCollisionEffect(window);
 		break;
 	default:
-		throw "No effect";
+		throw "Effect is not implemented";
 	}
-
-	effect->initialize();
 
 	// reset to defaults
 	glPointSize(1.0);
+	glDisable(GL_BLEND);
+
+
+	effect->initialize();
 }
 
 void toggleFullscreenWindowed()
@@ -249,15 +251,10 @@ int main()
 	float timeFromPrevFpsUpdate = 0.0;
 	const char* windowTitle = "Visual experiments";
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-
 	// ------ main cycle ------ //
 
 	while (!glfwWindowShouldClose(window))
 	{
-		glClear(GL_COLOR_BUFFER_BIT);
-
 		effect->draw(io.DeltaTime);
 
 		ImGui_ImplOpenGL3_NewFrame();

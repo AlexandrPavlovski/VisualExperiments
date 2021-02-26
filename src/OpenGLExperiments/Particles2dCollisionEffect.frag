@@ -6,10 +6,9 @@
 layout(location = 0) uniform vec2 windowSize;
 layout(location = 20) uniform vec4 uColor;
 
-layout(std430, binding = 0) buffer SSBO
-{
-	vec4 particleData[];
-};
+layout(location = 0) in vec3 particleColor;
+layout(location = 1) in vec3 gridCellColor;
+layout(location = 2) in flat uint isGridCell;
 
 out vec4 color;
 
@@ -17,7 +16,10 @@ void main() {
 //	color = uColor;
 	vec2 pCoord = (gl_PointCoord - vec2(0.5)) * 2.0;
 	float distSqared = dot(pCoord, pCoord);
-	float circle = smoothstep(0.3, 0.1, distSqared);
+	float circle = smoothstep(1.0, 0.9, distSqared);
 
-	color = vec4(circle, circle, circle, 1.0);
+	if (isGridCell == 0)
+		color = vec4(particleColor, circle);
+	else
+		color = vec4(gridCellColor, 1.0);
 }
