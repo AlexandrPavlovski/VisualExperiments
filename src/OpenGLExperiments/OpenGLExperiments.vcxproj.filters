@@ -135,4 +135,9 @@
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="RadixSortPhase1.comp">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </None>
+  </ItemGroup>
 </Project>

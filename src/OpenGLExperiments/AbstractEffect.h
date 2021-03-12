@@ -40,7 +40,7 @@ protected:
 	const char* computeShaderFilePath;
 	const char* vertexShaderFilePath;
 	const char* fragmentShaderFilePath;
-	GLuint shaderProgram, compShaderProgram;
+	GLuint shaderProgram, spatialSubdivisionInintCompShaderProgram, radixPhase1CopmShaderProgram;
 
 	GLfloat random(GLfloat low, GLfloat high);
 

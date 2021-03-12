@@ -8,7 +8,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 50;
+	startupParams.ParticlesCount = 200;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -19,7 +19,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	runtimeParams.Color[1] = 1.0;
 	runtimeParams.Color[2] = 1.0;
 	runtimeParams.Color[3] = 1.0;
-	runtimeParams.particleSize = 20.0;
+	runtimeParams.particleSize = 25.0;
 	runtimeParams.cellSize = runtimeParams.particleSize;//ceil(sqrt(windowWidth * windowHeight / 65535));
 }
 
@@ -124,14 +124,14 @@ void Particles2dCollisionEffect::initialize()
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 
-	std::vector<GLint> objectIds(startupParams.ParticlesCount * 4, 0);
+	std::vector<GLuint> objectIds(startupParams.ParticlesCount * 4, 1);
 
 	glGenVertexArrays(1, &vaoObjectId);
 	glBindVertexArray(vaoObjectId);
 
 	glGenBuffers(1, &ssboObjectId);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboObjectId);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, objectIds.size() * sizeof(GLint), &objectIds[0], GL_DYNAMIC_DRAW);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, objectIds.size() * sizeof(GLuint), &objectIds[0], GL_DYNAMIC_DRAW | GL_DYNAMIC_READ);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssboObjectId);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -141,9 +141,14 @@ void Particles2dCollisionEffect::initialize()
 
 	std::vector<ShaderParams> vertShaderParams
 	{
+		ShaderParams {"#define particlesCount 0", "#define particlesCount " + std::to_string(currentParticlesCount)},
+		ShaderParams {"#define particlesCountDoubled 0", "#define particlesCountDoubled " + std::to_string(currentParticlesCount * 2)}
+	};
+	std::vector<ShaderParams> fragShaderParams
+	{
 		ShaderParams {"#define particlesCount 0", "#define particlesCount " + std::to_string(currentParticlesCount)}
 	};
-	GLint newShaderProgram = createShaderProgramFromFiles(vertShaderParams, vertShaderParams);
+	GLint newShaderProgram = createShaderProgramFromFiles(vertShaderParams, fragShaderParams);
 	if (newShaderProgram == -1)
 	{
 		throw "Initialize failed";
@@ -152,7 +157,8 @@ void Particles2dCollisionEffect::initialize()
 	shaderProgram = newShaderProgram;
 	//Particles2dCollisionEffect
 	//FillCellIdAndObjectIdArrays
-	createComputeShaderProgram(compShaderProgram, "FillCellIdAndObjectIdArrays.comp", vertShaderParams);
+	createComputeShaderProgram(spatialSubdivisionInintCompShaderProgram, "FillCellIdAndObjectIdArrays.comp", fragShaderParams);
+	createComputeShaderProgram(radixPhase1CopmShaderProgram, "RadixSortPhase1.comp", fragShaderParams);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -165,7 +171,7 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 
 	GLfloat dt = ((GLfloat)deltaTime) * 1000 * runtimeParams.TimeScale;
 
-	glUseProgram(compShaderProgram);
+	glUseProgram(spatialSubdivisionInintCompShaderProgram);
 
 	glUniform2f(0, windowWidth, windowHeight);
 	glUniform1f(1, runtimeParams.ForceScale);
@@ -179,15 +185,43 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 
 	GLuint groupCount = ceil(currentParticlesCount / 64.0);
 	glDispatchCompute(groupCount, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 	//glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 	//glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboCellId);
 	//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboCellId);
-	GLushort r[1000] = { 0 };
-	GLushort* ptr = (GLushort*)glMapNamedBufferRange(ssboCellId, 0, currentParticlesCount * 4 * sizeof(GLushort), GL_MAP_READ_BIT);
-	GLenum e = glGetError();
-	memcpy(r, ptr, sizeof(GLushort) * 1000);
-	bool result = glUnmapNamedBuffer(ssboCellId);
+	//GLushort r[1000] = { 0 };
+	//GLushort* ptr = (GLushort*)glMapNamedBufferRange(ssboCellId, 0, currentParticlesCount * 4 * sizeof(GLushort), GL_MAP_READ_BIT);
+	//GLenum e = glGetError();
+	//memcpy(r, ptr, sizeof(GLushort) * 1000);
+	//bool result = glUnmapNamedBuffer(ssboCellId);
+
+	//GLint r2[1000] = { 0 };
+	//GLuint* ptr2 = (GLuint*)glMapNamedBufferRange(ssboObjectId, 0, currentParticlesCount * 4 * sizeof(GLuint), GL_MAP_READ_BIT);
+	//GLenum e2 = glGetError();
+	//memcpy(r2, ptr2, sizeof(GLuint) * 1000);
+	//bool result2 = glUnmapNamedBuffer(ssboObjectId);
+
+	glUseProgram(radixPhase1CopmShaderProgram);
+
+	glUniform2f(0, windowWidth, windowHeight);
+	glUniform1f(1, runtimeParams.ForceScale);
+	glUniform1f(2, runtimeParams.VelocityDamping);
+	glUniform1f(3, runtimeParams.MinDistanceToAttractor);
+	glUniform1f(4, dt);
+	glUniform1i(5, isPaused && !isAdvanceOneFrame);
+	glUniform1f(6, runtimeParams.particleSize);
+	runtimeParams.cellSize = runtimeParams.particleSize;
+	glUniform1ui(7, runtimeParams.cellSize);
+
+	GLuint groupCount2 = ceil(currentParticlesCount / 192.0);
+	glDispatchCompute(groupCount2, 1, 1);
+
+	GLint r2[1000] = { 0 };
+	GLuint* ptr2 = (GLuint*)glMapNamedBufferRange(ssboObjectId, 0, currentParticlesCount * 4 * sizeof(GLuint), GL_MAP_READ_BIT);
+	GLenum e2 = glGetError();
+	memcpy(r2, ptr2, sizeof(GLuint) * 1000);
+	bool result2 = glUnmapNamedBuffer(ssboObjectId);
 
 	glUseProgram(shaderProgram);
 
@@ -248,7 +282,7 @@ void Particles2dCollisionEffect::keyCallback(int key, int scancode, int action, 
 	}
 }
 
-void Particles2dCollisionEffect::createComputeShaderProgram(GLuint &compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams)
+void Particles2dCollisionEffect::createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams)
 {
 	GLint newShaderProgram = glCreateProgram();
 	if (createShader(shaderFilePath, newShaderProgram, GL_COMPUTE_SHADER, shaderParams) == -1)

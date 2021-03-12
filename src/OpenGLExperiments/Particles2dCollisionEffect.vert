@@ -1,7 +1,8 @@
 #version 460 core
 
-// zero is replaced at runtime with an actual value
+// zeros is replaced at runtime with an actual values
 #define particlesCount 0
+#define particlesCountDoubled 0
 
 layout(std430) buffer;
 
@@ -196,8 +197,14 @@ void setGridColor()
 
 	uvec2 cellIdsPacked = uvec2(cellIds[cellIndex], cellIds[cellIndex + 1]);
 	uint hCellId = cellIdsPacked.x & 65535;
+	uint pCellId1 = cellIdsPacked.x >> 16;
+	uint pCellId2 = cellIdsPacked.y & 65535;
+	uint pCellId3 = cellIdsPacked.y >> 16;
 
-	particleData[hCellId + particlesCount * 2].z += 0.7;
+	particleData[hCellId + particlesCountDoubled].z += 0.7;
+	particleData[pCellId1 + particlesCountDoubled].z += 0.7;
+	particleData[pCellId2 + particlesCountDoubled].z += 0.7;
+	particleData[pCellId3 + particlesCountDoubled].z += 0.7;
 }
 
 vec2 worldToScreen(vec2 worldPos)
@@ -221,15 +228,15 @@ void drawParticle()
 
 void updateGridCells()
 {
-	uint gridWidth = uint(windowSize.x / cellSize) + 1;
-	uint cellId = gl_VertexID - particlesCount * 2;
+	uint gridWidth = uint(windowSize.x / cellSize) + 2;
+	uint cellId = gl_VertexID - particlesCountDoubled;
 
 	vec4 gridCell = particleData[gl_VertexID];
 
 	gridCell.y = ceil(cellId / gridWidth);
 	gridCell.x = cellId - gridCell.y * gridWidth;
 	gridCell.xy *= cellSize;
-	gridCell.xy += cellSize / 2;
+	gridCell.xy -= cellSize / 2;
 
 	gridCellColor = vec3(gridCell.z);
 	particleData[gl_VertexID].z = mod(gl_VertexID, 2) / 10 + 0.1;

@@ -1,0 +1,42 @@
+#version 460 core
+
+// 0 is replaced at runtime with an actual value
+#define particlesCount 0
+
+layout(local_size_x = 192) in;
+layout(std430) buffer;
+
+layout(location = 0) uniform vec2 windowSize;
+layout(location = 1) uniform float forceScale;
+layout(location = 2) uniform float velocityDamping;
+layout(location = 3) uniform float minDistanceToAttractor;
+layout(location = 4) uniform float deltaTime;
+layout(location = 5) uniform bool isPaused;
+layout(location = 6) uniform float particleSize;
+layout(location = 7) uniform uint cellSize;
+
+layout(binding = 0) buffer SSBO
+{
+	vec4 particleData[];
+};
+layout(binding = 1) buffer cells
+{
+	uint cellIds[];
+};
+layout(binding = 2) buffer objects
+{
+	uint objectIds[];
+};
+
+shared uint counters[12288] = uint[12288](0);
+
+
+void main()
+{
+	uint tId = gl_GlobalInvocationID.x;
+	if (tId > particlesCount)
+		return;
+
+	uint t = counters[tId];
+	objectIds[tId] = counters[tId];
+}

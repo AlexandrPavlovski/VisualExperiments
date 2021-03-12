@@ -25,40 +25,73 @@ layout(binding = 1) buffer cells
 };
 layout(binding = 2) buffer objects
 {
-	vec4 objectIds[];
+	uint objectIds[];
 };
-
-
-uint findHomeCell(uint particleIndex)
-{
-	uint gridWidth = uint(windowSize.x / cellSize) + 1;
-	vec2 windowPos = particleData[particleIndex].xy;
-	vec2 gridPos = windowPos / cellSize;
-
-	return uint(gridPos.x) + uint(gridPos.y) * gridWidth;
-}
-
-uvec3 findPhantomCells(uint particleIndex)
-{
-	uint gridWidth = uint(windowSize.x / cellSize) + 1;
-	vec2 windowPos = particleData[particleIndex].xy;
-	vec2 gridPos = windowPos / cellSize;
-
-	return uvec3(0.0);
-}
 
 
 void main()
 {
 	uint tId = gl_GlobalInvocationID.x;
-	if (tId > particlesCount) return;
+	if (tId > particlesCount)
+		return;
 
-	uint hCellId = findHomeCell(tId);
-	uvec3 pCellIds = findPhantomCells(tId);
+	uint gridWidth = uint(windowSize.x / cellSize) + 2;
+	vec2 worldPos = particleData[tId].xy;
+	vec2 gridPos;
+	vec2 cellPos = modf(worldPos / cellSize, gridPos);
+	gridPos += 1;
+
+	uint hCellId = uint(gridPos.x + gridPos.y * gridWidth);
+
+	uvec3 pCellIds = uvec3(-1);
+	uvec4 objectIdsAndFlags = uvec4(tId | 0x80000000, -1, -1, -1); // 0 = -2147483648
+
+	if (cellPos.x > 0.5)
+	{
+		pCellIds.x = hCellId + 1;
+		objectIdsAndFlags.y = tId;
+		if (cellPos.y > 0.5)
+		{
+			pCellIds.y = hCellId + gridWidth;
+			pCellIds.z = hCellId + gridWidth + 1;
+			objectIdsAndFlags.z = tId;
+			objectIdsAndFlags.w = tId;
+		}
+		if (cellPos.y < 0.5)
+		{
+			pCellIds.y = hCellId - gridWidth;
+			pCellIds.z = hCellId - gridWidth + 1;
+			objectIdsAndFlags.z = tId;
+			objectIdsAndFlags.w = tId;
+		}
+	}
+	if (cellPos.x < 0.5)
+	{
+		pCellIds.x = hCellId - 1;
+		objectIdsAndFlags.y = tId;
+		if (cellPos.y > 0.5)
+		{
+			pCellIds.y = hCellId + gridWidth;
+			pCellIds.z = hCellId + gridWidth - 1;
+			objectIdsAndFlags.z = tId;
+			objectIdsAndFlags.w = tId;
+		}
+		if (cellPos.y < 0.5)
+		{
+			pCellIds.y = hCellId - gridWidth;
+			pCellIds.z = hCellId - gridWidth - 1;
+			objectIdsAndFlags.z = tId;
+			objectIdsAndFlags.w = tId;
+		}
+	}
 
 	uint cellIndex = tId * 2;
 	cellIds[cellIndex] = pCellIds.x << 16 | hCellId;
 	cellIds[cellIndex + 1] = pCellIds.z << 16 | pCellIds.y;
 
-//	cellIds[0] = 32 << 16 | 84; // 84 becomes zero index
+	uint objectIndex = cellIndex * 2;
+	objectIds[objectIndex] = objectIdsAndFlags.x;
+	objectIds[objectIndex + 1] = objectIdsAndFlags.y;
+	objectIds[objectIndex + 2] = objectIdsAndFlags.z;
+	objectIds[objectIndex + 3] = objectIdsAndFlags.w;
 }
