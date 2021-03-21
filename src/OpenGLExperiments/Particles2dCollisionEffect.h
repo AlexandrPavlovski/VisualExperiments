@@ -43,12 +43,13 @@ private:
 	StartupParams startupParams;
 	RuntimeParams runtimeParams;
 
-	int currentParticlesCount = 0;
+	GLint currentParticlesCount = 0;
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
 
 	std::vector<GLfloat> particlesData;
-	GLuint vao = 0, ssbo = 0, ssboObjectId = 0, ssboCellId = 0;
+	GLuint vao = 0, ssbo = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
+	GLuint fillCellIdAndObjectIdArraysCompShaderProgram, radixPhase1CopmShaderProgram;
 
 	bool isManualAttractorControlEnabled = false;
 

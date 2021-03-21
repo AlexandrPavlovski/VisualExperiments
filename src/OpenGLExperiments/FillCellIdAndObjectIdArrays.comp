@@ -90,8 +90,8 @@ void main()
 	cellIds[cellIndex + 1] = pCellIds.z << 16 | pCellIds.y;
 
 	uint objectIndex = cellIndex * 2;
-	objectIds[objectIndex] = objectIdsAndFlags.x;
-	objectIds[objectIndex + 1] = objectIdsAndFlags.y;
-	objectIds[objectIndex + 2] = objectIdsAndFlags.z;
-	objectIds[objectIndex + 3] = objectIdsAndFlags.w;
+//	objectIds[objectIndex] = objectIdsAndFlags.x;
+//	objectIds[objectIndex + 1] = objectIdsAndFlags.y;
+//	objectIds[objectIndex + 2] = objectIdsAndFlags.z;
+//	objectIds[objectIndex + 3] = objectIdsAndFlags.w;
 }

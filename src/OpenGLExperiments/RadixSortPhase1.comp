@@ -2,6 +2,9 @@
 
 // 0 is replaced at runtime with an actual value
 #define particlesCount 0
+#define threadsInGroup 4
+#define groupsInWorkGroup 48
+#define elementsPerGroup 4
 
 layout(local_size_x = 192) in;
 layout(std430) buffer;
@@ -27,16 +30,53 @@ layout(binding = 2) buffer objects
 {
 	uint objectIds[];
 };
+layout(binding = 3) buffer counters
+{
+	uint globalCounters[];
+};
 
-shared uint counters[12288] = uint[12288](0);
+shared uint sharedCounters[12288] = uint[12288](0);
 
 
 void main()
 {
-	uint tId = gl_GlobalInvocationID.x;
-	if (tId > particlesCount)
-		return;
+	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInGroup));
+	const uint groupIndex = gl_LocalInvocationID.x / threadsInGroup;
+	const uint cellIndexToReadFrom = (gl_WorkGroupID.x * groupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
 
-	uint t = counters[tId];
-	objectIds[tId] = counters[tId];
+	const uint cellIdsPacked = cellIds[cellIndexToReadFrom];
+	const uint cellId1 = cellIdsPacked & 65535;
+	const uint cellId2 = cellIdsPacked >> 16;
+
+	const uint counterIndexOffset = groupIndex * 256;
+
+	uint radix = cellId1 & 255;
+	uint radix2 = cellId2 & 255;
+
+	if (indexInGroup == 0) {
+		sharedCounters[counterIndexOffset + radix]++;
+		sharedCounters[counterIndexOffset + radix2]++;
+	}
+	if (indexInGroup == 1) {
+		sharedCounters[counterIndexOffset + radix]++;
+		sharedCounters[counterIndexOffset + radix2]++;
+	}
+	if (indexInGroup == 2) {
+		sharedCounters[counterIndexOffset + radix]++;
+		sharedCounters[counterIndexOffset + radix2]++;
+	}
+	if (indexInGroup == 3) {
+		sharedCounters[counterIndexOffset + radix]++;
+		sharedCounters[counterIndexOffset + radix2]++;
+	}
+
+	barrier();
+
+	uint globalCountersOffset = gl_WorkGroupID.x * 12288;
+	for (uint sharedMemoryCountersIndex = gl_LocalInvocationID.x; 
+		sharedMemoryCountersIndex < 12288; 
+		sharedMemoryCountersIndex += 192)
+	{
+		globalCounters[sharedMemoryCountersIndex + globalCountersOffset] = sharedCounters[sharedMemoryCountersIndex];
+	}
 }
