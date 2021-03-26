@@ -1,10 +1,8 @@
 #version 460 core
 
-// 0 is replaced at runtime with an actual value
-#define particlesCount 0
-#define threadsInGroup 4
-#define groupsInWorkGroup 48
-#define elementsPerGroup 4
+#define threadsInThreadGroup 0
+#define threadGroupsInWorkGroup 0
+#define elementsPerGroup 0
 
 layout(local_size_x = 192) in;
 layout(std430) buffer;
@@ -18,17 +16,9 @@ layout(location = 5) uniform bool isPaused;
 layout(location = 6) uniform float particleSize;
 layout(location = 7) uniform uint cellSize;
 
-layout(binding = 0) buffer SSBO
-{
-	vec4 particleData[];
-};
 layout(binding = 1) buffer cells
 {
 	uint cellIds[];
-};
-layout(binding = 2) buffer objects
-{
-	uint objectIds[];
 };
 layout(binding = 3) buffer counters
 {
@@ -40,9 +30,9 @@ shared uint sharedCounters[12288] = uint[12288](0);
 
 void main()
 {
-	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInGroup));
-	const uint groupIndex = gl_LocalInvocationID.x / threadsInGroup;
-	const uint cellIndexToReadFrom = (gl_WorkGroupID.x * groupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
+	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
+	const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
+	const uint cellIndexToReadFrom = (gl_WorkGroupID.x * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
 
 	const uint cellIdsPacked = cellIds[cellIndexToReadFrom];
 	const uint cellId1 = cellIdsPacked & 65535;
@@ -50,8 +40,8 @@ void main()
 
 	const uint counterIndexOffset = groupIndex * 256;
 
-	uint radix = cellId1 & 255;
-	uint radix2 = cellId2 & 255;
+	const uint radix = cellId1 & 255;
+	const uint radix2 = cellId2 & 255;
 
 	if (indexInGroup == 0) {
 		sharedCounters[counterIndexOffset + radix]++;
@@ -72,7 +62,7 @@ void main()
 
 	barrier();
 
-	uint globalCountersOffset = gl_WorkGroupID.x * 12288;
+	const uint globalCountersOffset = gl_WorkGroupID.x * 12288;
 	for (uint sharedMemoryCountersIndex = gl_LocalInvocationID.x; 
 		sharedMemoryCountersIndex < 12288; 
 		sharedMemoryCountersIndex += 192)

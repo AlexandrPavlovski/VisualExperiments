@@ -169,10 +169,30 @@ void Particles2dCollisionEffect::initialize()
 	}
 
 	shaderProgram = newShaderProgram;
+
+	GLuint threadGroupsInWorkGroup = 48;
+	GLuint threadsInThreadGroup = 4;
+	GLuint elementsPerGroup = 4;
+	GLuint threadGroupsTotal = ceil(currentParticlesCount * 2 / threadsInThreadGroup);
+
+	ShaderParams threadGroupsInWorkGroupShaderParam{ "#define threadGroupsInWorkGroup 0", "#define threadGroupsInWorkGroup " + std::to_string(threadGroupsInWorkGroup) };
+	ShaderParams threadsInThreadGroupShaderParam   { "#define threadsInThreadGroup 0",    "#define threadsInThreadGroup "    + std::to_string(threadsInThreadGroup) };
+	ShaderParams elementsPerGroupShaderParam       { "#define elementsPerGroup 0",        "#define elementsPerGroup "        + std::to_string(elementsPerGroup) };
+	ShaderParams threadGroupsTotalShaderParam      { "#define threadGroupsTotal 1",       "#define threadGroupsTotal "       + std::to_string(threadGroupsTotal) };
+
+	std::vector<ShaderParams> phase1ShaderParams
+	{
+		threadGroupsInWorkGroupShaderParam, threadsInThreadGroupShaderParam, elementsPerGroupShaderParam
+	};
+	std::vector<ShaderParams> phase2ShaderParams
+	{
+		threadGroupsInWorkGroupShaderParam, threadsInThreadGroupShaderParam, elementsPerGroupShaderParam, threadGroupsTotalShaderParam
+	};
 	//Particles2dCollisionEffect
 	//FillCellIdAndObjectIdArrays
 	createComputeShaderProgram(fillCellIdAndObjectIdArraysCompShaderProgram, "FillCellIdAndObjectIdArrays.comp", fragShaderParams);
-	createComputeShaderProgram(radixPhase1CopmShaderProgram, "RadixSortPhase1.comp", fragShaderParams);
+	createComputeShaderProgram(radixPhase1CopmShaderProgram, "RadixSortPhase1.comp", phase1ShaderParams);
+	createComputeShaderProgram(radixPhase2CopmShaderProgram, "RadixSortPhase2.comp", phase2ShaderParams);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -204,17 +224,18 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	//glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 	//glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboCellId);
 	//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboCellId);
-	GLushort r[100] = { 0 };
-	GLushort* ptr = (GLushort*)glMapNamedBufferRange(ssboCellId, 0, currentParticlesCount * 4 * sizeof(GLushort), GL_MAP_READ_BIT);
-	GLenum e = glGetError();
-	memcpy(r, ptr, sizeof(GLushort) * 100);
-	bool result = glUnmapNamedBuffer(ssboCellId);
+	//GLushort r[100] = { 0 };
+	//GLushort* ptr = (GLushort*)glMapNamedBufferRange(ssboCellId, 0, currentParticlesCount * 4 * sizeof(GLushort), GL_MAP_READ_BIT);
+	//GLenum e = glGetError();
+	//memcpy(r, ptr, sizeof(GLushort) * 100);
+	//bool result = glUnmapNamedBuffer(ssboCellId);
 
-	GLint r2[500] = { 0 };
-	GLuint* ptr2 = (GLuint*)glMapNamedBufferRange(ssboObjectId, 0, currentParticlesCount * 4 * sizeof(GLuint), GL_MAP_READ_BIT);
-	GLenum e2 = glGetError();
-	memcpy(r2, ptr2, sizeof(GLuint) * 500);
-	bool result2 = glUnmapNamedBuffer(ssboObjectId);
+	//GLint r2[500] = { 0 };
+	//GLuint* ptr2 = (GLuint*)glMapNamedBufferRange(ssboObjectId, 0, currentParticlesCount * 4 * sizeof(GLuint), GL_MAP_READ_BIT);
+	//GLenum e2 = glGetError();
+	//memcpy(r2, ptr2, sizeof(GLuint) * 500);
+	//bool result2 = glUnmapNamedBuffer(ssboObjectId);
+
 
 	glUseProgram(radixPhase1CopmShaderProgram);
 
@@ -232,11 +253,35 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	glDispatchCompute(groupCount2, 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-	GLint r3[12288] = { 0 };
-	GLuint* ptr3 = (GLuint*)glMapNamedBufferRange(ssboGlobalCounters, 0, 12288 * sizeof(GLuint), GL_MAP_READ_BIT);
-	GLenum e3 = glGetError();
-	memcpy(r3, ptr3, sizeof(GLuint) * 12288);
-	bool result3 = glUnmapNamedBuffer(ssboGlobalCounters);
+	//GLint r3[12288] = { 0 };
+	//GLuint* ptr3 = (GLuint*)glMapNamedBufferRange(ssboGlobalCounters, 0, 12288 * sizeof(GLuint), GL_MAP_READ_BIT);
+	//GLenum e3 = glGetError();
+	//memcpy(r3, ptr3, sizeof(GLuint) * 12288);
+	//bool result3 = glUnmapNamedBuffer(ssboGlobalCounters);
+
+
+	glUseProgram(radixPhase2CopmShaderProgram);
+
+	glUniform2f(0, windowWidth, windowHeight);
+	glUniform1f(1, runtimeParams.ForceScale);
+	glUniform1f(2, runtimeParams.VelocityDamping);
+	glUniform1f(3, runtimeParams.MinDistanceToAttractor);
+	glUniform1f(4, dt);
+	glUniform1i(5, isPaused && !isAdvanceOneFrame);
+	glUniform1f(6, runtimeParams.particleSize);
+	runtimeParams.cellSize = runtimeParams.particleSize;
+	glUniform1ui(7, runtimeParams.cellSize);
+
+	GLuint groupCount3 = 64;
+	glDispatchCompute(groupCount3, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	GLint r4[12288] = { 0 };
+	GLuint* ptr4 = (GLuint*)glMapNamedBufferRange(ssboGlobalCounters, 0, 12288 * sizeof(GLuint), GL_MAP_READ_BIT);
+	GLenum e4 = glGetError();
+	memcpy(r4, ptr4, sizeof(GLuint) * 12288);
+	bool result4 = glUnmapNamedBuffer(ssboGlobalCounters);
+
 
 	glUseProgram(shaderProgram);
 

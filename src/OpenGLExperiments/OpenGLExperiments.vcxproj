@@ -223,7 +223,12 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <None Include="RadixSortPhase1.comp" />
+    <CopyFileToFolders Include="RadixSortPhase1.comp">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="RadixSortPhase2.comp">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

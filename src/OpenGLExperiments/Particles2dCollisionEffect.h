@@ -49,7 +49,7 @@ private:
 
 	std::vector<GLfloat> particlesData;
 	GLuint vao = 0, ssbo = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
-	GLuint fillCellIdAndObjectIdArraysCompShaderProgram, radixPhase1CopmShaderProgram;
+	GLuint fillCellIdAndObjectIdArraysCompShaderProgram, radixPhase1CopmShaderProgram, radixPhase2CopmShaderProgram;
 
 	bool isManualAttractorControlEnabled = false;
 

@@ -134,10 +134,11 @@
     <CopyFileToFolders Include="Particles2dCollisionEffect.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="RadixSortPhase1.comp">
+    <CopyFileToFolders Include="RadixSortPhase2.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </None>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="RadixSortPhase1.comp">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>
