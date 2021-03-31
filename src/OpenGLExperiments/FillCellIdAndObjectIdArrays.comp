@@ -32,7 +32,7 @@ layout(binding = 2) buffer objects
 void main()
 {
 	uint tId = gl_GlobalInvocationID.x;
-	if (tId > particlesCount)
+	if (tId >= particlesCount)
 		return;
 
 	uint gridWidth = uint(windowSize.x / cellSize) + 2;

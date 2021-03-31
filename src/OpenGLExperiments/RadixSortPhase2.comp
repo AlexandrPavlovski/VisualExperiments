@@ -5,7 +5,7 @@
 #define elementsPerGroup 0
 #define threadGroupsTotal 1
 
-layout(local_size_x = threadGroupsTotal) in;
+layout(local_size_x = 1024) in;
 layout(std430) buffer;
 
 layout(location = 0) uniform vec2 windowSize;
@@ -33,4 +33,10 @@ void main()
 {
 	uint radix = gl_WorkGroupID.x * 4;
 	uint globalCounterIndex = gl_LocalInvocationID.x * 256 + radix;
+
+	sharedCounters[gl_LocalInvocationID.x] = globalCounters[globalCounterIndex];
+
+	barrier();
+
+
 }

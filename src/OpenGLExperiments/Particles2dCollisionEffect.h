@@ -49,10 +49,10 @@ private:
 
 	std::vector<GLfloat> particlesData;
 	GLuint vao = 0, ssbo = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
-	GLuint fillCellIdAndObjectIdArraysCompShaderProgram, radixPhase1CopmShaderProgram, radixPhase2CopmShaderProgram;
+	GLuint fillCellIdAndObjectIdArraysCompShaderProgram, radixPhase1CompShaderProgram, radixPhase2CompShaderProgram;
 
 	bool isManualAttractorControlEnabled = false;
-
+	GLuint phase1GroupCount = 0;
 
 	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
 };

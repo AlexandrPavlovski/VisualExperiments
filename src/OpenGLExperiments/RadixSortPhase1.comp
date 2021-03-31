@@ -1,10 +1,13 @@
 #version 460 core
 
+#define cellIdsLength 0
+#define threadsInWorkGroup 1
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 0
+//#define elementsPerThread 0
 #define elementsPerGroup 0
 
-layout(local_size_x = 192) in;
+layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
 
 layout(location = 0) uniform vec2 windowSize;
@@ -33,31 +36,38 @@ void main()
 	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
 	const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
 	const uint cellIndexToReadFrom = (gl_WorkGroupID.x * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
-
-	const uint cellIdsPacked = cellIds[cellIndexToReadFrom];
-	const uint cellId1 = cellIdsPacked & 65535;
-	const uint cellId2 = cellIdsPacked >> 16;
-
 	const uint counterIndexOffset = groupIndex * 256;
 
-	const uint radix = cellId1 & 255;
-	const uint radix2 = cellId2 & 255;
+	for (uint i = 0; i < elementsPerGroup && cellIndexToReadFrom + i < cellIdsLength; i += threadsInThreadGroup)
+	{
+		const uint cellIdsPacked = cellIds[cellIndexToReadFrom + i];
+		const uint cellId1 = cellIdsPacked & 65535;
+		const uint cellId2 = cellIdsPacked >> 16;
 
-	if (indexInGroup == 0) {
-		sharedCounters[counterIndexOffset + radix]++;
-		sharedCounters[counterIndexOffset + radix2]++;
-	}
-	if (indexInGroup == 1) {
-		sharedCounters[counterIndexOffset + radix]++;
-		sharedCounters[counterIndexOffset + radix2]++;
-	}
-	if (indexInGroup == 2) {
-		sharedCounters[counterIndexOffset + radix]++;
-		sharedCounters[counterIndexOffset + radix2]++;
-	}
-	if (indexInGroup == 3) {
-		sharedCounters[counterIndexOffset + radix]++;
-		sharedCounters[counterIndexOffset + radix2]++;
+		const uint radix = cellId1 & 255;
+		const uint radix2 = cellId2 & 255;
+
+		const uint indexInSharedCounters = counterIndexOffset + radix;
+		const uint indexInSharedCounters2 = counterIndexOffset + radix2;
+
+		barrier();
+
+		if (indexInGroup == 0) {
+			sharedCounters[indexInSharedCounters]++;
+			sharedCounters[indexInSharedCounters2]++;
+		}
+		if (indexInGroup == 1) {
+			sharedCounters[indexInSharedCounters]++;
+			sharedCounters[indexInSharedCounters2]++;
+		}
+		if (indexInGroup == 2) {
+			sharedCounters[indexInSharedCounters]++;
+			sharedCounters[indexInSharedCounters2]++;
+		}
+		if (indexInGroup == 3) {
+			sharedCounters[indexInSharedCounters]++;
+			sharedCounters[indexInSharedCounters2]++;
+		}
 	}
 
 	barrier();
@@ -65,7 +75,7 @@ void main()
 	const uint globalCountersOffset = gl_WorkGroupID.x * 12288;
 	for (uint sharedMemoryCountersIndex = gl_LocalInvocationID.x; 
 		sharedMemoryCountersIndex < 12288; 
-		sharedMemoryCountersIndex += 192)
+		sharedMemoryCountersIndex += threadsInWorkGroup)
 	{
 		globalCounters[sharedMemoryCountersIndex + globalCountersOffset] = sharedCounters[sharedMemoryCountersIndex];
 	}
