@@ -29,7 +29,7 @@ vec2 bodyToBodyAcceleration(vec2 b1, vec2 b2)
 	return dir * invDistCube;
 }
 
-void nBodyGravityAcceleration(uint tId, vec2 pos)
+void nBodyGravityAcceleration(uint thid, vec2 pos)
 {
 	vec2 acc = vec2(0.0);
 	for (int i = 0; i <= particlesCount; i += 4)
@@ -40,7 +40,7 @@ void nBodyGravityAcceleration(uint tId, vec2 pos)
 		acc += bodyToBodyAcceleration(pos, particleData[i+3].xy);
 	}
 	
-	particleData[tId + particlesCount].yz += acc;
+	particleData[thid + particlesCount].yz += acc;
 }
 
 vec2 collisionResponse(float x, vec2 norm, vec2 vel)
@@ -112,12 +112,12 @@ vec3 ballToBallCollision(uint i, vec2 pos1, vec2 vel1)
 	return accPressure;
 }
 
-void collisionAcceleration(uint tId, vec2 pos, vec2 vel)
+void collisionAcceleration(uint thid, vec2 pos, vec2 vel)
 {
 	vec2 acc = vec2(0.0);
 	float pressure = 0.0;
 
-	for (uint i = tId + 1; i <= particlesCount; i += 1)
+	for (uint i = thid + 1; i <= particlesCount; i += 1)
 	{
 		vec3 accPressure = ballToBallCollision(i, pos, vel);
 		acc += accPressure.xy;
@@ -152,32 +152,32 @@ void collisionAcceleration(uint tId, vec2 pos, vec2 vel)
 //		pressure += accPressure.z;
 	}
 
-	particleData[tId + particlesCount].x += pressure;
-	particleData[tId + particlesCount].yz += acc + screenBoundsCollision(pos, vel);;
+	particleData[thid + particlesCount].x += pressure;
+	particleData[thid + particlesCount].yz += acc + screenBoundsCollision(pos, vel);;
 }
 
 void main()
 {
-	uint tId = gl_GlobalInvocationID.x;
-	if (tId >= particlesCount)
+	uint thid = gl_GlobalInvocationID.x;
+	if (thid >= particlesCount)
 	{
 		return;
 	}
 
 	float deltaT = deltaTime * 0.04;
 
-	vec4 p = particleData[tId];
+	vec4 p = particleData[thid];
 	vec2 pos = p.xy;
 	vec2 vel = p.zw;
 
 	if (!isPaused)
 	{
-		particleData[tId + particlesCount].x = 0;
+		particleData[thid + particlesCount].x = 0;
 
-		nBodyGravityAcceleration(tId, pos);
-		collisionAcceleration(tId, pos, vel);
+		nBodyGravityAcceleration(thid, pos);
+		collisionAcceleration(thid, pos, vel);
 		
-		particleData[tId + particlesCount].yz += vec2(0.0, 0.0); // gravity down
+		particleData[thid + particlesCount].yz += vec2(0.0, 0.0); // gravity down
 	}
 
 	// teleportation at screen bounds

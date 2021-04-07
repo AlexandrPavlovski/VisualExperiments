@@ -31,12 +31,12 @@ layout(binding = 2) buffer objects
 
 void main()
 {
-	uint tId = gl_GlobalInvocationID.x;
-	if (tId >= particlesCount)
+	uint thid = gl_GlobalInvocationID.x;
+	if (thid >= particlesCount)
 		return;
 
 	uint gridWidth = uint(windowSize.x / cellSize) + 2;
-	vec2 worldPos = particleData[tId].xy;
+	vec2 worldPos = particleData[thid].xy;
 	vec2 gridPos;
 	vec2 cellPos = modf(worldPos / cellSize, gridPos);
 	gridPos += 1;
@@ -44,48 +44,48 @@ void main()
 	uint hCellId = uint(gridPos.x + gridPos.y * gridWidth);
 
 	uvec3 pCellIds = uvec3(-1);
-	uvec4 objectIdsAndFlags = uvec4(tId | 0x80000000, -1, -1, -1); // 0 = -2147483648
+	uvec4 objectIdsAndFlags = uvec4(thid | 0x80000000, -1, -1, -1); // 0 = -2147483648
 
 	if (cellPos.x > 0.5)
 	{
 		pCellIds.x = hCellId + 1;
-		objectIdsAndFlags.y = tId;
+		objectIdsAndFlags.y = thid;
 		if (cellPos.y > 0.5)
 		{
 			pCellIds.y = hCellId + gridWidth;
 			pCellIds.z = hCellId + gridWidth + 1;
-			objectIdsAndFlags.z = tId;
-			objectIdsAndFlags.w = tId;
+			objectIdsAndFlags.z = thid;
+			objectIdsAndFlags.w = thid;
 		}
-		if (cellPos.y < 0.5)
+		else
 		{
 			pCellIds.y = hCellId - gridWidth;
 			pCellIds.z = hCellId - gridWidth + 1;
-			objectIdsAndFlags.z = tId;
-			objectIdsAndFlags.w = tId;
+			objectIdsAndFlags.z = thid;
+			objectIdsAndFlags.w = thid;
 		}
 	}
-	if (cellPos.x < 0.5)
+	else
 	{
 		pCellIds.x = hCellId - 1;
-		objectIdsAndFlags.y = tId;
+		objectIdsAndFlags.y = thid;
 		if (cellPos.y > 0.5)
 		{
 			pCellIds.y = hCellId + gridWidth;
 			pCellIds.z = hCellId + gridWidth - 1;
-			objectIdsAndFlags.z = tId;
-			objectIdsAndFlags.w = tId;
+			objectIdsAndFlags.z = thid;
+			objectIdsAndFlags.w = thid;
 		}
-		if (cellPos.y < 0.5)
+		else
 		{
 			pCellIds.y = hCellId - gridWidth;
 			pCellIds.z = hCellId - gridWidth - 1;
-			objectIdsAndFlags.z = tId;
-			objectIdsAndFlags.w = tId;
+			objectIdsAndFlags.z = thid;
+			objectIdsAndFlags.w = thid;
 		}
 	}
 
-	uint cellIndex = tId * 2;
+	uint cellIndex = thid * 2;
 	cellIds[cellIndex] = pCellIds.x << 16 | hCellId;
 	cellIds[cellIndex + 1] = pCellIds.z << 16 | pCellIds.y;
 

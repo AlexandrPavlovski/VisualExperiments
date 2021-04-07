@@ -4,8 +4,9 @@
 #define threadGroupsInWorkGroup 0
 #define elementsPerGroup 0
 #define threadGroupsTotal 1
+#define sharedCountersSize 1024
 
-layout(local_size_x = 1024) in;
+layout(local_size_x = sharedCountersSize) in;
 layout(std430) buffer;
 
 layout(location = 0) uniform vec2 windowSize;
@@ -25,18 +26,92 @@ layout(binding = 3) buffer counters
 {
 	uint globalCounters[];
 };
+layout(binding = 4) buffer totalSumm
+{
+	uint presummOfTotalSumms[];
+};
 
-shared uint sharedCounters[threadGroupsTotal] = uint[threadGroupsTotal](0);
+shared uint sharedCounters[sharedCountersSize];
+shared uint totalSummShared[4];
 
+
+void presumm(uint thid, uint n)
+{
+	uint offset = 1;
+
+	for (uint d = n>>1; d > 0; d >>= 1)
+	{ 
+		barrier();
+		if (thid < d)
+		{
+			// B
+			uint ai = offset*(2*thid+1)-1;
+			uint bi = offset*(2*thid+2)-1;
+			// B
+			sharedCounters[bi] += sharedCounters[ai];
+		}
+		offset *= 2;
+	}
+
+	// C
+	if (thid == 0) // clear the last element
+	{
+		sharedCounters[n - 1] = 0;
+	}
+	// C
+
+	for (uint d = 1; d < n; d *= 2) // traverse down tree & build scan
+	{
+		offset >>= 1;
+		barrier();
+
+		if (thid < d)
+		{
+			// D
+			uint ai = offset*(2*thid+1)-1;
+			uint bi = offset*(2*thid+2)-1; 
+			// D
+			uint t = sharedCounters[ai];
+			sharedCounters[ai] = sharedCounters[bi];
+			sharedCounters[bi] += t;
+		}
+	}
+}
 
 void main()
 {
-	uint radix = gl_WorkGroupID.x * 4;
-	uint globalCounterIndex = gl_LocalInvocationID.x * 256 + radix;
+	const uint thid = gl_LocalInvocationID.x;
+	uint summ = 0;
 
-	sharedCounters[gl_LocalInvocationID.x] = globalCounters[globalCounterIndex];
+	for (uint i = 0; i < 4; i++)
+	{
+		uint radix = gl_WorkGroupID.x * 4 + i;
+		uint globalCounterIndex = thid * 256 + radix;
+		uint globalCounter = globalCounters[globalCounterIndex];
+
+		if (thid < threadGroupsTotal)
+			sharedCounters[thid] = globalCounter;
+		else
+			sharedCounters[thid] = 0;
+
+		presumm(thid, sharedCountersSize);
+
+		barrier();
+
+		if (thid == threadGroupsTotal - 1)
+		{
+			totalSummShared[i] = summ;
+			summ += globalCounter + sharedCounters[thid];
+		}
+
+		if (thid < threadGroupsTotal)
+			globalCounters[globalCounterIndex] = sharedCounters[thid];
+	}
 
 	barrier();
 
-
+	if (thid < 4)
+	{
+		presummOfTotalSumms[gl_WorkGroupID.x * 4 + thid] = totalSummShared[thid];
+	}
 }
