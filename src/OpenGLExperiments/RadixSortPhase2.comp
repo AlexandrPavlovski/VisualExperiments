@@ -9,14 +9,6 @@
 layout(local_size_x = sharedCountersSize) in;
 layout(std430) buffer;
 
-layout(location = 0) uniform vec2 windowSize;
-layout(location = 1) uniform float forceScale;
-layout(location = 2) uniform float velocityDamping;
-layout(location = 3) uniform float minDistanceToAttractor;
-layout(location = 4) uniform float deltaTime;
-layout(location = 5) uniform bool isPaused;
-layout(location = 6) uniform float particleSize;
-layout(location = 7) uniform uint cellSize;
 
 layout(binding = 1) buffer cells
 {
@@ -26,13 +18,13 @@ layout(binding = 3) buffer counters
 {
 	uint globalCounters[];
 };
-layout(binding = 4) buffer totalSumm
+layout(binding = 4) buffer total
 {
-	uint presummOfTotalSumms[];
+	uint totalSumms[];
 };
 
 shared uint sharedCounters[sharedCountersSize];
-shared uint totalSummShared[4];
+shared uint totalSummsShared[4];
 
 
 void presumm(uint thid, uint n)
@@ -81,7 +73,6 @@ void presumm(uint thid, uint n)
 void main()
 {
 	const uint thid = gl_LocalInvocationID.x;
-	uint summ = 0;
 
 	for (uint i = 0; i < 4; i++)
 	{
@@ -100,8 +91,7 @@ void main()
 
 		if (thid == threadGroupsTotal - 1)
 		{
-			totalSummShared[i] = summ;
-			summ += globalCounter + sharedCounters[thid];
+			totalSummsShared[i] = globalCounter + sharedCounters[thid];
 		}
 
 		if (thid < threadGroupsTotal)
@@ -112,6 +102,6 @@ void main()
 
 	if (thid < 4)
 	{
-		presummOfTotalSumms[gl_WorkGroupID.x * 4 + thid] = totalSummShared[thid];
+		totalSumms[gl_WorkGroupID.x * 4 + thid] = totalSummsShared[thid];
 	}
 }

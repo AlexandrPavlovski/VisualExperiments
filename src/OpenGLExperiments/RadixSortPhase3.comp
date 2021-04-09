@@ -1,0 +1,155 @@
+#version 460 core
+
+#define cellIdsLength 0
+#define threadsInWorkGroup 1
+#define threadsInThreadGroup 0
+#define threadGroupsInWorkGroup 1
+#define elementsPerGroup 0
+#define sharedCountersLength 12032
+
+layout(local_size_x = threadsInWorkGroup) in;
+layout(std430) buffer;
+
+layout(location = 0) uniform vec2 windowSize;
+layout(location = 1) uniform float forceScale;
+layout(location = 2) uniform float velocityDamping;
+layout(location = 3) uniform float minDistanceToAttractor;
+layout(location = 4) uniform float deltaTime;
+layout(location = 5) uniform bool isPaused;
+layout(location = 6) uniform float particleSize;
+layout(location = 7) uniform uint cellSize;
+
+layout(binding = 1) buffer cells
+{
+	uint cellIds[];
+};
+layout(binding = 2) buffer objects
+{
+	uint objectIds[];
+};
+layout(binding = 3) buffer counters
+{
+	uint globalCounters[];
+};
+layout(binding = 4) buffer totalSumm
+{
+	uint totalSumms[256];
+};
+layout(binding = 5) buffer cellsOut
+{
+	uint cellIdsOut[];
+};
+
+shared uint totalSummShared[256];
+shared uint sharedCounters[sharedCountersLength];
+
+
+void presumm(uint thid, uint n)
+{
+	uint offset = 1;
+
+	for (uint d = n>>1; d > 0; d >>= 1)
+	{ 
+		barrier();
+		if (thid < d)
+		{
+			// B
+			uint ai = offset*(2*thid+1)-1;
+			uint bi = offset*(2*thid+2)-1;
+			// B
+			totalSummShared[bi] += totalSummShared[ai];
+		}
+		offset *= 2;
+	}
+
+	// C
+	if (thid == 0) // clear the last element
+	{
+		totalSummShared[n - 1] = 0;
+	}
+	// C
+
+	for (uint d = 1; d < n; d *= 2) // traverse down tree & build scan
+	{
+		offset >>= 1;
+		barrier();
+
+		if (thid < d)
+		{
+			// D
+			uint ai = offset*(2*thid+1)-1;
+			uint bi = offset*(2*thid+2)-1; 
+			// D
+			uint t = totalSummShared[ai];
+			totalSummShared[ai] = totalSummShared[bi];
+			totalSummShared[bi] += t;
+		}
+	}
+}
+
+void main()
+{
+	const uint thid = gl_LocalInvocationID.x;
+	uint i;
+
+	for (i = 0; thid + i < 256; i += threadsInWorkGroup)
+	{
+		totalSummShared[thid + i] = totalSumms[thid + i];
+	}
+
+	presumm(thid, 256);
+
+	barrier();
+
+	for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
+	{
+		sharedCounters[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x] + totalSummShared[uint(mod(thid + i, 256))];
+	}
+
+	barrier();
+
+	if (thid < threadsInWorkGroup - threadsInThreadGroup)
+	{
+		const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
+		const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
+		const uint cellIndex = (gl_WorkGroupID.x * (threadGroupsInWorkGroup - 1) + groupIndex) * elementsPerGroup + indexInGroup;
+		const uint counterIndexOffset = groupIndex * 256;
+
+		for (i = 0; i < elementsPerGroup && cellIndex + i < cellIdsLength; i += threadsInThreadGroup)
+		{
+			const uint cellIdsPacked = cellIds[cellIndex + i];
+			
+			const uint cellId1 = cellIdsPacked & 65535;
+			const uint cellId2 = cellIdsPacked >> 16;
+			
+			const uint radix = cellId1 & 255;
+			const uint radix2 = cellId2 & 255;
+
+			const uint indexInSharedCounters = counterIndexOffset + radix;
+			const uint indexInSharedCounters2 = counterIndexOffset + radix2;
+
+			const uint 
+
+			barrier();
+
+			for (uint j = 0; j < 15; j++)
+			{
+				if (indexInGroup == j)
+				{
+					
+				}
+			}
+		}
+	}
+
+
+//	for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
+//	{
+//		globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x] = sharedCounters[thid + i];
+//	}
+
+//	for (uint i = 0; thid + i < 256; i += threadsInWorkGroup)
+//	{
+//		totalSumms[thid + i] = totalSummShared[thid + i];
+//	}
+}
