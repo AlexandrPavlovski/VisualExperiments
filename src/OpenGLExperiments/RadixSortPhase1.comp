@@ -5,12 +5,15 @@
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 1
 #define elementsPerGroup 0
+#define inputCellIds 1
+
+#define cellIdShift 0
 
 layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
 
 
-layout(binding = 1) buffer cells
+layout(binding = inputCellIds) buffer cells
 {
 	uint cellIds[];
 };
@@ -35,8 +38,8 @@ void main()
 		const uint cellId1 = cellIdsPacked & 65535;
 		const uint cellId2 = cellIdsPacked >> 16;
 
-		const uint radix = cellId1 & 255;
-		const uint radix2 = cellId2 & 255;
+		const uint radix = (cellId1 >> cellIdShift) & 255;
+		const uint radix2 = (cellId2 >> cellIdShift) & 255;
 
 		const uint indexInSharedCounters = counterIndexOffset + radix;
 		const uint indexInSharedCounters2 = counterIndexOffset + radix2;

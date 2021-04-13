@@ -10,10 +10,6 @@ layout(local_size_x = sharedCountersSize) in;
 layout(std430) buffer;
 
 
-layout(binding = 1) buffer cells
-{
-	uint cellIds[];
-};
 layout(binding = 3) buffer counters
 {
 	uint globalCounters[];

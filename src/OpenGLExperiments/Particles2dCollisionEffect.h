@@ -50,9 +50,9 @@ private:
 	std::vector<GLfloat> particlesData;
 	GLuint vao = 0, ssbo = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,
-		radixPhase1CompShaderProgram = 0,
+		radixPhase1Pass1CompShaderProgram = 0, radixPhase1Pass2CompShaderProgram = 0,
 		radixPhase2CompShaderProgram = 0,
-		radixPhase3CompShaderProgram = 0;
+		radixPhase3Pass1CompShaderProgram = 0, radixPhase3Pass2CompShaderProgram = 0;
 
 	GLuint maxWorkGroupCount = 0;
 	GLuint threadGroupsInWorkGroup = 0;
@@ -71,5 +71,6 @@ private:
 
 	// temp vars
 	GLuint buffer = 0;
+	GLuint buffer2 = 0;
 
 };
