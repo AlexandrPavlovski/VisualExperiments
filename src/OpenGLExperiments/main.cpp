@@ -224,9 +224,9 @@ int main()
 	{
 		useSelectedEffect();
 	}
-	catch (...)
+	catch (const std::exception& exc)
 	{
-		std::cout << "Failed to initialize effect" << std::endl;
+		std::cout << "Failed to initialize effect" << std::endl << exc.what() << std::endl;
 		delete effect;
 		glfwTerminate();
 		getchar();
@@ -260,7 +260,7 @@ int main()
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		if (isGUI)
+		if (!isGUI)
 		{
 			drawGUI();
 		}

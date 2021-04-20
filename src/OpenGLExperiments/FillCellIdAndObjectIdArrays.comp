@@ -19,13 +19,21 @@ layout(binding = 0) buffer SSBO
 {
 	vec4 particleData[];
 };
-layout(binding = 1) buffer cells
+layout(binding = 1) buffer cells1
 {
-	uint cellIds[];
+	uint cellIds1[];
 };
 layout(binding = 2) buffer objects
 {
 	uint objectIds[];
+};
+layout(binding = 5) buffer cells2
+{
+	uint cellIds2[];
+};
+layout(binding = 7) buffer tetete
+{
+	uint test[];
 };
 
 
@@ -86,8 +94,13 @@ void main()
 	}
 
 	uint cellIndex = thid * 2;
-	cellIds[cellIndex] = pCellIds.x << 16 | hCellId;
-	cellIds[cellIndex + 1] = pCellIds.z << 16 | pCellIds.y;
+	cellIds1[cellIndex] = pCellIds.x << 16 | hCellId;
+	cellIds1[cellIndex + 1] = pCellIds.z << 16 | pCellIds.y;
+
+	cellIds2[cellIndex] = 0;
+	cellIds2[cellIndex + 1] = 0;
+	test[cellIndex] = 0;
+	test[cellIndex + 1] = 0;
 
 	uint objectIndex = cellIndex * 2;
 //	objectIds[objectIndex] = objectIdsAndFlags.x;

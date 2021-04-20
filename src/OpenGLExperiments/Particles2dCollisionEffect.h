@@ -72,5 +72,8 @@ private:
 	// temp vars
 	GLuint buffer = 0;
 	GLuint buffer2 = 0;
-
+	GLuint buffer3 = 0;
+	GLuint buffer7 = 0;
+	GLuint frame = 0;
+	
 };

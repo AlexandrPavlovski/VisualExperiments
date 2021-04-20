@@ -19,9 +19,9 @@ layout(binding = 0) buffer SSBO
 {
 	vec4 particleData[];
 };
-layout(binding = 1) buffer cells
+layout(binding = 1) buffer cells1
 {
-	uint cellIds[];
+	uint cellIds1[];
 };
 layout(binding = 2) buffer objects
 {
@@ -193,9 +193,9 @@ void setGridColor()
 {
 	uint cellIndex = gl_VertexID * 2;
 //	uint shift = uint(mod(gl_VertexID, 2)) * 16;
-//	uint cellId = (cellIds[cellIndex] >> shift) & 255;
+//	uint cellId = (cellIds1[cellIndex] >> shift) & 255;
 
-	uvec2 cellIdsPacked = uvec2(cellIds[cellIndex], cellIds[cellIndex + 1]);
+	uvec2 cellIdsPacked = uvec2(cellIds1[cellIndex], cellIds1[cellIndex + 1]);
 	uint hCellId = cellIdsPacked.x & 65535;
 	uint pCellId1 = cellIdsPacked.x >> 16;
 	uint pCellId2 = cellIdsPacked.y & 65535;

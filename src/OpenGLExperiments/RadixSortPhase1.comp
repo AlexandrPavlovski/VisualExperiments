@@ -5,21 +5,32 @@
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 1
 #define elementsPerGroup 0
-#define inputCellIds 1
-
+#define bindingCellIds1 1
+#define bindingCellIds2 5
 #define cellIdShift 0
+#define cellsFirst cells1
+#define cellsSecond cells2
 
 layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
 
 
-layout(binding = inputCellIds) buffer cells
+layout(binding = bindingCellIds1) buffer cellsFirst
 {
-	uint cellIds[];
+	uint cellIds1[];
 };
 layout(binding = 3) buffer counters
 {
 	uint globalCounters[];
+};
+layout(binding = bindingCellIds2) buffer cellsSecond
+{
+	uint cellIds2[];
+};
+
+layout(binding = 7) buffer tetete
+{
+	uint test[];
 };
 
 shared uint sharedCounters[12288] = uint[12288](0);
@@ -27,6 +38,8 @@ shared uint sharedCounters[12288] = uint[12288](0);
 
 void main()
 {
+	barrier();
+
 	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
 	const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
 	const uint cellIndexToReadFrom = (gl_WorkGroupID.x * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
@@ -34,7 +47,7 @@ void main()
 
 	for (uint i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
 	{
-		const uint cellIdsPacked = cellIds[cellIndexToReadFrom + i];
+		const uint cellIdsPacked = cellIds1[cellIndexToReadFrom + i];
 		const uint cellId1 = cellIdsPacked & 65535;
 		const uint cellId2 = cellIdsPacked >> 16;
 
@@ -67,7 +80,7 @@ void main()
 		}
 	}
 
-	memoryBarrier();
+	barrier();
 
 	const uint globalCountersOffset = gl_WorkGroupID.x * 12288;
 	for (uint sharedMemoryCountersIndex = gl_LocalInvocationID.x; 

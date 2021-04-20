@@ -14,9 +14,13 @@ layout(binding = 3) buffer counters
 {
 	uint globalCounters[];
 };
-layout(binding = 4) buffer total
+layout(binding = 4) buffer totalSumm
 {
-	uint totalSumms[];
+	uint totalSumms[256];
+};
+layout(binding = 7) buffer tetete
+{
+	uint test[];
 };
 
 shared uint sharedCounters[sharedCountersSize];
@@ -92,6 +96,9 @@ void main()
 
 		if (thid < threadGroupsTotal)
 			globalCounters[globalCounterIndex] = sharedCounters[thid];
+
+		if (thid == threadGroupsTotal - 1)
+			test[i] = globalCounter;
 	}
 
 	barrier();
