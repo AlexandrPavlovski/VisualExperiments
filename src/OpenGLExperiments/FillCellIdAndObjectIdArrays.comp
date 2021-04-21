@@ -93,18 +93,22 @@ void main()
 		}
 	}
 
-	uint cellIndex = thid * 2;
-	cellIds1[cellIndex] = pCellIds.x << 16 | hCellId;
-	cellIds1[cellIndex + 1] = pCellIds.z << 16 | pCellIds.y;
+	uint cellIndex = thid * 4;
+	cellIds1[cellIndex] = hCellId;
+	cellIds1[cellIndex + 1] = pCellIds.x;
+	cellIds1[cellIndex + 2] = pCellIds.y;
+	cellIds1[cellIndex + 3] = pCellIds.z;
 
 	cellIds2[cellIndex] = 0;
 	cellIds2[cellIndex + 1] = 0;
+	cellIds2[cellIndex + 2] = 0;
+	cellIds2[cellIndex + 3] = 0;
+
 	test[cellIndex] = 0;
 	test[cellIndex + 1] = 0;
 
-	uint objectIndex = cellIndex * 2;
-//	objectIds[objectIndex] = objectIdsAndFlags.x;
-//	objectIds[objectIndex + 1] = objectIdsAndFlags.y;
-//	objectIds[objectIndex + 2] = objectIdsAndFlags.z;
-//	objectIds[objectIndex + 3] = objectIdsAndFlags.w;
+	objectIds[cellIndex] = objectIdsAndFlags.x;
+	objectIds[cellIndex + 1] = objectIdsAndFlags.y;
+	objectIds[cellIndex + 2] = objectIdsAndFlags.z;
+	objectIds[cellIndex + 3] = objectIdsAndFlags.w;
 }

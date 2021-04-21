@@ -8,7 +8,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 200000;
+	startupParams.ParticlesCount = 8000;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -121,14 +121,14 @@ void Particles2dCollisionEffect::initialize()
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 
-	std::vector<GLushort> cellIds(startupParams.ParticlesCount * 4+100, 0);
+	std::vector<GLuint> cellIds(startupParams.ParticlesCount * 4+100, 0);
 
 	glGenVertexArrays(1, &vaoCellId);
 	glBindVertexArray(vaoCellId);
 
 	glGenBuffers(1, &ssboCellId);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboCellId);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, cellIds.size() * sizeof(GLushort), &cellIds[0], GL_DYNAMIC_READ);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, cellIds.size() * sizeof(GLuint), &cellIds[0], GL_DYNAMIC_READ);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboCellId);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -148,7 +148,7 @@ void Particles2dCollisionEffect::initialize()
 	threadGroupsInWorkGroup = 48;
 	threadsInThreadGroup = 4;
 	threadsInWorkGroup = threadGroupsInWorkGroup * threadsInThreadGroup;
-	groupCount = ceil(startupParams.ParticlesCount * 2 / threadsInWorkGroup);
+	GLuint groupCount = ceil(startupParams.ParticlesCount * 4 / threadsInWorkGroup);
 	phase1GroupCount = groupCount > maxWorkGroupCount ? maxWorkGroupCount : groupCount;
 
 	std::vector<GLuint> globalCounters(12288 * phase1GroupCount, 0);
@@ -169,7 +169,7 @@ void Particles2dCollisionEffect::initialize()
 	std::vector<ShaderParams> vertShaderParams
 	{
 		ShaderParams {"#define particlesCount 0", "#define particlesCount " + std::to_string(currentParticlesCount)},
-		ShaderParams {"#define particlesCountDoubled 0", "#define particlesCountDoubled " + std::to_string(currentParticlesCount * 2)}
+		ShaderParams {"#define particlesCountTimes4 0", "#define particlesCountTimes4 " + std::to_string(currentParticlesCount * 4)}
 	};
 	std::vector<ShaderParams> fragShaderParams
 	{
@@ -184,7 +184,7 @@ void Particles2dCollisionEffect::initialize()
 	shaderProgram = newShaderProgram;
 
 	
-	cellIdsLength = currentParticlesCount * 2; // each cell id is 2 bytes. cellIds is array of 4 byte values because glsl doesn't have 2-byte type
+	cellIdsLength = currentParticlesCount * 4;
 	elementsPerThread = ceil(cellIdsLength / (phase1GroupCount * threadsInWorkGroup));
 	elementsPerGroup = threadsInThreadGroup * elementsPerThread;
 	threadGroupsTotal = ceil(cellIdsLength / (double)elementsPerGroup);
@@ -545,16 +545,14 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	memcpy(buf2, p23, len * sizeof(GLuint));
 	glUnmapNamedBuffer(buffer2);
 
-	//GLushort* bufce = new GLushort[100];
-	//GLushort* p23w = (GLushort*)glMapNamedBufferRange(ssboCellId, 0, 100 * sizeof(GLushort), GL_MAP_READ_BIT);
-	//memcpy(bufce, p23w, 100 * sizeof(GLushort));
+	//GLuint* bufce = new GLuint[len];
+	//GLuint* p23w = (GLuint*)glMapNamedBufferRange(ssboCellId, 0, len * sizeof(GLuint), GL_MAP_READ_BIT);
+	//memcpy(bufce, p23w, len * sizeof(GLuint));
 	//glUnmapNamedBuffer(ssboCellId);
 
-	//GLushort* buf7short = new GLushort[40000];
-	//GLuint* buf7int = new GLuint[40000];
-	//GLushort* p7 = (GLushort*)glMapNamedBufferRange(buffer7, 0, 40000 * sizeof(GLushort), GL_MAP_READ_BIT);
-	//memcpy(buf7short, p7, 40000 * sizeof(GLushort));
-	//memcpy(buf7int, (GLuint*)p7, 40000 * sizeof(GLuint));
+	//GLuint* buf7 = new GLuint[40000];
+	//GLuint* p7 = (GLuint*)glMapNamedBufferRange(buffer7, 0, 40000 * sizeof(GLuint), GL_MAP_READ_BIT);
+	//memcpy(buf7, p7, 40000 * sizeof(GLuint));
 	//glUnmapNamedBuffer(buffer7);
 
 	for (int i = 1; i < currentParticlesCount * 4; i++)
@@ -593,36 +591,29 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	glDispatchCompute(phase1GroupCount + 1, 1, 1);
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	// ===================================================
-	//int len = 400000;
-	//GLushort* buf = new GLushort[len];
-	//GLushort* p = (GLushort*)glMapNamedBufferRange(buffer2, 0, len * sizeof(GLushort), GL_MAP_READ_BIT);
-	//GLenum e = glGetError();
-	//memcpy(buf, p, len * sizeof(GLushort));
-	//bool result = glUnmapNamedBuffer(buffer2); 
 
-	//GLuint* buf2 = new GLuint[len];
-	//GLuint* p23 = (GLuint*)glMapNamedBufferRange(buffer3, 0, len * sizeof(GLuint), GL_MAP_READ_BIT);
-	//memcpy(buf2, p23, len * sizeof(GLuint));
-	//glUnmapNamedBuffer(buffer3);
+	delete[] buf2;
+	buf2 = new GLuint[len];
+	p23 = (GLuint*)glMapNamedBufferRange(buffer3, 0, len * sizeof(GLuint), GL_MAP_READ_BIT);
+	memcpy(buf2, p23, len * sizeof(GLuint));
+	glUnmapNamedBuffer(buffer3);
 
-	//GLushort* buf7short = new GLushort[400];
-	//GLuint* buf7int = new GLuint[400];
-	//GLushort* p7 = (GLushort*)glMapNamedBufferRange(buffer7, 0, 400 * sizeof(GLushort), GL_MAP_READ_BIT);
-	//memcpy(buf7short, p7, 400 * sizeof(GLushort));
-	//memcpy(buf7int, (GLuint*)p7, 400 * sizeof(GLuint));
+	//GLuint* buf7 = new GLuint[40000];
+	//GLuint* p7 = (GLuint*)glMapNamedBufferRange(buffer7, 0, 40000 * sizeof(GLuint), GL_MAP_READ_BIT);
+	//memcpy(buf7, p7, 40000 * sizeof(GLuint));
 	//glUnmapNamedBuffer(buffer7);
 
-	//for (int i = 1; i < currentParticlesCount * 4; i++)
-	//{
-	//	if (buf2[i - 1] > buf2[i])
-	//	{
-	//		int nt = 0;
-	//	}
-	//}
+	for (int i = 1; i < currentParticlesCount * 4; i++)
+	{
+		if (buf2[i - 1] > buf2[i])
+		{
+			int nt = 0;
+		}
+	}
 
 	//frame++;
 	//delete[] buf;
-	//delete[] buf2;
+	delete[] buf2;
 
 
 	glUseProgram(shaderProgram);

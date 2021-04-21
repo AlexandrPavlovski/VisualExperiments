@@ -2,7 +2,7 @@
 
 // zeros is replaced at runtime with an actual values
 #define particlesCount 0
-#define particlesCountDoubled 0
+#define particlesCountTimes4 0
 
 layout(std430) buffer;
 
@@ -19,9 +19,9 @@ layout(binding = 0) buffer SSBO
 {
 	vec4 particleData[];
 };
-layout(binding = 1) buffer cells1
+layout(binding = 6) buffer cells3
 {
-	uint cellIds1[];
+	uint cellIdsSorted[];
 };
 layout(binding = 2) buffer objects
 {
@@ -191,20 +191,20 @@ void setParticleColor()
 
 void setGridColor()
 {
-	uint cellIndex = gl_VertexID * 2;
+	uint cellIndex = gl_VertexID * 4;
 //	uint shift = uint(mod(gl_VertexID, 2)) * 16;
 //	uint cellId = (cellIds1[cellIndex] >> shift) & 255;
 
-	uvec2 cellIdsPacked = uvec2(cellIds1[cellIndex], cellIds1[cellIndex + 1]);
-	uint hCellId = cellIdsPacked.x & 65535;
-	uint pCellId1 = cellIdsPacked.x >> 16;
-	uint pCellId2 = cellIdsPacked.y & 65535;
-	uint pCellId3 = cellIdsPacked.y >> 16;
+	uvec2 cellIdsPacked = uvec2(cellIdsSorted[cellIndex], cellIdsSorted[cellIndex + 1]);
+	uint hCellId = cellIdsSorted[cellIndex];
+	uint pCellId1 = cellIdsSorted[cellIndex + 1];
+	uint pCellId2 = cellIdsSorted[cellIndex + 2];
+	uint pCellId3 = cellIdsSorted[cellIndex + 3];
 
-	particleData[hCellId + particlesCountDoubled].z += 0.7;
-	particleData[pCellId1 + particlesCountDoubled].z += 0.7;
-	particleData[pCellId2 + particlesCountDoubled].z += 0.7;
-	particleData[pCellId3 + particlesCountDoubled].z += 0.7;
+	particleData[hCellId + particlesCountTimes4].z += 0.7;
+	particleData[pCellId1 + particlesCountTimes4].z += 0.7;
+	particleData[pCellId2 + particlesCountTimes4].z += 0.7;
+	particleData[pCellId3 + particlesCountTimes4].z += 0.7;
 }
 
 vec2 worldToScreen(vec2 worldPos)
@@ -229,7 +229,7 @@ void drawParticle()
 void updateGridCells()
 {
 	uint gridWidth = uint(windowSize.x / cellSize) + 2;
-	uint cellId = gl_VertexID - particlesCountDoubled;
+	uint cellId = gl_VertexID - particlesCountTimes4;
 
 	vec4 gridCell = particleData[gl_VertexID];
 

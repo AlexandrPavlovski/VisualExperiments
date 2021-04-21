@@ -132,81 +132,27 @@ void main()
 	{
 		const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
 		const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
-		const uint cellIndex = (gl_WorkGroupID.x * (threadGroupsInWorkGroup - 1) + groupIndex) * elementsPerGroup + uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
+		const uint cellIndex = (gl_WorkGroupID.x * (threadGroupsInWorkGroup - 1) + groupIndex) * elementsPerGroup + indexInGroup;
 		const uint counterIndexOffset = groupIndex * 256;
 		
-		uint cellIdsPacked;
-		uint indexInSharedCounters;
-		uint indexInSharedCounters2;
 		uint offset;
-		uint offset2;
 		for (i = 0; i < elementsPerGroup && cellIndex + i < cellIdsLength; i += threadsInThreadGroup)
 		{
-			cellIdsPacked = cellIdsInput[cellIndex + i];
-			
-			const uint cellId1 = cellIdsPacked & 65535;
-			const uint cellId2 = cellIdsPacked >> 16;
-
-			const uint radix = (cellId1 >> cellIdShift) & 255;
-			const uint radix2 = (cellId2 >> cellIdShift) & 255;
-			
+			const uint cellId = cellIdsInput[cellIndex + i];
+			const uint radix = (cellId >> cellIdShift) & 255;
 			const uint indexInSharedCounters = counterIndexOffset + radix;
-			const uint indexInSharedCounters2 = counterIndexOffset + radix2;
 
 			barrier();
-
-//			indexInSharedCounters = counterIndexOffset + (cellIdsPacked & 65535 >> cellIdShift) & 255;
-//			indexInSharedCounters2 = counterIndexOffset + (cellIdsPacked >> 16 >> cellIdShift) & 255;
 
 			for (uint j = 0; j < 16; j++)
 			{
 				if (indexInWrap == j)
 				{
-//					uint cellId1 = cellIdsPacked & 65535;
-//					uint cellId2 = cellIdsPacked >> 16;
+					offset = sharedCounters[indexInSharedCounters];
+					cellIdsOutput[offset] = cellId;
+					sharedCounters[indexInSharedCounters]++;
 
-if (cellIdShift == 0) {
-//					offset = sharedCounters[indexInSharedCounters];
-//					uint outCell = cellIdsOutput[offset / 2];
-//					outCell = outCell | cellId1 << uint(mod(offset, 2) * 16);
-//					cellIdsOutput[offset / 2] = outCell;
-//					sharedCounters[indexInSharedCounters]++;
-//
-//					offset2 = sharedCounters[indexInSharedCounters2];
-//					outCell = cellIdsOutput[offset2 / 2];
-//					outCell = outCell | cellId2 << uint(mod(offset2, 2) * 16);
-//					cellIdsOutput[offset2 / 2] = outCell;
-//					sharedCounters[indexInSharedCounters2]++;
-offset = sharedCounters[indexInSharedCounters];
-cellIdsOutput[offset] = cellId1;
-sharedCounters[indexInSharedCounters]++;
-
-offset2 = sharedCounters[indexInSharedCounters2];
-cellIdsOutput[offset2] = cellId2;
-sharedCounters[indexInSharedCounters2]++;
-
-test[thid*2] = offset;
-test[thid*2+1] = offset2;
-					}
-
-if (cellIdShift == 8) {
-offset = sharedCounters[indexInSharedCounters];
-cellIdsOutput[offset] = cellId1;
-sharedCounters[indexInSharedCounters]++;
-
-offset2 = sharedCounters[indexInSharedCounters2];
-cellIdsOutput[offset2] = cellId2;
-sharedCounters[indexInSharedCounters2]++;
-
-
-}
-
-//cellIdsOutput[thid] = cellIdsPacked >> 16;
-//cellIdsOutput[thid*2+1] |= cellIdsPacked >> 16;
-//sharedCounters[indexInSharedCounters]++;
-//sharedCounters[indexInSharedCounters2]++;
-//test[thid * 2] = indexInSharedCounters;
-//test[thid * 2 + 1] = indexInSharedCounters2;
+test[thid] = cellId;
 				}
 			}
 		}

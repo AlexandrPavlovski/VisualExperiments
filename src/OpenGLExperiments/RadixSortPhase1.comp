@@ -47,15 +47,9 @@ void main()
 
 	for (uint i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
 	{
-		const uint cellIdsPacked = cellIds1[cellIndexToReadFrom + i];
-		const uint cellId1 = cellIdsPacked & 65535;
-		const uint cellId2 = cellIdsPacked >> 16;
-
-		const uint radix = (cellId1 >> cellIdShift) & 255;
-		const uint radix2 = (cellId2 >> cellIdShift) & 255;
-
+		const uint cellId = cellIds1[cellIndexToReadFrom + i];
+		const uint radix = (cellId >> cellIdShift) & 255;
 		const uint indexInSharedCounters = counterIndexOffset + radix;
-		const uint indexInSharedCounters2 = counterIndexOffset + radix2;
 
 		barrier();
 
@@ -63,19 +57,15 @@ void main()
 		{
 			if (indexInGroup == 0) {
 				sharedCounters[indexInSharedCounters]++;
-				sharedCounters[indexInSharedCounters2]++;
 			}
 			if (indexInGroup == 1) {
 				sharedCounters[indexInSharedCounters]++;
-				sharedCounters[indexInSharedCounters2]++;
 			}
 			if (indexInGroup == 2) {
 				sharedCounters[indexInSharedCounters]++;
-				sharedCounters[indexInSharedCounters2]++;
 			}
 			if (indexInGroup == 3) {
 				sharedCounters[indexInSharedCounters]++;
-				sharedCounters[indexInSharedCounters2]++;
 			}
 		}
 	}

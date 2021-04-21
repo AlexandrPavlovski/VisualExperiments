@@ -58,7 +58,6 @@ private:
 	GLuint threadGroupsInWorkGroup = 0;
 	GLuint threadsInThreadGroup = 0;
 	GLfloat threadsInWorkGroup = 0;
-	GLuint groupCount = 0;
 	GLuint cellIdsLength = 0;
 	GLuint elementsPerThread = 0;
 	GLuint elementsPerGroup = 0;
