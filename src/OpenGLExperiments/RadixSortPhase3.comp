@@ -6,11 +6,18 @@
 #define threadGroupsInWorkGroup 1
 #define elementsPerGroup 0
 #define sharedCountersLength 12032
+
+#define cellIdShift 0
+
 #define bindingCellIdsInput 1
 #define bindingCellIdsOutput 5
-#define cellIdShift 0
 #define bufferCellIdsInput cells1
 #define bufferCellIdsOutput cells2
+
+#define bindingObjectIdsInput 2
+#define bindingObjectIdsOutput 7
+#define bufferObjectIdsInput objects1
+#define bufferObjectIdsOutput objects2
 
 layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
@@ -20,9 +27,9 @@ layout(binding = bindingCellIdsInput) buffer bufferCellIdsInput
 {
 	uint cellIdsInput[];
 };
-layout(binding = 2) buffer objects
+layout(binding = bindingObjectIdsInput) buffer bufferObjectIdsInput
 {
-	uint objectIds[];
+	uint objectIdsInput[];
 };
 layout(binding = 3) buffer counters
 {
@@ -36,9 +43,13 @@ layout(binding = bindingCellIdsOutput) buffer bufferCellIdsOutput
 {
 	uint cellIdsOutput[];
 };
-layout(binding = 7) buffer tetete
+layout(binding = bindingObjectIdsOutput) buffer bufferObjectIdsOutput
 {
-	uint test[];
+	uint objectIdsOutput[];
+};
+layout(binding = 9) buffer tetete
+{
+	float test[];
 };
 
 shared uint totalSummShared[256];
@@ -99,10 +110,10 @@ void main()
 		totalSummShared[thid + i] = totalSumms[thid + i];
 	}
 
-//	for (i = 0; thid + i < 256; i += threadsInWorkGroup)
-//	{
-//		test[thid + i] = totalSumms[thid + i];
-//	}
+//for (i = 0; thid + i < 256; i += threadsInWorkGroup)
+//{
+//	test[thid + i] = totalSumms[thid + i];
+//}
 
 	presumm(thid, 256);
 
@@ -113,21 +124,21 @@ void main()
 		sharedCounters[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x] + totalSummShared[uint(mod(thid + i, 256))];
 	}
 
-//	for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
-//	{
-//		test[thid + i] = sharedCounters[thid + i];
-//	}
-//	for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
-//	{
-//		test[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x];
-//	}
-//	for (i = 0; thid + i < 256; i += threadsInWorkGroup)
-//	{
-//		test[thid + i] = totalSummShared[thid + i];
-//	}
+//for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
+//{
+//	test[thid + i] = sharedCounters[thid + i];
+//}
+//for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
+//{
+//	test[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x];
+//}
+//for (i = 0; thid + i < 256; i += threadsInWorkGroup)
+//{
+//	test[thid + i] = totalSummShared[thid + i];
+//}
 
 	barrier();
-
+uint t=0;
 	if (thid < threadsInWorkGroup - threadsInThreadGroup)
 	{
 		const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
@@ -139,6 +150,7 @@ void main()
 		for (i = 0; i < elementsPerGroup && cellIndex + i < cellIdsLength; i += threadsInThreadGroup)
 		{
 			const uint cellId = cellIdsInput[cellIndex + i];
+			const uint objectId = objectIdsInput[cellIndex + i];
 			const uint radix = (cellId >> cellIdShift) & 255;
 			const uint indexInSharedCounters = counterIndexOffset + radix;
 
@@ -146,54 +158,26 @@ void main()
 
 			for (uint j = 0; j < 16; j++)
 			{
+//if (cellIdShift == 0) {
+//test[t++] = 999.0;
+//}
 				if (indexInWrap == j)
 				{
 					offset = sharedCounters[indexInSharedCounters];
+
 					cellIdsOutput[offset] = cellId;
+					objectIdsOutput[offset] = objectId;
+					
 					sharedCounters[indexInSharedCounters]++;
 
-test[thid] = cellId;
+//if (cellIdShift != 0) {
+//if (objectId == 0){
+//test[gl_WorkGroupID.x * 5 + t++] = float(cellIndex + i);
+//}}
 				}
 			}
 		}
 	}
-
-//if (gl_GlobalInvocationID.x == 1 && cellIdShift == 8)
-//{
-//const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
-//const uint counterIndexOffset = groupIndex * 256;
-//
-//const uint cellIdsPacked = cellIdsOutput[0];
-//			
-//const uint cellId1 = cellIdsPacked & 65535;
-//const uint cellId2 = cellIdsPacked >> 16;
-//			
-//const uint radix = (cellId1 >> cellIdShift) & 255;
-//const uint radix2 = (cellId2 >> cellIdShift) & 255;
-//
-//const uint indexInSharedCounters = counterIndexOffset + radix;
-//const uint indexInSharedCounters2 = counterIndexOffset + radix2;
-//
-//const uint offset = sharedCounters[indexInSharedCounters];
-//const uint offset2 = sharedCounters[indexInSharedCounters2];
-//
-//test[0]=cellIdsPacked;
-//test[1]=cellId1;
-//test[2]=cellId2;
-//test[3]=radix;
-//test[4]=radix2;
-//test[5]=cellIdShift;
-//test[6]=groupIndex;
-//test[7]=counterIndexOffset;
-//test[8]=indexInSharedCounters;
-//test[9]=indexInSharedCounters2;
-//test[10]=offset;
-//test[11]=offset2;
-//test[12]=-1;
-//test[13]=-1;
-//test[14]=-1;
-//test[15]=-1;
-//}
 
 //	for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
 //	{

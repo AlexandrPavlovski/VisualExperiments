@@ -1,0 +1,164 @@
+#version 460 core
+
+#define cellIdsLength 0
+#define cellsPerThread 40
+#define threadsInBlock 1024
+
+
+layout(local_size_x = 1024) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform vec2 windowSize;
+layout(location = 6) uniform float particleSize;
+layout(location = 7) uniform uint cellSize;
+
+
+layout(binding = 0) buffer SSBO
+{
+	vec4 particleData[];
+};
+layout(binding = 6) buffer cells3
+{
+	uint cellIds[];
+};
+layout(binding = 8) buffer objects3
+{
+	uint objectIds[];
+};
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+
+
+struct collCell
+{
+	uint index;
+	uint phantomAndHomeCellsCountPacked;
+};
+
+void main()
+{
+	const uint thid = gl_GlobalInvocationID.x;
+//	const uint thid = gl_LocalInvocationID.x;
+	const uint startIndex = thid * cellsPerThread;
+	if (startIndex >= cellIdsLength)
+		return;
+uint t = 0;
+
+	const uint gridWidth = uint(windowSize.x / cellSize) + 2;
+
+	collCell collisionCells[84];
+	uint collisionCellsFound[4] = uint[4](0);
+	bool isFirstTransition = thid != 0;
+
+	uint collisionCellIndex = startIndex;
+	uint prevCellId = cellIds[startIndex];
+	uint homeOrPhantomCell = objectIds[startIndex] >> 31;
+	uint pCount = 1;
+	pCount -= homeOrPhantomCell;
+	uint hCount = homeOrPhantomCell;
+
+	uint i;
+	for (i = 1; i < cellsPerThread; i++)
+	{
+		uint currCellId = cellIds[startIndex + i];
+		if (currCellId != prevCellId)
+		{
+			if (hCount > 0 && pCount > 0 || hCount > 1)
+			{
+				uint cellType = ((prevCellId % gridWidth) % 2) + ((prevCellId / gridWidth) % 2) * 2;
+				collisionCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
+				if (!isFirstTransition)
+				{
+					collisionCellsFound[cellType]++;
+				}
+				isFirstTransition = false;
+			}
+
+			collisionCellIndex = startIndex + i;
+			prevCellId = currCellId;
+			pCount = 0;
+			hCount = 0;
+		}
+
+		homeOrPhantomCell = objectIds[startIndex + i] >> 31;
+		pCount++;
+		pCount -= homeOrPhantomCell;
+		hCount += homeOrPhantomCell;
+	}
+
+	while (cellIds[startIndex + i] == prevCellId)
+	{
+		homeOrPhantomCell = objectIds[startIndex + i] >> 31;
+		pCount++;
+		pCount -= homeOrPhantomCell;
+		hCount += homeOrPhantomCell;
+		i++;
+	}
+	if (hCount > 0 && pCount > 0)
+	{
+		uint cellType = ((prevCellId % gridWidth) % 2) + ((prevCellId / gridWidth) % 2) * 2;
+		collisionCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
+		collisionCellsFound[cellType]++;
+	}
+//if (thid == 1700){
+//test[t++]=startIndex;
+//}
+//if (thid == 0)
+//{
+//for (i = 0; i < 84; i++)
+//{
+//test[i] = collisionCells[i] >> 16 & 255;
+//}
+//}
+//return;
+	for (i = 0; i < 4; i++)
+	{
+		uint collCellFound = collisionCellsFound[i];
+
+		for (uint j = 0; j < collCellFound; j++)
+		{
+			collCell collisionCell = collisionCells[i * 21 + j];
+			collisionCellIndex = collisionCell.index;
+			pCount = collisionCell.phantomAndHomeCellsCountPacked >> 16;
+			hCount = collisionCell.phantomAndHomeCellsCountPacked & 65535;
+//if (thid == 1700){
+//test[t++]=collisionCellIndex;
+//}
+			for (uint h = 0; h < hCount; h++)
+			{
+				vec4 particleA = particleData[objectIds[collisionCellIndex + h]];
+				for (uint c = h + 1; c < hCount + pCount; c++)
+				{
+					vec4 particleB = particleData[objectIds[collisionCellIndex + c]];
+//test[t++] = float(particleB.x);
+//test[t++] = float(particleB.y);
+
+					const vec2 posDiff = particleA.xy - particleB.xy;
+					const float distSquared = dot(posDiff, posDiff);
+
+					if (distSquared < particleSize * particleSize)
+					{
+						const float dist = sqrt(distSquared);
+						const vec2 norm = posDiff / dist;
+						const float covered = particleSize - dist;
+if (distSquared == 0){
+test[t++] = thid;
+//test[t++] = float(objectIds[collisionCellIndex + h]);
+//test[t++] = float(objectIds[collisionCellIndex + c]);
+//test[t++] = collisionCellIndex;
+//test[t++] = pCount;
+//test[t++] = hCount;
+}
+						particleData[objectIds[collisionCellIndex + h]].zw += norm * 0.1 * covered;
+						particleData[objectIds[collisionCellIndex + c]].zw += -norm * 0.1 * covered;
+					}
+				}
+			}
+		}
+
+		barrier();
+	}
+}

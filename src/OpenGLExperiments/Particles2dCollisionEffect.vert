@@ -2,7 +2,7 @@
 
 // zeros is replaced at runtime with an actual values
 #define particlesCount 0
-#define particlesCountTimes4 0
+#define cellsCount 0
 
 layout(std430) buffer;
 
@@ -156,22 +156,22 @@ void updateParticle()
 	float deltaT = deltaTime * 0.04;
 
 	vec4 particle = particleData[gl_VertexID];
-	vec4 particleSecondHalf = particleData[gl_VertexID + particlesCount];
+//	vec4 particleSecondHalf = particleData[gl_VertexID + particlesCount];
 	vec2 pos = particle.xy;
 	vec2 vel = particle.zw;
-	vec2 acc = particleSecondHalf.yz;
-
-	if (!isPaused)
-	{
-		vel += acc * deltaT;
+//	vec2 acc = particleSecondHalf.yz;
+//
+//	if (!isPaused)
+//	{
+//		vel += acc * deltaT;
 		vel *= velocityDamping;
 		pos += vel * deltaT;
-
+//
 		particle.xy = pos;
-		particle.zw = vel;
+		particle.zw = vec2(0.0);
 		particleData[gl_VertexID] = particle;
-		particleData[gl_VertexID + particlesCount].yz = vec2(0.0);
-	}
+//		particleData[gl_VertexID + particlesCount].yz = vec2(0.0);
+//	}
 }
 
 void setParticleColor()
@@ -201,10 +201,10 @@ void setGridColor()
 	uint pCellId2 = cellIdsSorted[cellIndex + 2];
 	uint pCellId3 = cellIdsSorted[cellIndex + 3];
 
-	particleData[hCellId + particlesCountTimes4].z += 0.7;
-	particleData[pCellId1 + particlesCountTimes4].z += 0.7;
-	particleData[pCellId2 + particlesCountTimes4].z += 0.7;
-	particleData[pCellId3 + particlesCountTimes4].z += 0.7;
+	particleData[hCellId + cellsCount].z += 0.7;
+	particleData[pCellId1 + cellsCount].z += 0.7;
+	particleData[pCellId2 + cellsCount].z += 0.7;
+	particleData[pCellId3 + cellsCount].z += 0.7;
 }
 
 vec2 worldToScreen(vec2 worldPos)
@@ -229,7 +229,7 @@ void drawParticle()
 void updateGridCells()
 {
 	uint gridWidth = uint(windowSize.x / cellSize) + 2;
-	uint cellId = gl_VertexID - particlesCountTimes4;
+	uint cellId = gl_VertexID - cellsCount;
 
 	vec4 gridCell = particleData[gl_VertexID];
 
@@ -239,6 +239,14 @@ void updateGridCells()
 	gridCell.xy -= cellSize / 2;
 
 	gridCellColor = vec3(gridCell.z);
+	
+//gridCell.xy += 43;
+//uint cellIndex = ((gl_VertexID % gridWidth) % 2) + ((gl_VertexID / gridWidth) % 2) * 2;
+//if (cellIndex == 0)
+//{
+//	gridCellColor = vec3(1.0);
+//}
+
 	particleData[gl_VertexID].z = mod(gl_VertexID, 2) / 10 + 0.1;
 
 	vec2 screenPos = worldToScreen(gridCell.xy);

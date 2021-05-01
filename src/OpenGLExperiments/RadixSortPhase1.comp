@@ -5,9 +5,11 @@
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 1
 #define elementsPerGroup 0
+
+#define cellIdShift 0
+
 #define bindingCellIds1 1
 #define bindingCellIds2 5
-#define cellIdShift 0
 #define cellsFirst cells1
 #define cellsSecond cells2
 
@@ -28,7 +30,7 @@ layout(binding = bindingCellIds2) buffer cellsSecond
 	uint cellIds2[];
 };
 
-layout(binding = 7) buffer tetete
+layout(binding = 9) buffer tetete
 {
 	uint test[];
 };

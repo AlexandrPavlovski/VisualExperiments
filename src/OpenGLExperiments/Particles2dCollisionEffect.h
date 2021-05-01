@@ -44,6 +44,7 @@ private:
 	RuntimeParams runtimeParams;
 
 	GLint currentParticlesCount = 0;
+	GLint currentCellsCount = 0;
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
 
@@ -52,13 +53,13 @@ private:
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,
 		radixPhase1Pass1CompShaderProgram = 0, radixPhase1Pass2CompShaderProgram = 0,
 		radixPhase2CompShaderProgram = 0,
-		radixPhase3Pass1CompShaderProgram = 0, radixPhase3Pass2CompShaderProgram = 0;
+		radixPhase3Pass1CompShaderProgram = 0, radixPhase3Pass2CompShaderProgram = 0,
+		findAndResolveCollisionsCompShaderProgram = 0;
 
 	GLuint maxWorkGroupCount = 0;
 	GLuint threadGroupsInWorkGroup = 0;
 	GLuint threadsInThreadGroup = 0;
 	GLfloat threadsInWorkGroup = 0;
-	GLuint cellIdsLength = 0;
 	GLuint elementsPerThread = 0;
 	GLuint elementsPerGroup = 0;
 	GLuint threadGroupsTotal = 0;
@@ -73,6 +74,8 @@ private:
 	GLuint buffer2 = 0;
 	GLuint buffer3 = 0;
 	GLuint buffer7 = 0;
+	GLuint buffer8 = 0;
+	GLuint bufferTest = 0;
 	GLuint frame = 0;
 	
 };
