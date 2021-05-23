@@ -40,6 +40,18 @@ private:
 		GLuint cellSize;
 	};
 
+	struct Particle
+	{
+		GLfloat PosX;
+		GLfloat PosY;
+		GLfloat VelX;
+		GLfloat VelY;
+		GLfloat AccX;
+		GLfloat AccY;
+		GLfloat Pressure;
+		GLfloat Unused;
+	};
+
 	StartupParams startupParams;
 	RuntimeParams runtimeParams;
 
@@ -48,8 +60,8 @@ private:
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
 
-	std::vector<GLfloat> particlesData;
-	GLuint vao = 0, ssbo = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
+	std::vector<Particle> particles;
+	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,
 		radixPhase1Pass1CompShaderProgram = 0, radixPhase1Pass2CompShaderProgram = 0,
 		radixPhase2CompShaderProgram = 0,
@@ -67,12 +79,18 @@ private:
 	bool isManualAttractorControlEnabled = false;
 	GLuint phase1GroupCount = 0;
 
+	
 	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
+
+	template< typename T >
+	T* readFromBuffer(int elemCount, GLuint ssbo);
+
+	void cleanup();
 
 	// temp vars
 	GLuint buffer = 0;
-	GLuint buffer2 = 0;
-	GLuint buffer3 = 0;
+	GLuint buffer5 = 0;
+	GLuint buffer6 = 0;
 	GLuint buffer7 = 0;
 	GLuint buffer8 = 0;
 	GLuint bufferTest = 0;

@@ -15,9 +15,18 @@ layout(location = 5) uniform bool isPaused;
 layout(location = 6) uniform float particleSize;
 layout(location = 7) uniform uint cellSize;
 
+struct Particle
+{
+	vec2 Pos;
+	vec2 Vel;
+	vec2 Acc;
+	float Pressure;
+	float Unused;
+};
+
 layout(binding = 0) buffer SSBO
 {
-	vec4 particleData[];
+	Particle particles[];
 };
 layout(binding = 1) buffer cells1
 {
@@ -27,11 +36,6 @@ layout(binding = 2) buffer objects1
 {
 	uint objectIds[];
 };
-layout(binding = 5) buffer cells2
-{
-	uint cellIds2[];
-};
-
 
 void main()
 {
@@ -40,15 +44,13 @@ void main()
 		return;
 
 	uint gridWidth = uint(windowSize.x / cellSize) + 2;
-	vec2 worldPos = particleData[thid].xy;
 	vec2 gridPos;
-	vec2 cellPos = modf(worldPos / cellSize, gridPos);
+	vec2 cellPos = modf(particles[thid].Pos / cellSize, gridPos);
 	gridPos += 1;
 
 	uint hCellId = uint(gridPos.x + gridPos.y * gridWidth);
-
 	uvec3 pCellIds = uvec3(-1);
-	uvec4 objectIdsAndFlags = uvec4(thid | 0x80000000, thid, thid, thid); // 0 = -2147483648
+	uvec4 objectIdsAndFlags = uvec4(thid | 0x80000000, thid, thid, thid); // 0 = 2147483648
 
 	if (cellPos.x > 0.5)
 	{
