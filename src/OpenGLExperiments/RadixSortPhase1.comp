@@ -35,7 +35,7 @@ layout(binding = 9) buffer tetete
 	uint test[];
 };
 
-shared uint sharedCounters[12288] = uint[12288](0);
+shared uint sharedCounters[12288];// = uint[12288](0);
 
 
 void main()

@@ -49,16 +49,15 @@ layout(binding = 9) buffer tetete
 void main()
 {
 	const uint thid = gl_GlobalInvocationID.x;
-//	const uint thid = gl_LocalInvocationID.x;
 	const uint startIndex = thid * cellsPerThread;
-	if (startIndex >= cellIdsLength)
-		return;
+
 uint t = 0;
 for(int o = 0;o<100;o++){test[o]=0;}
+
 	const uint gridWidth = uint(windowSize.x / cellSize) + 2;
 
 	collCell collisionCells[84];
-	uint collisionCellsFound[4] = uint[4](0);
+	uint collisionCellsFound[4] = uint[4](0, 0, 0, 0);
 	bool isFirstTransition = thid != 0;
 	bool isTransitionFound = false;
 
@@ -71,7 +70,7 @@ for(int o = 0;o<100;o++){test[o]=0;}
 
 	uint i;
 	uint currCellId;
-	for (i = 1; (i <= cellsPerThread || !isTransitionFound) && startIndex + i < cellIdsLength; i++)
+	for (i = 1; (i <= cellsPerThread + 1 || !isTransitionFound) && startIndex + i < cellIdsLength; i++)
 	{
 		isTransitionFound = false;
 		currCellId = cellIds[startIndex + i];

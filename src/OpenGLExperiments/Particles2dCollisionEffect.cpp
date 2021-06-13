@@ -1,6 +1,7 @@
 // implementation of this article
 // https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-32-broad-phase-collision-detection-cuda
 
+#include <iostream>
 #include "Particles2dCollisionEffect.h"
 
 Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
@@ -11,7 +12,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 100;
+	startupParams.ParticlesCount = 10;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -44,6 +45,7 @@ void Particles2dCollisionEffect::initialize()
 	{
 		particles[i].PosX = random(300.0, 400.0);
 		particles[i].PosY = random(300.0, 400.0);
+		particles[i].VelX = random(-1.0, 1.0);
 	}
 
 	GLuint vaoCellId = 0;
@@ -358,12 +360,12 @@ double mx, my;
 glfwGetCursorPos(window, &mx, &my);
 int objIdUnderMouse = -1;
 int collisions = 0;
-for (int i = 0; i < currentParticlesCount - 1; i++)
+for (int i = 0; i < currentParticlesCount; i++)
 {
 	float deltaMX = particles[i].PosX - mx;
 	float deltaMY = particles[i].PosY - my;
 	float distSqured = deltaMX * deltaMX + deltaMY * deltaMY;
-	if (distSqured < runtimeParams.particleSize * runtimeParams.particleSize)
+	if (distSqured < (runtimeParams.particleSize / 2) * (runtimeParams.particleSize / 2))
 	{
 		objIdUnderMouse = i;
 	}
@@ -376,6 +378,7 @@ for (int i = 0; i < currentParticlesCount - 1; i++)
 	//		collisions++;
 	//}
 }
+//std::cout << objIdUnderMouse << std::endl;
 
 	isAdvanceOneFrame = false;
 }
