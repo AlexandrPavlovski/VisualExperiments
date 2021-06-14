@@ -35,10 +35,10 @@ Particles2dCollisionEffect::~Particles2dCollisionEffect()
 
 void Particles2dCollisionEffect::initialize()
 {
-	srand(30);
+	srand(50);
 	
 	currentParticlesCount = startupParams.ParticlesCount;
-	currentCellsCount = startupParams.ParticlesCount * 4;
+	currentCellsCount = startupParams.ParticlesCount * 5;
 
 	particles = std::vector<Particle>(currentParticlesCount);
 	for (int i = 0; i < currentParticlesCount; i++)
@@ -378,7 +378,11 @@ for (int i = 0; i < currentParticlesCount; i++)
 	//		collisions++;
 	//}
 }
-//std::cout << objIdUnderMouse << std::endl;
+std::cout << objIdUnderMouse << std::endl;
+if (objIdUnderMouse != -1)
+{
+	std::cout << floor(particles[objIdUnderMouse].PosX / 40) + 1 + (floor(particles[objIdUnderMouse].PosY / 40) + 1) * 34 << std::endl;
+}
 
 	isAdvanceOneFrame = false;
 }

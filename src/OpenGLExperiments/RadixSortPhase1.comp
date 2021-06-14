@@ -35,12 +35,12 @@ layout(binding = 9) buffer tetete
 	uint test[];
 };
 
-shared uint sharedCounters[12288];// = uint[12288](0);
+shared uint sharedCounters[12288];
 
 
 void main()
 {
-	barrier();
+	barrier(); // TODO
 
 	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
 	const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;

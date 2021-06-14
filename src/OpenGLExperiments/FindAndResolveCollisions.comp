@@ -22,10 +22,10 @@ struct Particle
 	float Unused;
 };
 
-struct collCell
+struct CollisionCellData
 {
 	uint index;
-	uint phantomAndHomeCellsCountPacked;
+	uint neighbourAndHomeCellsCountPacked;
 };
 
 layout(binding = 0) buffer SSBO
@@ -56,17 +56,17 @@ for(int o = 0;o<100;o++){test[o]=0;}
 
 	const uint gridWidth = uint(windowSize.x / cellSize) + 2;
 
-	collCell collisionCells[84];
+	CollisionCellData collisionCells[40];
 	uint collisionCellsFound[4] = uint[4](0, 0, 0, 0);
 	bool isFirstTransition = thid != 0;
 	bool isTransitionFound = false;
 
 	uint collisionCellIndex = startIndex;
 	uint prevCellId = cellIds[startIndex];
-	uint homeOrPhantomCell = objectIds[startIndex] >> 31;
-	uint pCount = 1;
-	pCount -= homeOrPhantomCell;
-	uint hCount = homeOrPhantomCell;
+	uint homeOrNeighbourCell = objectIds[startIndex] >> 31; // can be 1 (home) or 0 (neighbour)
+	uint nCount = 1;
+	nCount -= homeOrNeighbourCell;
+	uint hCount = homeOrNeighbourCell;
 
 	uint i;
 	uint currCellId;
@@ -79,10 +79,10 @@ for(int o = 0;o<100;o++){test[o]=0;}
 		{
 			if (!isFirstTransition)
 			{
-				if (hCount > 0 && pCount > 0 || hCount > 1)
+				if (hCount > 0 && nCount > 0 || hCount > 1)
 				{
 					uint cellType = ((prevCellId % gridWidth) % 2) + ((prevCellId / gridWidth) % 2) * 2;
-					collisionCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
+					collisionCells[cellType * 21 + collisionCellsFound[cellType]] = CollisionCellData(collisionCellIndex, hCount << 16 | nCount);
 						collisionCellsFound[cellType]++;
 				}
 			}
@@ -90,16 +90,16 @@ for(int o = 0;o<100;o++){test[o]=0;}
 
 			collisionCellIndex = startIndex + i;
 			prevCellId = currCellId;
-			pCount = 0;
+			nCount = 0;
 			hCount = 0;
 
 			isTransitionFound = true;
 		}
 
-		homeOrPhantomCell = objectIds[startIndex + i] >> 31;
-		pCount++;
-		pCount -= homeOrPhantomCell;
-		hCount += homeOrPhantomCell;
+		homeOrNeighbourCell = objectIds[startIndex + i] >> 31;
+		nCount++;
+		nCount -= homeOrNeighbourCell;
+		hCount += homeOrNeighbourCell;
 	}
 
 //	currCellId = cellIds[startIndex + i];
@@ -146,10 +146,10 @@ test[thid * 2 + 1]=startIndex + i;
 
 		for (uint j = 0; j < collCellFound; j++)
 		{
-			collCell collisionCell = collisionCells[i * 21 + j];
+			CollisionCellData collisionCell = collisionCells[i * 21 + j];
 			collisionCellIndex = collisionCell.index;
-			hCount = collisionCell.phantomAndHomeCellsCountPacked >> 16;
-			pCount = collisionCell.phantomAndHomeCellsCountPacked & 65535;
+			hCount = collisionCell.neighbourAndHomeCellsCountPacked >> 16;
+			nCount = collisionCell.neighbourAndHomeCellsCountPacked & 65535;
 //if (thid == 1){
 //test[t++]=collisionCellIndex;
 //}
@@ -159,7 +159,7 @@ test[thid * 2 + 1]=startIndex + i;
 //if (collisionCellIndex == 32){
 //test[t++]=hCount + pCount;
 //}
-				for (uint c = h + 1; c < hCount + pCount; c++)
+				for (uint c = h + 1; c < hCount + nCount; c++)
 				{
 					Particle particleB = particles[objectIds[collisionCellIndex + c]];
 					const vec2 posDiff = particleA.Pos - particleB.Pos;
