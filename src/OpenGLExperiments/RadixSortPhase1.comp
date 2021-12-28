@@ -40,7 +40,14 @@ shared uint sharedCounters[12288];
 
 void main()
 {
-	barrier(); // TODO
+	if (cellIdShift != 0)
+	{
+		for (uint i = 0; gl_LocalInvocationID.x + i < 12288; i += threadsInWorkGroup)
+		{
+			sharedCounters[gl_LocalInvocationID.x + i] = 0;
+		}
+	}
+	barrier();
 
 	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
 	const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;

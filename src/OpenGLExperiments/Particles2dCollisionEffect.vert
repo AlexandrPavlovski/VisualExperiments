@@ -159,7 +159,47 @@ layout(location = 2) out flat uint isGridCell;
 //
 //	particleData[gl_VertexID] = vec4(pos, vel);
 //}
-//
+
+vec2 collisionResponse(float penetrationDepth, vec2 norm, vec2 relativeVel)
+{
+	const float k = 1.0;
+	const float b = 0.05;
+
+	float acc = k * penetrationDepth - b * dot(norm, relativeVel);
+
+	return acc * norm;
+}
+
+vec2 screenBoundsCollision(vec2 pos, vec2 vel)
+{
+	vec2 acc = vec2(0.0);
+
+	const float halfParticleSize = particleSize / 2;
+	const float leftWall = halfParticleSize;
+	const float rightWall = windowSize.x - halfParticleSize;
+	const float topWall = halfParticleSize;
+	const float bottomWall = windowSize.y - halfParticleSize;
+
+	if (pos.x < leftWall)
+	{
+		acc += collisionResponse(leftWall - pos.x, vec2(1.0, 0.0), vel);
+	}
+	if (pos.y < topWall)
+	{
+		acc += collisionResponse(topWall - pos.y, vec2(0.0, 1.0), vel);
+	}
+	if (pos.x > rightWall)
+	{
+		acc += collisionResponse(pos.x - rightWall, vec2(-1.0, 0.0), vel);
+	}
+	if (pos.y > bottomWall)
+	{
+		acc += collisionResponse(pos.y - bottomWall, vec2(0.0, -1.0), vel);
+	}
+
+	return acc;
+}
+
 void updateParticle()
 {
 	float deltaT = deltaTime * 0.04;
@@ -168,11 +208,19 @@ void updateParticle()
 
 	if (!isPaused)
 	{
-		particle.Vel += particle.Acc * deltaT;
+		const vec2 boundsCollisionAcc = screenBoundsCollision(particle.Pos, particle.Vel);
+		const vec2 gravityAcc = vec2(0, 0.1);
+
+		vec2 newVel = (particle.Acc + boundsCollisionAcc + gravityAcc) * deltaT;
+		if (dot(newVel, newVel) > 25)
+		{
+			newVel = normalize(newVel) * 4;
+		}
+
+		particle.Vel += newVel;
 		particle.Vel *= velocityDamping;
 		particle.Pos += particle.Vel * deltaT;
 
-		particle.Vel = vec2(0.0);
 		particle.Acc = vec2(0.0);
 		particles[gl_VertexID] = particle;
 	}

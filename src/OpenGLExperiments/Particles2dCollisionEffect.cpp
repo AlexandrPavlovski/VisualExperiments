@@ -12,7 +12,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 10;
+	startupParams.ParticlesCount = 145;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -38,15 +38,23 @@ void Particles2dCollisionEffect::initialize()
 	srand(50);
 	
 	currentParticlesCount = startupParams.ParticlesCount;
-	currentCellsCount = startupParams.ParticlesCount * 5;
+	currentCellsCount = startupParams.ParticlesCount * 4;
 
 	particles = std::vector<Particle>(currentParticlesCount);
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
 		particles[i].PosX = random(300.0, 400.0);
 		particles[i].PosY = random(300.0, 400.0);
-		particles[i].VelX = random(-1.0, 1.0);
+		particles[i].VelX = random(-4.0, 4.0);
 	}
+	//particles[0].PosX = 300;
+	//particles[0].PosY = 300;
+	//particles[0].VelX = 3;
+	//particles[0].VelY = 0;
+	//particles[1].PosX = 600;
+	//particles[1].PosY = 310;
+	//particles[1].VelX = 0;
+	//particles[1].VelY = 0;
 
 	GLuint vaoCellId = 0;
 	GLuint vaoObjectId = 0;
@@ -247,7 +255,7 @@ void Particles2dCollisionEffect::initialize()
 
 	glGenBuffers(1, &bufferTest);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, bufferTest);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, currentCellsCount * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, 1000 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
@@ -256,9 +264,10 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	deltaTime = 0.01666666 * 2;
-	GLfloat dt = ((GLfloat)deltaTime) * 1000 * runtimeParams.TimeScale;
-
+	//deltaTime = 0.01;
+	GLfloat dt = ((GLfloat)deltaTime) * 3000 * runtimeParams.TimeScale;
+GLuint* cells0;
+GLuint* obj0;
 	if (!isPaused || isAdvanceOneFrame)
 	{
 		glUseProgram(fillCellIdAndObjectIdArraysCompShaderProgram);
@@ -277,10 +286,9 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 		glDispatchCompute(groupCount, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-//GLuint* cells0 = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
-//GLuint* obj0 = readFromBuffer<GLuint>(currentCellsCount, ssboObjectId);
+//cells0 = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
+//obj0 = readFromBuffer<GLuint>(currentCellsCount, ssboObjectId);
 //GLfloat* test = readFromBuffer<GLfloat>(currentCellsCount, bufferTest);
-
 
 		// ============== PHASE 1 PASS 1 =====================
 		glUseProgram(radixPhase1Pass1CompShaderProgram);
@@ -319,7 +327,6 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
 
-
 		GLuint cellsPerThread = 10;
 		GLuint threadsInBlock = 1024;
 		GLuint blocks = currentCellsCount / (cellsPerThread * threadsInBlock) + 1;
@@ -351,24 +358,33 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	//glDrawArrays(GL_POINTS, currentParticlesCount * 2, 20000);
 	glDrawArrays(GL_POINTS, 0, currentParticlesCount);
 
+cells0 = readFromBuffer<GLuint>(currentCellsCount, buffer5);
+obj0 = readFromBuffer<GLuint>(currentCellsCount, buffer7);
 GLuint* cells = readFromBuffer<GLuint>(currentCellsCount, buffer6);
 GLuint* obj = readFromBuffer<GLuint>(currentCellsCount, buffer8);
-GLfloat* test = readFromBuffer<GLfloat>(currentCellsCount, bufferTest);
+GLfloat* test = readFromBuffer<GLfloat>(1000, bufferTest);
+GLuint* testInt = readFromBuffer<GLuint>(1000, bufferTest);
 Particle* particles = readFromBuffer<Particle>(currentParticlesCount, ssboParticles);
 
-double mx, my;
-glfwGetCursorPos(window, &mx, &my);
-int objIdUnderMouse = -1;
-int collisions = 0;
+//double mx, my;
+//glfwGetCursorPos(window, &mx, &my);
+//int objIdUnderMouse = -1;
+//int collisions = 0;
 for (int i = 0; i < currentParticlesCount; i++)
 {
-	float deltaMX = particles[i].PosX - mx;
-	float deltaMY = particles[i].PosY - my;
-	float distSqured = deltaMX * deltaMX + deltaMY * deltaMY;
-	if (distSqured < (runtimeParams.particleSize / 2) * (runtimeParams.particleSize / 2))
+	if (isnan(particles[i].PosX))
 	{
-		objIdUnderMouse = i;
+		int l = 0;
 	}
+
+	//float deltaMX = particles[i].PosX - mx;
+	//float deltaMY = particles[i].PosY - my;
+	//float distSqured = deltaMX * deltaMX + deltaMY * deltaMY;
+	//if (distSqured < (runtimeParams.particleSize / 2) * (runtimeParams.particleSize / 2))
+	//{
+	//	objIdUnderMouse = i;
+	//}
+
 	//for (int j = i + 1; j < currentParticlesCount; j++)
 	//{
 	//	float deltaX = particles[i].PosX - particles[j].PosX;
@@ -378,11 +394,7 @@ for (int i = 0; i < currentParticlesCount; i++)
 	//		collisions++;
 	//}
 }
-std::cout << objIdUnderMouse << std::endl;
-if (objIdUnderMouse != -1)
-{
-	std::cout << floor(particles[objIdUnderMouse].PosX / 40) + 1 + (floor(particles[objIdUnderMouse].PosY / 40) + 1) * 34 << std::endl;
-}
+//std::cout << objIdUnderMouse << std::endl;
 
 	isAdvanceOneFrame = false;
 }

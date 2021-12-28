@@ -55,11 +55,11 @@ void main()
 	cellIds1[thid + particlesCount] = hCellId - 1; // left
 	cellIds1[thid + particlesCount * 2] = hCellId + gridWidth - 1; // bottom left
 	cellIds1[thid + particlesCount * 3] = hCellId + gridWidth; // bottom
-	cellIds1[thid + particlesCount * 4] = hCellId + gridWidth + 1; // bottom right
+//	cellIds1[thid + particlesCount * 4] = hCellId + gridWidth + 1; // bottom right
 
 	objectIds[thid] = thid | 0x80000000; // 0 = 2147483648
 	objectIds[thid + particlesCount] = thid;
 	objectIds[thid + particlesCount * 2] = thid;
 	objectIds[thid + particlesCount * 3] = thid;
-	objectIds[thid + particlesCount * 4] = thid;
+//	objectIds[thid + particlesCount * 4] = thid;
 }

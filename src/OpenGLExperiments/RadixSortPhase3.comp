@@ -101,6 +101,8 @@ void presumm(uint thid, uint n)
 
 void main()
 {
+int t=0;
+if (cellIdShift != 0){for (int ii = 0; ii < 400; ii++) test[ii] = 777;}
 	const uint thid = gl_LocalInvocationID.x;
 	const uint indexInWrap = uint(mod(thid, 16));
 	uint i;
@@ -124,10 +126,10 @@ void main()
 		sharedCounters[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x] + totalSummShared[uint(mod(thid + i, 256))];
 	}
 
-//for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
-//{
-//	test[thid + i] = sharedCounters[thid + i];
-//}
+for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
+{
+	test[thid + i + 50] = sharedCounters[thid + i];
+}
 //for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
 //{
 //	test[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x];
@@ -138,7 +140,7 @@ void main()
 //}
 
 	barrier();
-uint t=0;
+
 	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
 	const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
 	const uint cellIndex = (gl_WorkGroupID.x * (threadGroupsInWorkGroup - 1) + groupIndex) * elementsPerGroup + indexInGroup;
@@ -167,7 +169,13 @@ uint t=0;
 
 					cellIdsOutput[offset] = cellId;
 					objectIdsOutput[offset] = objectId;
-					
+if (cellIdShift != 0){
+test[gl_GlobalInvocationID.x]=groupIndex;
+test[gl_GlobalInvocationID.x + 10]=counterIndexOffset;
+test[gl_GlobalInvocationID.x + 20]=radix;
+test[gl_GlobalInvocationID.x + 30]=indexInSharedCounters;
+test[gl_GlobalInvocationID.x + 40]=offset;
+}
 					sharedCounters[indexInSharedCounters]++;
 
 //if (cellIdShift != 0) {
