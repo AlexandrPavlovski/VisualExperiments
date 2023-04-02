@@ -48,7 +48,7 @@ void main()
 	vec2 cellPos = modf(particles[thid].Pos / cellSize, gridPos);
 	gridPos += 1;
 
-	uint hCellId = uint(gridPos.x + gridPos.y * gridWidth);
+	uint hCellId = uint(gridPos.x + gridPos.y * gridWidth); // home cell i.e cell where particle's center lands
 
 	cellIds1[thid] = hCellId;
 	// neighbours

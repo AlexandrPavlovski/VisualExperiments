@@ -322,7 +322,7 @@ vec2 worldToScreen(vec2 worldPos)
 
 void main()
 {
-	updateParticle();
+//	updateParticle();
 	setParticleColor();
 
 	vec2 screenPos = worldToScreen(particles[gl_VertexID].Pos);

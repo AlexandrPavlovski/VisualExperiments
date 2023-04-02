@@ -47,6 +47,11 @@ protected:
 	GLint createShaderProgramFromFiles(
 		std::vector<ShaderParams> vertShaderParams = std::vector<ShaderParams>(),
 		std::vector<ShaderParams> fragShaderParams = std::vector<ShaderParams>());
+	GLint createShaderProgramFromFiles(
+		const char* customVertexShaderFilePath,
+		const char* customFragmentShaderFilePath,
+		std::vector<ShaderParams> vertShaderParams = std::vector<ShaderParams>(),
+		std::vector<ShaderParams> fragShaderParams = std::vector<ShaderParams>());
 
 	GLint createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
 	GLint createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());

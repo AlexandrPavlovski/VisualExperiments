@@ -81,7 +81,7 @@ void Fractal2dEffect::draw(GLdouble deltaTime)
 
 	GLdouble zoom = windowHeight / runtimeParams.viewZoom;
 
-	if (isRightMouseBtnDown)
+	if (isLeftMouseBtnDown)
 	{
 		GLdouble deltaX = oldCursorPosX - cursorPosX;
 		GLdouble deltaY = cursorPosY - oldCursorPosY;
@@ -150,11 +150,11 @@ void Fractal2dEffect::mouseButtonCallback(int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
-		isRightMouseBtnDown = true;
+		isLeftMouseBtnDown = true;
 	}
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
 	{
-		isRightMouseBtnDown = false;
+		isLeftMouseBtnDown = false;
 	}
 }
 

@@ -142,8 +142,11 @@ void main()
 					{
 						vec2 force = calculateCollisionRepelForce(particleA, particleB, distSquared, posDiff);
 
-						particles[objectIds[collisionCellIndex + h]].Acc += force;
-						particles[objectIds[collisionCellIndex + c]].Acc += -force;
+//						particles[objectIds[collisionCellIndex + h]].Acc += force;
+//						particles[objectIds[collisionCellIndex + c]].Acc += -force;
+
+//						particles[objectIds[collisionCellIndex + h]].Vel = force * 0.1;
+//						particles[objectIds[collisionCellIndex + c]].Vel = -force * 0.1;
 					}
 				}
 			}

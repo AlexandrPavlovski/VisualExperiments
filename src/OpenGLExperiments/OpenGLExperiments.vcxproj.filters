@@ -148,5 +148,11 @@
     <None Include="FindAndResolveCollisions.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </None>
+    <None Include="Grid.vert">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </None>
+    <None Include="Grid.frag">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </None>
   </ItemGroup>
 </Project>

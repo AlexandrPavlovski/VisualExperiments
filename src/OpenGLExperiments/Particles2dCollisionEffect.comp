@@ -177,7 +177,7 @@ void main()
 		nBodyGravityAcceleration(thid, pos);
 		collisionAcceleration(thid, pos, vel);
 		
-		particleData[thid + particlesCount].yz += vec2(0.0, 0.0); // gravity down
+		particleData[thid + particlesCount].yz += vec2(0.0, 0.0); // gravity
 	}
 
 	// teleportation at screen bounds

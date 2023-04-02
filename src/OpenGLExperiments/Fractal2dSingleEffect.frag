@@ -12,7 +12,7 @@
     l += 1.0;                                      \
 }
 // simple mandelbrot
-//    z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;\
+//    z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
 
 
 layout(location = 0) uniform dvec2 uViewPos;

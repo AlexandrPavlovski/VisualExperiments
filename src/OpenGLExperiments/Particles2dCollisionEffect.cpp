@@ -12,7 +12,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 145;
+	startupParams.ParticlesCount = 2;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -45,7 +45,7 @@ void Particles2dCollisionEffect::initialize()
 	{
 		particles[i].PosX = random(300.0, 400.0);
 		particles[i].PosY = random(300.0, 400.0);
-		particles[i].VelX = random(-4.0, 4.0);
+		particles[i].VelX = random(0.0, 0.0);
 	}
 	//particles[0].PosX = 300;
 	//particles[0].PosY = 300;
@@ -123,8 +123,14 @@ void Particles2dCollisionEffect::initialize()
 	{
 		throw "Initialize failed";
 	}
-
 	shaderProgram = newShaderProgram;
+
+	newShaderProgram = createShaderProgramFromFiles("Grid.vert", "Grid.frag", std::vector<ShaderParams>(), std::vector<ShaderParams>());
+	if (newShaderProgram == -1)
+	{
+		throw "Initialize failed";
+	}
+	gridShaderProgram = newShaderProgram;
 
 	
 	elementsPerThread = ceil(currentCellsCount / (phase1GroupCount * threadsInWorkGroup));
@@ -270,6 +276,13 @@ GLuint* cells0;
 GLuint* obj0;
 	if (!isPaused || isAdvanceOneFrame)
 	{
+		GLdouble oldCursorPosX = cursorPosX, oldCursorPosY = cursorPosY;
+		glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
+		if (isLeftMouseBtnDown)
+		{
+			
+		}
+
 		glUseProgram(fillCellIdAndObjectIdArraysCompShaderProgram);
 
 		glUniform2f(0, windowWidth, windowHeight);
@@ -340,6 +353,15 @@ GLuint* obj0;
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	}
 
+	if (isDebug)
+	{
+		glUseProgram(gridShaderProgram);
+		glUniform1f(0, runtimeParams.particleSize);
+		glUniform2f(1, (float)cursorPosX, (float)cursorPosY);
+		glUniform1i(2, windowHeight);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+	}
+
 	glUseProgram(shaderProgram);
 
 	// vertex shader params
@@ -357,6 +379,7 @@ GLuint* obj0;
 	glPointSize(runtimeParams.particleSize);
 	//glDrawArrays(GL_POINTS, currentParticlesCount * 2, 20000);
 	glDrawArrays(GL_POINTS, 0, currentParticlesCount);
+
 
 cells0 = readFromBuffer<GLuint>(currentCellsCount, buffer5);
 obj0 = readFromBuffer<GLuint>(currentCellsCount, buffer7);
@@ -397,6 +420,8 @@ for (int i = 0; i < currentParticlesCount; i++)
 //std::cout << objIdUnderMouse << std::endl;
 
 	isAdvanceOneFrame = false;
+	isLeftMouseBtnPressed = false;
+	isLeftMouseBtnReleased = false;
 }
 
 void Particles2dCollisionEffect::drawGUI()
@@ -437,6 +462,25 @@ void Particles2dCollisionEffect::keyCallback(int key, int scancode, int action, 
 	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS && isPaused)
 	{
 		isAdvanceOneFrame = true;
+	}
+
+	if (key == GLFW_KEY_D && action == GLFW_PRESS)
+	{
+		isDebug = !isDebug;
+	}
+}
+
+void Particles2dCollisionEffect::mouseButtonCallback(int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	{
+		isLeftMouseBtnPressed = true;
+		isLeftMouseBtnDown = true;
+	}
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	{
+		isLeftMouseBtnReleased = true;
+		isLeftMouseBtnDown = false;
 	}
 }
 

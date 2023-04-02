@@ -41,7 +41,7 @@ private:
 	RuntimeParams runtimeParams;
 
 	bool isDoublePrecision;
-	bool isRightMouseBtnDown = false;
+	bool isLeftMouseBtnDown = false;
 	GLdouble cursorPosX, cursorPosY;
 	GLdouble zoomSpeed;
 

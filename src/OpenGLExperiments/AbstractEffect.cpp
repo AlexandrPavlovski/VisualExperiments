@@ -56,6 +56,26 @@ void AbstractEffect::hotReloadShaders()
 	}
 }
 
+GLint AbstractEffect::createShaderProgramFromFiles(
+	const char* customVertexShaderFilePath,
+	const char* customFragmentShaderFilePath,
+	std::vector<ShaderParams> vertShaderParams,
+	std::vector<ShaderParams> fragShaderParams)
+{
+	const char* tempVertexShaderFilePath = vertexShaderFilePath;
+	const char* tempFragmentShaderFilePath = fragmentShaderFilePath;
+
+	vertexShaderFilePath = customVertexShaderFilePath;
+	fragmentShaderFilePath = customFragmentShaderFilePath;
+
+	GLint newShaderProgram = createShaderProgramFromFiles(vertShaderParams, fragShaderParams);
+
+	vertexShaderFilePath = tempVertexShaderFilePath;
+	fragmentShaderFilePath = tempFragmentShaderFilePath;
+
+	return newShaderProgram;
+}
+
 GLint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> vertShaderParams, std::vector<ShaderParams> fragShaderParams)
 {
 	GLint newShaderProgram = glCreateProgram();

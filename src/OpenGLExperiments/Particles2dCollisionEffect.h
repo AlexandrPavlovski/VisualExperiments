@@ -20,6 +20,7 @@ public:
 	virtual void restart();
 
 	virtual void keyCallback(int key, int scancode, int action, int mode);
+	virtual void mouseButtonCallback(int button, int action, int mods);
 
 private:
 	struct StartupParams
@@ -59,6 +60,7 @@ private:
 	GLint currentCellsCount = 0;
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
+	bool isDebug = false;
 
 	std::vector<Particle> particles;
 	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
@@ -66,7 +68,8 @@ private:
 		radixPhase1Pass1CompShaderProgram = 0, radixPhase1Pass2CompShaderProgram = 0,
 		radixPhase2CompShaderProgram = 0,
 		radixPhase3Pass1CompShaderProgram = 0, radixPhase3Pass2CompShaderProgram = 0,
-		findAndResolveCollisionsCompShaderProgram = 0;
+		findAndResolveCollisionsCompShaderProgram = 0,
+		gridShaderProgram = 0;
 
 	GLuint maxWorkGroupCount = 0;
 	GLuint threadGroupsInWorkGroup = 0;
@@ -79,7 +82,13 @@ private:
 	bool isManualAttractorControlEnabled = false;
 	GLuint phase1GroupCount = 0;
 
-	
+	// ------ mouse ------ //
+	bool isLeftMouseBtnDown = false;
+	bool isLeftMouseBtnPressed = false;
+	bool isLeftMouseBtnReleased = false;
+	GLdouble cursorPosX = 0.0, cursorPosY = 0.0;
+	// ------------------- //
+
 	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
 
 	template< typename T >
