@@ -32,7 +32,7 @@ layout(binding = bindingCellIds2) buffer cellsSecond
 
 layout(binding = 9) buffer tetete
 {
-	uint test[];
+	float test[];
 };
 
 shared uint sharedCounters[12288];

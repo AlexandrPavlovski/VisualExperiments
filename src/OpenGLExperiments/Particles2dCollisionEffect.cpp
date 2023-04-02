@@ -12,7 +12,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 2;
+	startupParams.ParticlesCount = 10;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -43,18 +43,11 @@ void Particles2dCollisionEffect::initialize()
 	particles = std::vector<Particle>(currentParticlesCount);
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		particles[i].PosX = random(300.0, 400.0);
-		particles[i].PosY = random(300.0, 400.0);
-		particles[i].VelX = random(0.0, 0.0);
+		particles[i].PosX = random(500.0, 800.0);
+		particles[i].PosY = random(500.0, 800.0);
+		particles[i].VelX = random(-3.0, 3.0);
+		particles[i].VelY = random(-3.0, 3.0);
 	}
-	//particles[0].PosX = 300;
-	//particles[0].PosY = 300;
-	//particles[0].VelX = 3;
-	//particles[0].VelY = 0;
-	//particles[1].PosX = 600;
-	//particles[1].PosY = 310;
-	//particles[1].VelX = 0;
-	//particles[1].VelY = 0;
 
 	GLuint vaoCellId = 0;
 	GLuint vaoObjectId = 0;
@@ -131,7 +124,6 @@ void Particles2dCollisionEffect::initialize()
 		throw "Initialize failed";
 	}
 	gridShaderProgram = newShaderProgram;
-
 	
 	elementsPerThread = ceil(currentCellsCount / (phase1GroupCount * threadsInWorkGroup));
 	elementsPerGroup = threadsInThreadGroup * elementsPerThread;
@@ -261,8 +253,10 @@ void Particles2dCollisionEffect::initialize()
 
 	glGenBuffers(1, &bufferTest);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, bufferTest);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, 1000 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, 20000 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	validator = new Validator;
 }
 
 void Particles2dCollisionEffect::draw(GLdouble deltaTime)
@@ -270,17 +264,28 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	//deltaTime = 0.01;
-	GLfloat dt = ((GLfloat)deltaTime) * 3000 * runtimeParams.TimeScale;
-GLuint* cells0;
-GLuint* obj0;
+	deltaTime = 0.01666666 * 2;
+	GLfloat dt = ((GLfloat)deltaTime) * 1000 * runtimeParams.TimeScale;
+
+Particle* prtcls = readFromBuffer<Particle>(currentParticlesCount, ssboParticles);
+validator->Init(prtcls, currentParticlesCount, runtimeParams.particleSize, windowWidth, windowHeight, phase1GroupCount);
+
+GLuint* cells0 = nullptr;
+GLuint* obj0 = nullptr;
+GLuint* cells1 = nullptr;
+GLuint* obj1 = nullptr;
+GLuint* cells2 = nullptr;
+GLuint* obj2 = nullptr;
+GLuint* globalCounters = nullptr;
+GLuint* totalSumms = nullptr;
+
 	if (!isPaused || isAdvanceOneFrame)
 	{
 		GLdouble oldCursorPosX = cursorPosX, oldCursorPosY = cursorPosY;
 		glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
 		if (isLeftMouseBtnDown)
 		{
-			
+
 		}
 
 		glUseProgram(fillCellIdAndObjectIdArraysCompShaderProgram);
@@ -299,27 +304,37 @@ GLuint* obj0;
 		glDispatchCompute(groupCount, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-//cells0 = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
-//obj0 = readFromBuffer<GLuint>(currentCellsCount, ssboObjectId);
-//GLfloat* test = readFromBuffer<GLfloat>(currentCellsCount, bufferTest);
+cells0 = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
+obj0 = readFromBuffer<GLuint>(currentCellsCount, ssboObjectId);
+validator->ValidateFilledArrays(cells0, obj0);
 
 		// ============== PHASE 1 PASS 1 =====================
 		glUseProgram(radixPhase1Pass1CompShaderProgram);
 		glDispatchCompute(phase1GroupCount, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		// ===================================================
+globalCounters = readFromBuffer<GLuint>(12288 * phase1GroupCount, ssboGlobalCounters);
+validator->ValidateSortPhase1(0, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, globalCounters);
+delete[] globalCounters;
 
 		// ============== PHASE 2 PASS 1 =====================
 		glUseProgram(radixPhase2CompShaderProgram);
 		glDispatchCompute(64, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
+globalCounters = readFromBuffer<GLuint>(12288 * phase1GroupCount, ssboGlobalCounters);
+totalSumms = readFromBuffer<GLuint>(256, buffer);
+validator->ValidateSortPhase2(threadGroupsTotal, globalCounters, totalSumms);
+delete[] globalCounters;
 
 		// ============== PHASE 3 PASS 1 =====================
 		glUseProgram(radixPhase3Pass1CompShaderProgram);
 		glDispatchCompute(phase1GroupCount + 1, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
+cells1 = readFromBuffer<GLuint>(currentCellsCount, buffer5);
+obj1 = readFromBuffer<GLuint>(currentCellsCount, buffer7);
+validator->ValidateSortPhase3(0, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, cells1, obj1);
 
 
 		// ============== PHASE 1 PASS 2 =====================
@@ -327,18 +342,28 @@ GLuint* obj0;
 		glDispatchCompute(phase1GroupCount, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		// ===================================================
+//GLfloat* test = readFromBuffer<GLfloat>(20000, bufferTest);
+globalCounters = readFromBuffer<GLuint>(12288 * phase1GroupCount, ssboGlobalCounters);
+validator->ValidateSortPhase1(1, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, globalCounters);
+delete[] globalCounters;
 
 		// ============== PHASE 2 PASS 2 =====================
 		glUseProgram(radixPhase2CompShaderProgram);
 		glDispatchCompute(64, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
+globalCounters = readFromBuffer<GLuint>(12288 * phase1GroupCount, ssboGlobalCounters);
+totalSumms = readFromBuffer<GLuint>(256, buffer);
+validator->ValidateSortPhase2(threadGroupsTotal, globalCounters, totalSumms);
 
 		// ============== PHASE 3 PASS 2 =====================
 		glUseProgram(radixPhase3Pass2CompShaderProgram);
 		glDispatchCompute(phase1GroupCount + 1, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
+cells2 = readFromBuffer<GLuint>(currentCellsCount, buffer6);
+obj2 = readFromBuffer<GLuint>(currentCellsCount, buffer8);
+validator->ValidateSortPhase3(1, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, cells2, obj2);
 
 		GLuint cellsPerThread = 10;
 		GLuint threadsInBlock = 1024;
@@ -380,24 +405,20 @@ GLuint* obj0;
 	//glDrawArrays(GL_POINTS, currentParticlesCount * 2, 20000);
 	glDrawArrays(GL_POINTS, 0, currentParticlesCount);
 
-
-cells0 = readFromBuffer<GLuint>(currentCellsCount, buffer5);
-obj0 = readFromBuffer<GLuint>(currentCellsCount, buffer7);
 GLuint* cells = readFromBuffer<GLuint>(currentCellsCount, buffer6);
 GLuint* obj = readFromBuffer<GLuint>(currentCellsCount, buffer8);
 GLfloat* test = readFromBuffer<GLfloat>(1000, bufferTest);
-GLuint* testInt = readFromBuffer<GLuint>(1000, bufferTest);
 Particle* particles = readFromBuffer<Particle>(currentParticlesCount, ssboParticles);
 
-//double mx, my;
-//glfwGetCursorPos(window, &mx, &my);
-//int objIdUnderMouse = -1;
-//int collisions = 0;
+double mx, my;
+glfwGetCursorPos(window, &mx, &my);
+int objIdUnderMouse = -1;
+int collisions = 0;
 for (int i = 0; i < currentParticlesCount; i++)
 {
 	if (isnan(particles[i].PosX))
 	{
-		int l = 0;
+		__debugbreak();
 	}
 
 	//float deltaMX = particles[i].PosX - mx;
@@ -422,6 +443,17 @@ for (int i = 0; i < currentParticlesCount; i++)
 	isAdvanceOneFrame = false;
 	isLeftMouseBtnPressed = false;
 	isLeftMouseBtnReleased = false;
+
+validator->Clear();
+delete[] prtcls;
+delete[] cells0;
+delete[] obj0;
+delete[] cells1;
+delete[] obj1;
+delete[] cells2;
+delete[] obj2;
+delete[] globalCounters;
+delete[] totalSumms;
 }
 
 void Particles2dCollisionEffect::drawGUI()

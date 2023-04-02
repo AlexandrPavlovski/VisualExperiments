@@ -18,6 +18,10 @@ layout(binding = 4) buffer totalSumm
 {
 	uint totalSumms[256];
 };
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
 
 shared uint sharedCounters[sharedCountersSize];
 shared uint totalSummsShared[4];

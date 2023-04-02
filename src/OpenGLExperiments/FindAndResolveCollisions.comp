@@ -22,10 +22,10 @@ struct Particle
 	float Unused;
 };
 
-struct CollisionCellData
+struct collCell
 {
 	uint index;
-	uint neighbourAndHomeCellsCountPacked;
+	uint phantomAndHomeCellsCountPacked;
 };
 
 layout(binding = 0) buffer SSBO
@@ -45,43 +45,28 @@ layout(binding = 9) buffer tetete
 	float test[];
 };
 
-vec2 collisionResponse(float penetrationDepth, vec2 norm, vec2 relativeVel)
-{
-	const float k = 1.0;
-	const float b = 0.05;
-
-	float acc = k * penetrationDepth - b * dot(norm, relativeVel);
-
-	return acc * norm;
-}
-
-vec2 calculateCollisionRepelForce(Particle p1, Particle p2, float distSquared, vec2 posDiff)
-{
-	const float dist = sqrt(distSquared);
-	const vec2 norm = posDiff / dist;
-	const float covered = particleSize - dist;
-
-	return collisionResponse(covered, norm, p1.Vel - p2.Vel);
-}
 
 void main()
 {
 	const uint thid = gl_GlobalInvocationID.x;
 	const uint startIndex = thid * cellsPerThread;
 
+//uint t = 0;
+//for(int o = 0;o<100;o++){test[o]=888;}
+
 	const uint gridWidth = uint(windowSize.x / cellSize) + 2;
 
-	CollisionCellData collisionCells[40];
+	collCell collisionCells[84];
 	uint collisionCellsFound[4] = uint[4](0, 0, 0, 0);
 	bool isFirstTransition = thid != 0;
 	bool isTransitionFound = false;
 
 	uint collisionCellIndex = startIndex;
 	uint prevCellId = cellIds[startIndex];
-	uint homeOrNeighbourCell = objectIds[startIndex] >> 31; // can be 1 (home) or 0 (neighbour)
-	uint nCount = 1;
-	nCount -= homeOrNeighbourCell;
-	uint hCount = homeOrNeighbourCell;
+	uint homeOrPhantomCell = objectIds[startIndex] >> 31;
+	uint pCount = 1;
+	pCount -= homeOrPhantomCell;
+	uint hCount = homeOrPhantomCell;
 
 	uint i;
 	uint currCellId;
@@ -94,10 +79,10 @@ void main()
 		{
 			if (!isFirstTransition)
 			{
-				if (hCount > 0 && nCount > 0 || hCount > 1)
+				if (hCount > 0 && pCount > 0 || hCount > 1)
 				{
 					uint cellType = ((prevCellId % gridWidth) % 2) + ((prevCellId / gridWidth) % 2) * 2;
-					collisionCells[cellType * 21 + collisionCellsFound[cellType]] = CollisionCellData(collisionCellIndex, hCount << 16 | nCount);
+					collisionCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
 						collisionCellsFound[cellType]++;
 				}
 			}
@@ -105,34 +90,76 @@ void main()
 
 			collisionCellIndex = startIndex + i;
 			prevCellId = currCellId;
-			nCount = 0;
+			pCount = 0;
 			hCount = 0;
 
 			isTransitionFound = true;
 		}
 
-		homeOrNeighbourCell = objectIds[startIndex + i] >> 31;
-		nCount++;
-		nCount -= homeOrNeighbourCell;
-		hCount += homeOrNeighbourCell;
+		homeOrPhantomCell = objectIds[startIndex + i] >> 31;
+		pCount++;
+		pCount -= homeOrPhantomCell;
+		hCount += homeOrPhantomCell;
 	}
 
+//	currCellId = cellIds[startIndex + i];
+//	if (currCellId != prevCellId)
+//	{
+//		collisionCellIndex = startIndex + i;
+//		prevCellId = currCellId;
+//		pCount = 0;
+//		hCount = 0;
+//	}
+//
+//	while (cellIds[startIndex + i] == prevCellId && startIndex + i < cellIdsLength)
+//	{
+//		homeOrPhantomCell = objectIds[startIndex + i] >> 31;
+//		pCount++;
+//		pCount -= homeOrPhantomCell;
+//		hCount += homeOrPhantomCell;
+//		i++;
+//	}
+//
+//	if (hCount > 0 && pCount > 0)
+//	{
+//		uint cellType = ((prevCellId % gridWidth) % 2) + ((prevCellId / gridWidth) % 2) * 2;
+//		collisionCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
+//		collisionCellsFound[cellType]++;
+//	}
+
+//test[thid * 2]=startIndex;
+//test[thid * 2 + 1]=startIndex + i;
+//if (thid == 1700){
+//test[t++]=startIndex;
+//}
+//if (thid == 0)
+//{
+//for (i = 0; i < 84; i++)
+//{
+//test[i] = collisionCells[i] >> 16 & 255;
+//}
+//}
+//return;
 	for (i = 0; i < 4; i++)
 	{
 		uint collCellFound = collisionCellsFound[i];
 
 		for (uint j = 0; j < collCellFound; j++)
 		{
-			CollisionCellData collisionCell = collisionCells[i * 21 + j];
+			collCell collisionCell = collisionCells[i * 21 + j];
 			collisionCellIndex = collisionCell.index;
-			hCount = collisionCell.neighbourAndHomeCellsCountPacked >> 16;
-			nCount = collisionCell.neighbourAndHomeCellsCountPacked & 65535;
-
+			hCount = collisionCell.phantomAndHomeCellsCountPacked >> 16;
+			pCount = collisionCell.phantomAndHomeCellsCountPacked & 65535;
+//if (thid == 1){
+//test[t++]=collisionCellIndex;
+//}
 			for (uint h = 0; h < hCount; h++)
 			{
 				Particle particleA = particles[objectIds[collisionCellIndex + h]];
-
-				for (uint c = h + 1; c < hCount + nCount; c++)
+//if (collisionCellIndex == 32){
+//test[t++]=hCount + pCount;
+//}
+				for (uint c = h + 1; c < hCount + pCount; c++)
 				{
 					Particle particleB = particles[objectIds[collisionCellIndex + c]];
 					const vec2 posDiff = particleA.Pos - particleB.Pos;
@@ -140,13 +167,19 @@ void main()
 
 					if (distSquared < particleSize * particleSize)
 					{
-						vec2 force = calculateCollisionRepelForce(particleA, particleB, distSquared, posDiff);
-
-//						particles[objectIds[collisionCellIndex + h]].Acc += force;
-//						particles[objectIds[collisionCellIndex + c]].Acc += -force;
-
-//						particles[objectIds[collisionCellIndex + h]].Vel = force * 0.1;
-//						particles[objectIds[collisionCellIndex + c]].Vel = -force * 0.1;
+						const float dist = sqrt(distSquared);
+						const vec2 norm = posDiff / dist;
+						const float covered = particleSize - dist;
+//if (thid == 0){
+//test[0] = t++;
+//test[t++] = objectIds[collisionCellIndex + h] & 65535;
+//test[t++] = objectIds[collisionCellIndex + c] & 65535;
+//test[t++] = collisionCellIndex;
+//test[t++] = pCount;
+//test[t++] = hCount;
+//}
+						particles[objectIds[collisionCellIndex + h]].Vel += norm * 0.1;
+						particles[objectIds[collisionCellIndex + c]].Vel += -norm * 0.1;
 					}
 				}
 			}

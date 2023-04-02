@@ -49,17 +49,45 @@ void main()
 	gridPos += 1;
 
 	uint hCellId = uint(gridPos.x + gridPos.y * gridWidth); // home cell i.e cell where particle's center lands
+	uvec3 pCellIds = uvec3(-1);
+	uvec4 objectIdsAndFlags = uvec4(thid | 0x80000000, thid, thid, thid); // 0 = 2147483648
+
+	if (cellPos.x > 0.5)
+	{
+		pCellIds.x = hCellId + 1;
+		if (cellPos.y > 0.5)
+		{
+			pCellIds.y = hCellId + gridWidth;
+			pCellIds.z = hCellId + gridWidth + 1;
+		}
+		else
+		{
+			pCellIds.y = hCellId - gridWidth;
+			pCellIds.z = hCellId - gridWidth + 1;
+		}
+	}
+	else
+	{
+		pCellIds.x = hCellId - 1;
+		if (cellPos.y > 0.5)
+		{
+			pCellIds.y = hCellId + gridWidth;
+			pCellIds.z = hCellId + gridWidth - 1;
+		}
+		else
+		{
+			pCellIds.y = hCellId - gridWidth;
+			pCellIds.z = hCellId - gridWidth - 1;
+		}
+	}
 
 	cellIds1[thid] = hCellId;
-	// neighbours
-	cellIds1[thid + particlesCount] = hCellId - 1; // left
-	cellIds1[thid + particlesCount * 2] = hCellId + gridWidth - 1; // bottom left
-	cellIds1[thid + particlesCount * 3] = hCellId + gridWidth; // bottom
-//	cellIds1[thid + particlesCount * 4] = hCellId + gridWidth + 1; // bottom right
+	cellIds1[thid + particlesCount] = pCellIds.x;
+	cellIds1[thid + particlesCount * 2] = pCellIds.y;
+	cellIds1[thid + particlesCount * 3] = pCellIds.z;
 
-	objectIds[thid] = thid | 0x80000000; // 0 = 2147483648
-	objectIds[thid + particlesCount] = thid;
-	objectIds[thid + particlesCount * 2] = thid;
-	objectIds[thid + particlesCount * 3] = thid;
-//	objectIds[thid + particlesCount * 4] = thid;
+	objectIds[thid] = objectIdsAndFlags.x;
+	objectIds[thid + particlesCount] = objectIdsAndFlags.y;
+	objectIds[thid + particlesCount * 2] = objectIdsAndFlags.z;
+	objectIds[thid + particlesCount * 3] = objectIdsAndFlags.w;
 }

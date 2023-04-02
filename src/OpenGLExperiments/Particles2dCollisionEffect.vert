@@ -211,14 +211,14 @@ void updateParticle()
 		const vec2 boundsCollisionAcc = screenBoundsCollision(particle.Pos, particle.Vel);
 		const vec2 gravityAcc = vec2(0, 0.1);
 
-		vec2 newVel = (particle.Acc + boundsCollisionAcc + gravityAcc) * deltaT;
+		vec2 newVel = (particle.Acc + boundsCollisionAcc) * deltaT;
 		if (dot(newVel, newVel) > 25)
 		{
 			newVel = normalize(newVel) * 4;
 		}
 
 		particle.Vel += newVel;
-		particle.Vel *= velocityDamping;
+//		particle.Vel *= velocityDamping;
 		particle.Pos += particle.Vel * deltaT;
 
 		particle.Acc = vec2(0.0);
@@ -322,7 +322,7 @@ vec2 worldToScreen(vec2 worldPos)
 
 void main()
 {
-//	updateParticle();
+	updateParticle();
 	setParticleColor();
 
 	vec2 screenPos = worldToScreen(particles[gl_VertexID].Pos);
