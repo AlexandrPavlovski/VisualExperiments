@@ -101,7 +101,7 @@ void presumm(uint thid, uint n)
 
 void main()
 {
-//int t=0;
+int t=0;
 //if (cellIdShift != 0){for (int ii = 0; ii < 400; ii++) test[ii] = 777;}
 	const uint thid = gl_LocalInvocationID.x;
 	const uint indexInWrap = uint(mod(thid, 16));
@@ -114,7 +114,7 @@ void main()
 
 //for (i = 0; thid + i < 256; i += threadsInWorkGroup)
 //{
-//	test[thid + i + 50] = totalSumms[thid + i];
+//	test[thid + i] = totalSumms[thid + i];
 //}
 
 	presumm(thid, 256);
@@ -141,11 +141,11 @@ void main()
 
 	barrier();
 
-	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
-	const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
-	const uint cellIndex = (gl_WorkGroupID.x * (threadGroupsInWorkGroup - 1) + groupIndex) * elementsPerGroup + indexInGroup;
+	const uint indexInGroup = uint(mod(thid, threadsInThreadGroup));
+	const uint groupIndex = thid / threadsInThreadGroup;
+	const uint cellIndex = (gl_WorkGroupID.x * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
 	const uint counterIndexOffset = groupIndex * 256;
-		
+
 	uint offset;
 	for (i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
 	{
@@ -154,19 +154,32 @@ void main()
 		const uint radix = (cellId >> cellIdShift) & 255;
 		const uint indexInSharedCounters = counterIndexOffset + radix;
 
-		barrier();
+		barrier(); // TODO may be unnecessary
 
-		if (cellIndex + i < cellIdsLength && thid < threadsInWorkGroup - threadsInThreadGroup)
+		if (cellIndex + i < cellIdsLength)
 		{
 			for (uint j = 0; j < 16; j++)
 			{
-//if (cellIdShift == 0) {
-//test[t++] = 999.0;
-//}
 				if (indexInWrap == j)
 				{
 					offset = sharedCounters[indexInSharedCounters];
-
+//if (offset == 44) {
+////for (i = 0; i < 12032; i += 1)
+////{
+////	test[i] = sharedCounters[i];
+////}
+//test[t++] = 999.0;
+//test[t++] = gl_WorkGroupID.x;
+//test[t++] = indexInWrap;
+//test[t++] = groupIndex;
+//test[t++] = indexInSharedCounters;
+//test[t++] = offset;
+//test[t++] = gl_LocalInvocationID.x;
+//test[t++] = elementsPerGroup;
+//test[t++] = threadsInThreadGroup;
+//test[t++] = i;
+//test[t++] = 66666.0;
+//}
 					cellIdsOutput[offset] = cellId;
 					objectIdsOutput[offset] = objectId;
 

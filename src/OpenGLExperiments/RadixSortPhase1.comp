@@ -5,6 +5,7 @@
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 1
 #define elementsPerGroup 0
+#define sharedCountersLength 12032
 
 #define cellIdShift 0
 
@@ -35,55 +36,49 @@ layout(binding = 9) buffer tetete
 	float test[];
 };
 
-shared uint sharedCounters[12288];
+shared uint sharedCounters[sharedCountersLength];
 
 
 void main()
 {
-	if (cellIdShift != 0)
+	for (uint i = 0; gl_LocalInvocationID.x + i < sharedCountersLength; i += threadsInWorkGroup)
 	{
-		for (uint i = 0; gl_LocalInvocationID.x + i < 12288; i += threadsInWorkGroup)
-		{
-			sharedCounters[gl_LocalInvocationID.x + i] = 0;
-		}
+		sharedCounters[gl_LocalInvocationID.x + i] = 0; // clearing shared memory between passes
 	}
-	barrier();
+	barrier(); // TODO might be unnecessary
 
 	const uint indexInGroup = uint(mod(gl_LocalInvocationID.x, threadsInThreadGroup));
 	const uint groupIndex = gl_LocalInvocationID.x / threadsInThreadGroup;
 	const uint cellIndexToReadFrom = (gl_WorkGroupID.x * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
-	const uint counterIndexOffset = groupIndex * 256;
+	const uint counterIndexOffset = groupIndex * 256; // cellId (2 bytes) split in half (1 byte) and counted, 1 byte can have 256 states
 
-	for (uint i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
+	for (uint i = 0; i < elementsPerGroup && cellIndexToReadFrom + i < cellIdsLength; i += threadsInThreadGroup)
 	{
 		const uint cellId = cellIds1[cellIndexToReadFrom + i];
-		const uint radix = (cellId >> cellIdShift) & 255;
+		const uint radix = (cellId >> cellIdShift) & 255; // taking only part of cellId
 		const uint indexInSharedCounters = counterIndexOffset + radix;
 
-		barrier();
+//		barrier(); // TODO maybe remove
 
-		if (cellIndexToReadFrom + i < cellIdsLength)
-		{
-			if (indexInGroup == 0) {
-				sharedCounters[indexInSharedCounters]++;
-			}
-			if (indexInGroup == 1) {
-				sharedCounters[indexInSharedCounters]++;
-			}
-			if (indexInGroup == 2) {
-				sharedCounters[indexInSharedCounters]++;
-			}
-			if (indexInGroup == 3) {
-				sharedCounters[indexInSharedCounters]++;
-			}
+		if (indexInGroup == 0) {
+			sharedCounters[indexInSharedCounters]++;
+		}
+		if (indexInGroup == 1) {
+			sharedCounters[indexInSharedCounters]++;
+		}
+		if (indexInGroup == 2) {
+			sharedCounters[indexInSharedCounters]++;
+		}
+		if (indexInGroup == 3) {
+			sharedCounters[indexInSharedCounters]++;
 		}
 	}
 
 	barrier();
 
-	const uint globalCountersOffset = gl_WorkGroupID.x * 12288;
+	const uint globalCountersOffset = gl_WorkGroupID.x * sharedCountersLength;
 	for (uint sharedMemoryCountersIndex = gl_LocalInvocationID.x; 
-		sharedMemoryCountersIndex < 12288; 
+		sharedMemoryCountersIndex < sharedCountersLength; 
 		sharedMemoryCountersIndex += threadsInWorkGroup)
 	{
 		globalCounters[sharedMemoryCountersIndex + globalCountersOffset] = sharedCounters[sharedMemoryCountersIndex];

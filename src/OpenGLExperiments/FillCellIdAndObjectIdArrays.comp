@@ -43,41 +43,42 @@ void main()
 	if (thid >= particlesCount)
 		return;
 
-	uint gridWidth = uint(windowSize.x / cellSize) + 2;
-	vec2 gridPos;
-	vec2 cellPos = modf(particles[thid].Pos / cellSize, gridPos);
-	gridPos += 1;
+	uint gridWidth = uint(windowSize.x / cellSize) + 2; // make grid bigger than screen because particle can intersect screen edges
+	vec2 gridPos; // integer part of mod operation
+	vec2 cellPos = modf(particles[thid].Pos / cellSize, gridPos); // float part of mod operation
+	gridPos += 1; // because grid is bigger than screen particle grid position calculation is of by 1
 
 	uint hCellId = uint(gridPos.x + gridPos.y * gridWidth); // home cell i.e cell where particle's center lands
-	uvec3 pCellIds = uvec3(-1);
-	uvec4 objectIdsAndFlags = uvec4(thid | 0x80000000, thid, thid, thid); // 0 = 2147483648
+	uvec3 pCellIds = uvec3(-1); // if particle does not intersect a phantom cell, the cell stays marked as not valid by value -1
 
+	// TODO differently sized particles
+	// TODO fix diagonal P cells
 	if (cellPos.x > 0.5)
 	{
-		pCellIds.x = hCellId + 1;
+		pCellIds.x = hCellId + 1; // right neighbour
 		if (cellPos.y > 0.5)
 		{
 			pCellIds.y = hCellId + gridWidth;
-			pCellIds.z = hCellId + gridWidth + 1;
+			pCellIds.z = hCellId + gridWidth + 1; // diagonal
 		}
 		else
 		{
 			pCellIds.y = hCellId - gridWidth;
-			pCellIds.z = hCellId - gridWidth + 1;
+			pCellIds.z = hCellId - gridWidth + 1; // diagonal
 		}
 	}
 	else
 	{
-		pCellIds.x = hCellId - 1;
+		pCellIds.x = hCellId - 1; // left neighbour
 		if (cellPos.y > 0.5)
 		{
 			pCellIds.y = hCellId + gridWidth;
-			pCellIds.z = hCellId + gridWidth - 1;
+			pCellIds.z = hCellId + gridWidth - 1; // diagonal
 		}
 		else
 		{
 			pCellIds.y = hCellId - gridWidth;
-			pCellIds.z = hCellId - gridWidth - 1;
+			pCellIds.z = hCellId - gridWidth - 1; // diagonal
 		}
 	}
 
@@ -86,8 +87,8 @@ void main()
 	cellIds1[thid + particlesCount * 2] = pCellIds.y;
 	cellIds1[thid + particlesCount * 3] = pCellIds.z;
 
-	objectIds[thid] = objectIdsAndFlags.x;
-	objectIds[thid + particlesCount] = objectIdsAndFlags.y;
-	objectIds[thid + particlesCount * 2] = objectIdsAndFlags.z;
-	objectIds[thid + particlesCount * 3] = objectIdsAndFlags.w;
+	objectIds[thid] = thid | 0x80000000; // most significant bit is indicating a home cell. 0 becomes 2147483648
+	objectIds[thid + particlesCount] = thid;
+	objectIds[thid + particlesCount * 2] = thid;
+	objectIds[thid + particlesCount * 3] = thid;
 }

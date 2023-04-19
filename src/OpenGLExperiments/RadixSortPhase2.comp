@@ -80,6 +80,7 @@ void main()
 		uint globalCounterIndex = thid * 256 + radix;
 		uint globalCounter = globalCounters[globalCounterIndex];
 
+		// TODO get rid of condition
 		if (thid < threadGroupsTotal)
 			sharedCounters[thid] = globalCounter;
 		else
@@ -100,7 +101,7 @@ void main()
 		}
 	}
 
-	barrier();
+	barrier(); // TODO maybe remove
 
 	if (thid < 4)
 	{

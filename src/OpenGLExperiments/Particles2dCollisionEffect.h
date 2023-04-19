@@ -3,6 +3,8 @@
 #include "AbstractEffect.h"
 
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -34,7 +36,7 @@ public:
 		this->windowWidth = windowWidth;
 		this->windowHeight = windowHeight;
 		this->phase1WorkGroupsCount = phase1WorkGroupsCount;
-		this->globalCountersCount = phase1WorkGroupsCount * sharedMemory;
+		this->globalCountersCount = phase1WorkGroupsCount * sharedCountersLength;
 
 		cellIds = std::vector<GLuint>(cellsCount);
 		objectIds = std::vector<GLuint>(cellsCount);
@@ -120,7 +122,7 @@ public:
 
 		for (int workGroupID = 0; workGroupID < phase1WorkGroupsCount; workGroupID++)
 		{
-			GLuint globalCountersOffset = workGroupID * sharedMemory;
+			GLuint globalCountersOffset = workGroupID * sharedCountersLength;
 
 			for (int localInvocationID = 0; localInvocationID < threadsInWorkGroup; localInvocationID++)
 			{
@@ -173,6 +175,19 @@ public:
 			if (globalCountersFromGPU[i] != globalCounters[i])
 			{
 				__debugbreak();
+				if (i == -1)
+				{
+					std::ofstream MyFile("c:/ValidateSortPhase2 globalCountersFromGPU.txt");
+					for (int b = 0; b < globalCountersCount; b+=256)
+					{
+						for (int c = 0; c < 256; c++)
+						{
+							MyFile << globalCountersFromGPU[b + c] << "\t";
+						}
+						MyFile << "\r";
+					}
+					MyFile.close();
+				}
 			}
 		}
 		for (int i = 0; i < 256; i++)
@@ -184,7 +199,14 @@ public:
 		}
 	}
 
-	void ValidateSortPhase3(GLuint pass, GLuint threadsInWorkGroup, GLuint threadGroupsInWorkGroup, GLuint threadsInThreadGroup, GLuint elementsPerGroup, GLuint* cellsFromGPU, GLuint* objectsFromGPU)
+	void ValidateSortPhase3(
+		GLuint pass,
+		GLuint threadsInWorkGroup,
+		GLuint threadGroupsInWorkGroup,
+		GLuint threadsInThreadGroup,
+		GLuint elementsPerGroup,
+		GLuint* cellsFromGPU,
+		GLuint* objectsFromGPU)
 	{
 		GLuint summ = 0;
 		for (int i = 0; i < 256; i++)
@@ -195,25 +217,26 @@ public:
 		}
 
 		GLuint sharedCountersLength = 12032;
-		std::vector<GLuint> sharedCounters = std::vector<GLuint>(sharedCountersLength);
-		for (int i = 0; i < sharedCountersLength; i++)
-		{
-			sharedCounters[i] = globalCounters[i] + totalSumms[i % 256];
-		}
-
 		GLuint cellIdShift = pass == 0 ? 0 : 8;
-		for (int workGroupID = 0; workGroupID <= phase1WorkGroupsCount; workGroupID++)
+
+		for (int workGroupID = 0; workGroupID < phase1WorkGroupsCount; workGroupID++)
 		{
+			std::vector<GLuint> sharedCounters = std::vector<GLuint>(sharedCountersLength);
+			for (int i = 0; i < sharedCountersLength; i++)
+			{
+				sharedCounters[i] = globalCounters[workGroupID * sharedCountersLength + i] + totalSumms[i % 256];
+			}
+
 			for (int localInvocationID = 0; localInvocationID < threadsInWorkGroup; localInvocationID++)
 			{
 				GLuint indexInGroup = localInvocationID % threadsInThreadGroup;
-				GLuint groupIndex = localInvocationID / threadsInThreadGroup;
-				GLuint cellIndexToReadFrom = (workGroupID * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
+				GLuint groupIndex = localInvocationID / (float)threadsInThreadGroup;
+				GLuint cellIndexToReadFrom = (workGroupID * threadGroupsInWorkGroup+ groupIndex) * elementsPerGroup + indexInGroup;
 				GLuint counterIndexOffset = groupIndex * 256;
 
 				for (int i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
 				{
-					if (cellIndexToReadFrom + i < cellsCount && localInvocationID < threadsInWorkGroup - threadsInThreadGroup)
+					if (cellIndexToReadFrom + i < cellsCount)
 					{
 						GLuint cellId = cellIds[cellIndexToReadFrom + i];
 						GLuint objectId = objectIds[cellIndexToReadFrom + i];
@@ -229,11 +252,13 @@ public:
 					}
 				}
 			}
+
+			sharedCounters.clear();
 		}
 
 		if (cellsFromGPU != nullptr && objectsFromGPU != nullptr)
 		{
-			for (int i = 0; i < particlesCount; i++)
+			for (int i = 0; i < cellsCount; i++)
 			{
 				if (cellsFromGPU[i] != cellIdsOutput[i])
 				{
@@ -280,7 +305,7 @@ public:
 		objectIdsOutput.shrink_to_fit();
 	}
 
-	GLuint sharedMemory = 12288;
+	GLuint sharedCountersLength = 12032;
 
 	GLuint particlesCount, cellsCount, cellSize, phase1WorkGroupsCount, globalCountersCount;
 	float windowWidth, windowHeight;
@@ -293,6 +318,10 @@ public:
 	std::vector<GLuint> globalCounters;
 	std::vector<GLuint> totalSumms;
 
+	void DumpToFile(char* fileName, char* content)
+	{
+		
+	}
 };
 
 
@@ -311,6 +340,7 @@ public:
 	virtual void keyCallback(int key, int scancode, int action, int mode);
 	virtual void mouseButtonCallback(int button, int action, int mods);
 
+	GLuint sharedCountersLength = 0;
 	GLuint maxWorkGroupCount = 0;
 	GLuint threadGroupsInWorkGroup = 0;
 	GLuint threadsInThreadGroup = 0;
@@ -357,7 +387,9 @@ private:
 	GLint currentCellsCount = 0;
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
-	bool isDebug = false;
+	bool isDebug = true;
+
+	GLint frameCount = 0;
 
 	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,

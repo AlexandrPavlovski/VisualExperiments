@@ -1,6 +1,8 @@
 // implementation of this article
 // https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-32-broad-phase-collision-detection-cuda
 
+#define VLAIDATE
+
 #include <iostream>
 #include "Particles2dCollisionEffect.h"
 
@@ -12,7 +14,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 10;
+	startupParams.ParticlesCount = 1024;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -43,10 +45,10 @@ void Particles2dCollisionEffect::initialize()
 	particles = std::vector<Particle>(currentParticlesCount);
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		particles[i].PosX = random(500.0, 800.0);
-		particles[i].PosY = random(500.0, 800.0);
-		particles[i].VelX = random(-3.0, 3.0);
-		particles[i].VelY = random(-3.0, 3.0);
+		particles[i].PosX = random(80.0, 81.0);
+		particles[i].PosY = random(80.0, 81.0);
+		//particles[i].VelX = random(-3.0, 3.0);
+		//particles[i].VelY = random(-3.0, 3.0);
 	}
 
 	GLuint vaoCellId = 0;
@@ -82,9 +84,9 @@ void Particles2dCollisionEffect::initialize()
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssboObjectId);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-	GLuint sharedCountersLength = 12288;
-	maxWorkGroupCount = 21;
-	threadGroupsInWorkGroup = 48;
+	sharedCountersLength = 12032; // 47 thread groups * 256 counters
+	maxWorkGroupCount = 210;
+	threadGroupsInWorkGroup = 47;
 	threadsInThreadGroup = 4;
 	threadsInWorkGroup = threadGroupsInWorkGroup * threadsInThreadGroup;
 	GLuint groupCount = ceil(currentCellsCount / threadsInWorkGroup);
@@ -304,37 +306,46 @@ GLuint* totalSumms = nullptr;
 		glDispatchCompute(groupCount, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
+#ifdef VLAIDATE
 cells0 = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
 obj0 = readFromBuffer<GLuint>(currentCellsCount, ssboObjectId);
 validator->ValidateFilledArrays(cells0, obj0);
+#endif
 
 		// ============== PHASE 1 PASS 1 =====================
 		glUseProgram(radixPhase1Pass1CompShaderProgram);
 		glDispatchCompute(phase1GroupCount, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		// ===================================================
-globalCounters = readFromBuffer<GLuint>(12288 * phase1GroupCount, ssboGlobalCounters);
+#ifdef VLAIDATE
+globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
 validator->ValidateSortPhase1(0, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, globalCounters);
 delete[] globalCounters;
+#endif
 
 		// ============== PHASE 2 PASS 1 =====================
 		glUseProgram(radixPhase2CompShaderProgram);
 		glDispatchCompute(64, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
-globalCounters = readFromBuffer<GLuint>(12288 * phase1GroupCount, ssboGlobalCounters);
+#ifdef VLAIDATE
+globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
 totalSumms = readFromBuffer<GLuint>(256, buffer);
 validator->ValidateSortPhase2(threadGroupsTotal, globalCounters, totalSumms);
 delete[] globalCounters;
+#endif
 
 		// ============== PHASE 3 PASS 1 =====================
 		glUseProgram(radixPhase3Pass1CompShaderProgram);
-		glDispatchCompute(phase1GroupCount + 1, 1, 1);
+		glDispatchCompute(phase1GroupCount, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
+#ifdef VLAIDATE
+GLfloat* test = readFromBuffer<GLfloat>(sharedCountersLength, bufferTest);
 cells1 = readFromBuffer<GLuint>(currentCellsCount, buffer5);
 obj1 = readFromBuffer<GLuint>(currentCellsCount, buffer7);
 validator->ValidateSortPhase3(0, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, cells1, obj1);
+#endif
 
 
 		// ============== PHASE 1 PASS 2 =====================
@@ -342,29 +353,34 @@ validator->ValidateSortPhase3(0, threadsInWorkGroup, threadGroupsInWorkGroup, th
 		glDispatchCompute(phase1GroupCount, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		// ===================================================
+#ifdef VLAIDATE
 //GLfloat* test = readFromBuffer<GLfloat>(20000, bufferTest);
-globalCounters = readFromBuffer<GLuint>(12288 * phase1GroupCount, ssboGlobalCounters);
+globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
 validator->ValidateSortPhase1(1, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, globalCounters);
 delete[] globalCounters;
+#endif
 
 		// ============== PHASE 2 PASS 2 =====================
 		glUseProgram(radixPhase2CompShaderProgram);
 		glDispatchCompute(64, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
-globalCounters = readFromBuffer<GLuint>(12288 * phase1GroupCount, ssboGlobalCounters);
+#ifdef VLAIDATE
+globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
 totalSumms = readFromBuffer<GLuint>(256, buffer);
 validator->ValidateSortPhase2(threadGroupsTotal, globalCounters, totalSumms);
+#endif
 
 		// ============== PHASE 3 PASS 2 =====================
 		glUseProgram(radixPhase3Pass2CompShaderProgram);
 		glDispatchCompute(phase1GroupCount + 1, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
+#ifdef VLAIDATE
 cells2 = readFromBuffer<GLuint>(currentCellsCount, buffer6);
 obj2 = readFromBuffer<GLuint>(currentCellsCount, buffer8);
 validator->ValidateSortPhase3(1, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, cells2, obj2);
-
+#endif
 		GLuint cellsPerThread = 10;
 		GLuint threadsInBlock = 1024;
 		GLuint blocks = currentCellsCount / (cellsPerThread * threadsInBlock) + 1;
@@ -376,6 +392,8 @@ validator->ValidateSortPhase3(1, threadsInWorkGroup, threadGroupsInWorkGroup, th
 
 		glDispatchCompute(blocks, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+		frameCount++;
 	}
 
 	if (isDebug)
