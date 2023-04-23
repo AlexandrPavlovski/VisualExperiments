@@ -1,6 +1,7 @@
 #version 460 core
 
 #define cellIdsLength 0
+#define radixCountersLength 1
 #define threadsInWorkGroup 1
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 1
@@ -37,7 +38,7 @@ layout(binding = 3) buffer counters
 };
 layout(binding = 4) buffer totalSumm
 {
-	uint totalSumms[256];
+	uint totalSumms[radixCountersLength];
 };
 layout(binding = bindingCellIdsOutput) buffer bufferCellIdsOutput
 {
@@ -52,7 +53,7 @@ layout(binding = 9) buffer tetete
 	float test[];
 };
 
-shared uint totalSummShared[256];
+shared uint totalSummShared[radixCountersLength];
 shared uint sharedCounters[sharedCountersLength];
 
 
@@ -107,23 +108,23 @@ int t=0;
 	const uint indexInWrap = uint(mod(thid, 16));
 	uint i;
 
-	for (i = 0; thid + i < 256; i += threadsInWorkGroup)
+	for (i = 0; thid + i < radixCountersLength; i += threadsInWorkGroup)
 	{
 		totalSummShared[thid + i] = totalSumms[thid + i];
 	}
 
-//for (i = 0; thid + i < 256; i += threadsInWorkGroup)
+//for (i = 0; thid + i < radixCountersLength; i += threadsInWorkGroup)
 //{
 //	test[thid + i] = totalSumms[thid + i];
 //}
 
-	presumm(thid, 256);
+	presumm(thid, radixCountersLength);
 
 	barrier();
 
 	for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
 	{
-		sharedCounters[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x] + totalSummShared[uint(mod(thid + i, 256))];
+		sharedCounters[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x] + totalSummShared[uint(mod(thid + i, radixCountersLength))];
 	}
 
 //for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
@@ -134,7 +135,7 @@ int t=0;
 //{
 //	test[thid + i] = globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x];
 //}
-//for (i = 0; thid + i < 256; i += threadsInWorkGroup)
+//for (i = 0; thid + i < radixCountersLength; i += threadsInWorkGroup)
 //{
 //	test[thid + i] = totalSummShared[thid + i];
 //}
@@ -144,7 +145,7 @@ int t=0;
 	const uint indexInGroup = uint(mod(thid, threadsInThreadGroup));
 	const uint groupIndex = thid / threadsInThreadGroup;
 	const uint cellIndex = (gl_WorkGroupID.x * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
-	const uint counterIndexOffset = groupIndex * 256;
+	const uint counterIndexOffset = groupIndex * radixCountersLength;
 
 	uint offset;
 	for (i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
@@ -202,7 +203,7 @@ int t=0;
 //		globalCounters[thid + i + sharedCountersLength * gl_WorkGroupID.x] = sharedCounters[thid + i];
 //	}
 
-//	for (uint i = 0; thid + i < 256; i += threadsInWorkGroup)
+//	for (uint i = 0; thid + i < radixCountersLength; i += threadsInWorkGroup)
 //	{
 //		totalSumms[thid + i] = totalSummShared[thid + i];
 //	}

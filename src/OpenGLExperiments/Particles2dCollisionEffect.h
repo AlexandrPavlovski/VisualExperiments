@@ -150,6 +150,19 @@ public:
 			if (globalCountersFromGPU[i] != globalCounters[i])
 			{
 				__debugbreak();
+				if (i == -1)
+				{
+					std::ofstream MyFile("c:/ValidateSortPhase1 globalCountersFromGPU.txt");
+					for (int b = 0; b < globalCountersCount; b += 256)
+					{
+						for (int c = 0; c < 256; c++)
+						{
+							MyFile << globalCountersFromGPU[b + c] << "\t";
+						}
+						MyFile << "\r";
+					}
+					MyFile.close();
+				}
 			}
 		}
 	}
@@ -340,6 +353,7 @@ public:
 	virtual void keyCallback(int key, int scancode, int action, int mode);
 	virtual void mouseButtonCallback(int button, int action, int mods);
 
+	GLuint radixCountersLength = 0;
 	GLuint sharedCountersLength = 0;
 	GLuint maxWorkGroupCount = 0;
 	GLuint threadGroupsInWorkGroup = 0;

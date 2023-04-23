@@ -70,20 +70,20 @@ void main()
 
 	uint i;
 	uint currCellId;
-	for (i = 1; (i <= cellsPerThread + 1 || !isTransitionFound) && startIndex + i < cellIdsLength; i++)
+	for (i = 1; (i <= cellsPerThread + 1 || !isTransitionFound) && startIndex + i < cellIdsLength; i++) // TODO doesn't work when all hCells are in the end of cellIds
 	{
 		isTransitionFound = false;
 		currCellId = cellIds[startIndex + i];
 
 		if (currCellId != prevCellId)
 		{
-			if (!isFirstTransition)
+			if (!isFirstTransition) // thread number 0 is the only one which will enter here on the first iteration, next iterations all threads are entering
 			{
 				if (hCount > 0 && pCount > 0 || hCount > 1)
 				{
 					uint cellType = ((prevCellId % gridWidth) % 2) + ((prevCellId / gridWidth) % 2) * 2;
 					collisionCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
-						collisionCellsFound[cellType]++;
+					collisionCellsFound[cellType]++;
 				}
 			}
 			isFirstTransition = false;
@@ -100,7 +100,16 @@ void main()
 		pCount++;
 		pCount -= homeOrPhantomCell;
 		hCount += homeOrPhantomCell;
+
+//if(thid == 0 && i == 7){
+//test[0]=currCellId;
+//test[1]=startIndex + i;
+//test[2]=pCount;
+//test[3]=hCount;
+//}
 	}
+//if(thid == 0){for(uint l = 0; l<84; l++){test[l]=collisionCellsFound[l];}}
+
 
 //	currCellId = cellIds[startIndex + i];
 //	if (currCellId != prevCellId)
@@ -127,7 +136,6 @@ void main()
 //		collisionCellsFound[cellType]++;
 //	}
 
-//test[thid * 2]=startIndex;
 //test[thid * 2 + 1]=startIndex + i;
 //if (thid == 1700){
 //test[t++]=startIndex;
@@ -178,8 +186,8 @@ void main()
 //test[t++] = pCount;
 //test[t++] = hCount;
 //}
-						particles[objectIds[collisionCellIndex + h]].Vel += norm * 0.1;
-						particles[objectIds[collisionCellIndex + c]].Vel += -norm * 0.1;
+//						particles[objectIds[collisionCellIndex + h]].Vel += norm * 0.1;
+//						particles[objectIds[collisionCellIndex + c]].Vel += -norm * 0.1;
 					}
 				}
 			}

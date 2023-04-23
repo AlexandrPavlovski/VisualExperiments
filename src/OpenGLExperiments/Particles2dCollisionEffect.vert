@@ -170,7 +170,7 @@ vec2 collisionResponse(float penetrationDepth, vec2 norm, vec2 relativeVel)
 	return acc * norm;
 }
 
-vec2 screenBoundsCollision(vec2 pos, vec2 vel)
+vec2 screenBoundsCollisionSoft(vec2 pos, vec2 vel)
 {
 	vec2 acc = vec2(0.0);
 
@@ -200,6 +200,40 @@ vec2 screenBoundsCollision(vec2 pos, vec2 vel)
 	return acc;
 }
 
+Particle screenBoundsCollision(Particle particle)
+{
+	const vec2 pos = particle.Pos;
+
+	const float halfParticleSize = particleSize / 2;
+	const float leftWall = halfParticleSize;
+	const float rightWall = windowSize.x - halfParticleSize;
+	const float topWall = halfParticleSize;
+	const float bottomWall = windowSize.y - halfParticleSize;
+
+	if (pos.x < leftWall)
+	{
+		particle.Pos.x = leftWall + leftWall - pos.x;
+		particle.Vel.x = -particle.Vel.x;
+	}
+	if (pos.x > rightWall)
+	{
+		particle.Pos.x = rightWall - (pos.x - rightWall);
+		particle.Vel.x = -particle.Vel.x;
+	}
+	if (pos.y < topWall)
+	{
+		particle.Pos.y = topWall + topWall - pos.y;
+		particle.Vel.y = -particle.Vel.y;
+	}
+	if (pos.y > bottomWall)
+	{
+		particle.Pos.y = bottomWall - (pos.y - bottomWall);
+		particle.Vel.y = -particle.Vel.y;
+	}
+
+	return particle;
+}
+
 void updateParticle()
 {
 	float deltaT = deltaTime * 0.04;
@@ -208,10 +242,10 @@ void updateParticle()
 
 	if (!isPaused)
 	{
-		const vec2 boundsCollisionAcc = screenBoundsCollision(particle.Pos, particle.Vel);
-		const vec2 gravityAcc = vec2(0, 0.1);
+		particle = screenBoundsCollision(particle);
+		const vec2 gravityAcc = vec2(0, 0.0);
 
-		vec2 newVel = (particle.Acc + boundsCollisionAcc) * deltaT;
+		vec2 newVel = (particle.Acc + gravityAcc) * deltaT;
 		if (dot(newVel, newVel) > 25)
 		{
 			newVel = normalize(newVel) * 4;

@@ -18,7 +18,7 @@
 #include "Particles2dCollisionEffect.h"
 
 
-bool isVsyncEnabled = true;
+bool isVsyncEnabled = false;
 
 const int effectsCount = 4;
 AbstractEffect* effect;

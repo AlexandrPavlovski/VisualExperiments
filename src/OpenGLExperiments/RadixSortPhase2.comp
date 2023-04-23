@@ -1,10 +1,12 @@
 #version 460 core
 
+#define radixCountersLength 1
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 0
 #define elementsPerGroup 0
 #define threadGroupsTotal 1
 #define sharedCountersSize 1024
+#define iterations 0
 
 layout(local_size_x = sharedCountersSize) in;
 layout(std430) buffer;
@@ -16,15 +18,15 @@ layout(binding = 3) buffer counters
 };
 layout(binding = 4) buffer totalSumm
 {
-	uint totalSumms[256];
+	uint totalSumms[radixCountersLength];
 };
 layout(binding = 9) buffer tetete
 {
 	float test[];
 };
 
+shared uint iterationTotal = 0;
 shared uint sharedCounters[sharedCountersSize];
-shared uint totalSummsShared[4];
 
 
 void presumm(uint thid, uint n)
@@ -74,37 +76,34 @@ void main()
 {
 	const uint thid = gl_LocalInvocationID.x;
 
-	for (uint i = 0; i < 4; i++)
-	{
-		uint radix = gl_WorkGroupID.x * 4 + i;
-		uint globalCounterIndex = thid * 256 + radix;
-		uint globalCounter = globalCounters[globalCounterIndex];
+	const uint totalGlobalCounters = threadGroupsTotal * radixCountersLength;
 
-		// TODO get rid of condition
-		if (thid < threadGroupsTotal)
-			sharedCounters[thid] = globalCounter;
-		else
-			sharedCounters[thid] = 0;
+	for (uint i = 0; i < iterations; i++)
+	{
+		// TODO maybe change global counters layout to get better memroy read coalescing
+		uint globalCounterIndex = thid * radixCountersLength + sharedCountersSize * radixCountersLength * i + gl_WorkGroupID.x;
+		uint currentCounter = globalCounters[globalCounterIndex];
+
+		uint m = globalCounterIndex < totalGlobalCounters ? 1 : 0;
+		sharedCounters[thid] = currentCounter * m;
 
 		presumm(thid, sharedCountersSize);
+		barrier();
+		if (globalCounterIndex < totalGlobalCounters)
+		{
+			globalCounters[globalCounterIndex] = sharedCounters[thid] + iterationTotal;
+		}
+
+		if (thid == sharedCountersSize - 1 && i == iterations - 1) // last thread of last iteration writes total summ to global
+		{
+			totalSumms[gl_WorkGroupID.x] = sharedCounters[sharedCountersSize - 1] + iterationTotal + currentCounter;
+//if(i == iterations - 1 && gl_WorkGroupID.x == 70){test[0] = currentCounter;}
+		}
 
 		barrier();
-
-		if (thid == threadGroupsTotal - 1)
+		if (thid == sharedCountersSize - 1) // last thread of current iteration writes total summ for next iteration to use
 		{
-			totalSummsShared[i] = globalCounter + sharedCounters[thid];
+			iterationTotal = globalCounters[globalCounterIndex] + currentCounter;
 		}
-
-		if (thid < threadGroupsTotal)
-		{
-			globalCounters[globalCounterIndex] = sharedCounters[thid];
-		}
-	}
-
-	barrier(); // TODO maybe remove
-
-	if (thid < 4)
-	{
-		totalSumms[gl_WorkGroupID.x * 4 + thid] = totalSummsShared[thid];
 	}
 }

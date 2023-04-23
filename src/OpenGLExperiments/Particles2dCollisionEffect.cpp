@@ -1,7 +1,8 @@
 // implementation of this article
 // https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-32-broad-phase-collision-detection-cuda
 
-#define VLAIDATE
+//#define VLAIDATE
+//#define MISC_TESTS
 
 #include <iostream>
 #include "Particles2dCollisionEffect.h"
@@ -14,7 +15,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 1024;
+	startupParams.ParticlesCount = 32768 * 16; // 32768 * 16 = 524288 -> 20ms 50fps
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -25,7 +26,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	runtimeParams.Color[1] = 1.0;
 	runtimeParams.Color[2] = 1.0;
 	runtimeParams.Color[3] = 1.0;
-	runtimeParams.particleSize = 40.0;
+	runtimeParams.particleSize = 4.0;
 	runtimeParams.cellSize = runtimeParams.particleSize;//ceil(sqrt(windowWidth * windowHeight / 65535));
 }
 
@@ -45,8 +46,8 @@ void Particles2dCollisionEffect::initialize()
 	particles = std::vector<Particle>(currentParticlesCount);
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		particles[i].PosX = random(80.0, 81.0);
-		particles[i].PosY = random(80.0, 81.0);
+		particles[i].PosX = random(2.0, 1278.0);
+		particles[i].PosY = random(2.0, 798.0);
 		//particles[i].VelX = random(-3.0, 3.0);
 		//particles[i].VelY = random(-3.0, 3.0);
 	}
@@ -84,13 +85,15 @@ void Particles2dCollisionEffect::initialize()
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssboObjectId);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-	sharedCountersLength = 12032; // 47 thread groups * 256 counters
-	maxWorkGroupCount = 210;
-	threadGroupsInWorkGroup = 47;
-	threadsInThreadGroup = 4;
+	radixCountersLength = 256;
+	sharedCountersLength = 12032; // 12288 is maximum on my laptop's 3060, but in phase 3 need some additional shared memory for total summs counting
+	//maxWorkGroupCount = 1000; // arbitrary
+	threadGroupsInWorkGroup = sharedCountersLength / radixCountersLength;
+	threadsInThreadGroup = 16; // max is 21 because 21 * 47 < 1024 which is max number of threads in workgroup but more than 16 starts behaving unpredictably
 	threadsInWorkGroup = threadGroupsInWorkGroup * threadsInThreadGroup;
-	GLuint groupCount = ceil(currentCellsCount / threadsInWorkGroup);
-	phase1GroupCount = groupCount > maxWorkGroupCount ? maxWorkGroupCount : groupCount;
+	phase1GroupCount = ceil(currentCellsCount / threadsInWorkGroup);
+	//GLuint groupCount = ceil(currentCellsCount / threadsInWorkGroup);
+	//phase1GroupCount = groupCount > maxWorkGroupCount ? maxWorkGroupCount : groupCount;
 
 	glGenVertexArrays(1, &vaoGlobalCounters);
 	glBindVertexArray(vaoGlobalCounters);
@@ -130,13 +133,16 @@ void Particles2dCollisionEffect::initialize()
 	elementsPerThread = ceil(currentCellsCount / (phase1GroupCount * threadsInWorkGroup));
 	elementsPerGroup = threadsInThreadGroup * elementsPerThread;
 	threadGroupsTotal = ceil(currentCellsCount / (double)elementsPerGroup);
+	GLuint phase2Iterations = ceil(threadGroupsTotal / 1024.0); // 1024 is maximum threads per work group on my laptop's 3060
 
 	ShaderParams cellIdsLengthShaderParam          { "#define cellIdsLength 0",            "#define cellIdsLength "           + std::to_string(currentCellsCount) };
 	ShaderParams threadsInWorkGroupShaderParam     { "#define threadsInWorkGroup 1",       "#define threadsInWorkGroup "      + std::to_string((int)threadsInWorkGroup) };
 	ShaderParams threadGroupsInWorkGroupShaderParam{ "#define threadGroupsInWorkGroup 1",  "#define threadGroupsInWorkGroup " + std::to_string(threadGroupsInWorkGroup) };
+	ShaderParams radixCountersLengthShaderParam    { "#define radixCountersLength 1",      "#define radixCountersLength "     + std::to_string(radixCountersLength) };
 	ShaderParams threadsInThreadGroupShaderParam   { "#define threadsInThreadGroup 0",     "#define threadsInThreadGroup "    + std::to_string(threadsInThreadGroup) };
 	ShaderParams elementsPerGroupShaderParam       { "#define elementsPerGroup 0",         "#define elementsPerGroup "        + std::to_string(elementsPerGroup) };
 	ShaderParams threadGroupsTotalShaderParam      { "#define threadGroupsTotal 1",        "#define threadGroupsTotal "       + std::to_string(threadGroupsTotal) };
+	ShaderParams phase2IterationsShaderParam       { "#define iterations 0",               "#define iterations "              + std::to_string(phase2Iterations) };
 	ShaderParams bindingCellIds1ShaderParam        { "#define bindingCellIds1 1",          "#define bindingCellIds1 5"};
 	ShaderParams bindingCellIds2ShaderParam        { "#define bindingCellIds2 5",          "#define bindingCellIds2 1"};
 	ShaderParams cellIdShiftShaderParam            { "#define cellIdShift 0",              "#define cellIdShift 8"};
@@ -156,6 +162,7 @@ void Particles2dCollisionEffect::initialize()
 	std::vector<ShaderParams> phase1Pass1ShaderParams
 	{
 		cellIdsLengthShaderParam,
+		radixCountersLengthShaderParam,
 		threadsInWorkGroupShaderParam,
 		threadGroupsInWorkGroupShaderParam,
 		threadsInThreadGroupShaderParam,
@@ -164,6 +171,7 @@ void Particles2dCollisionEffect::initialize()
 	std::vector<ShaderParams> phase1Pass2ShaderParams
 	{
 		cellIdsLengthShaderParam,
+		radixCountersLengthShaderParam,
 		threadsInWorkGroupShaderParam,
 		threadGroupsInWorkGroupShaderParam,
 		threadsInThreadGroupShaderParam,
@@ -179,15 +187,18 @@ void Particles2dCollisionEffect::initialize()
 	std::vector<ShaderParams> phase2ShaderParams
 	{
 		threadGroupsInWorkGroupShaderParam,
+		radixCountersLengthShaderParam,
 		threadsInThreadGroupShaderParam,
 		elementsPerGroupShaderParam,
-		threadGroupsTotalShaderParam
+		threadGroupsTotalShaderParam,
+		phase2IterationsShaderParam
 	};
 	std::vector<ShaderParams> phase3Pass1ShaderParams
 	{
 		cellIdsLengthShaderParam,
 		threadsInWorkGroupShaderParam,
 		threadGroupsInWorkGroupShaderParam,
+		radixCountersLengthShaderParam,
 		threadsInThreadGroupShaderParam,
 		elementsPerGroupShaderParam
 	};
@@ -196,6 +207,7 @@ void Particles2dCollisionEffect::initialize()
 		cellIdsLengthShaderParam,
 		threadsInWorkGroupShaderParam,
 		threadGroupsInWorkGroupShaderParam,
+		radixCountersLengthShaderParam,
 		threadsInThreadGroupShaderParam,
 		elementsPerGroupShaderParam,
 
@@ -230,7 +242,7 @@ void Particles2dCollisionEffect::initialize()
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	glGenBuffers(1, &buffer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, buffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, 256 * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, radixCountersLength * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	glGenBuffers(1, &buffer5);
@@ -258,7 +270,9 @@ void Particles2dCollisionEffect::initialize()
 	glBufferData(GL_SHADER_STORAGE_BUFFER, 20000 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+#ifdef VLAIDATE
 	validator = new Validator;
+#endif
 }
 
 void Particles2dCollisionEffect::draw(GLdouble deltaTime)
@@ -269,6 +283,7 @@ void Particles2dCollisionEffect::draw(GLdouble deltaTime)
 	deltaTime = 0.01666666 * 2;
 	GLfloat dt = ((GLfloat)deltaTime) * 1000 * runtimeParams.TimeScale;
 
+#ifdef VLAIDATE
 Particle* prtcls = readFromBuffer<Particle>(currentParticlesCount, ssboParticles);
 validator->Init(prtcls, currentParticlesCount, runtimeParams.particleSize, windowWidth, windowHeight, phase1GroupCount);
 
@@ -280,6 +295,7 @@ GLuint* cells2 = nullptr;
 GLuint* obj2 = nullptr;
 GLuint* globalCounters = nullptr;
 GLuint* totalSumms = nullptr;
+#endif
 
 	if (!isPaused || isAdvanceOneFrame)
 	{
@@ -325,12 +341,13 @@ delete[] globalCounters;
 
 		// ============== PHASE 2 PASS 1 =====================
 		glUseProgram(radixPhase2CompShaderProgram);
-		glDispatchCompute(64, 1, 1);
+		glDispatchCompute(radixCountersLength, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
 #ifdef VLAIDATE
+//GLfloat* test = readFromBuffer<GLfloat>(1026, bufferTest);
 globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
-totalSumms = readFromBuffer<GLuint>(256, buffer);
+totalSumms = readFromBuffer<GLuint>(radixCountersLength, buffer);
 validator->ValidateSortPhase2(threadGroupsTotal, globalCounters, totalSumms);
 delete[] globalCounters;
 #endif
@@ -341,7 +358,6 @@ delete[] globalCounters;
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
 #ifdef VLAIDATE
-GLfloat* test = readFromBuffer<GLfloat>(sharedCountersLength, bufferTest);
 cells1 = readFromBuffer<GLuint>(currentCellsCount, buffer5);
 obj1 = readFromBuffer<GLuint>(currentCellsCount, buffer7);
 validator->ValidateSortPhase3(0, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, cells1, obj1);
@@ -362,12 +378,12 @@ delete[] globalCounters;
 
 		// ============== PHASE 2 PASS 2 =====================
 		glUseProgram(radixPhase2CompShaderProgram);
-		glDispatchCompute(64, 1, 1);
+		glDispatchCompute(radixCountersLength, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
 #ifdef VLAIDATE
 globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
-totalSumms = readFromBuffer<GLuint>(256, buffer);
+totalSumms = readFromBuffer<GLuint>(radixCountersLength, buffer);
 validator->ValidateSortPhase2(threadGroupsTotal, globalCounters, totalSumms);
 #endif
 
@@ -381,7 +397,7 @@ cells2 = readFromBuffer<GLuint>(currentCellsCount, buffer6);
 obj2 = readFromBuffer<GLuint>(currentCellsCount, buffer8);
 validator->ValidateSortPhase3(1, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, cells2, obj2);
 #endif
-		GLuint cellsPerThread = 10;
+		GLuint cellsPerThread = 10; // TODO calculate this
 		GLuint threadsInBlock = 1024;
 		GLuint blocks = currentCellsCount / (cellsPerThread * threadsInBlock) + 1;
 		glUseProgram(findAndResolveCollisionsCompShaderProgram);
@@ -423,6 +439,7 @@ validator->ValidateSortPhase3(1, threadsInWorkGroup, threadGroupsInWorkGroup, th
 	//glDrawArrays(GL_POINTS, currentParticlesCount * 2, 20000);
 	glDrawArrays(GL_POINTS, 0, currentParticlesCount);
 
+#ifdef MISC_TESTS
 GLuint* cells = readFromBuffer<GLuint>(currentCellsCount, buffer6);
 GLuint* obj = readFromBuffer<GLuint>(currentCellsCount, buffer8);
 GLfloat* test = readFromBuffer<GLfloat>(1000, bufferTest);
@@ -458,10 +475,17 @@ for (int i = 0; i < currentParticlesCount; i++)
 }
 //std::cout << objIdUnderMouse << std::endl;
 
+delete[] cells;
+delete[] obj;
+delete[] test;
+delete[] particles;
+#endif // MISC_TESTS
+
 	isAdvanceOneFrame = false;
 	isLeftMouseBtnPressed = false;
 	isLeftMouseBtnReleased = false;
 
+#ifdef VLAIDATE
 validator->Clear();
 delete[] prtcls;
 delete[] cells0;
@@ -472,6 +496,7 @@ delete[] cells2;
 delete[] obj2;
 delete[] globalCounters;
 delete[] totalSumms;
+#endif
 }
 
 void Particles2dCollisionEffect::drawGUI()
