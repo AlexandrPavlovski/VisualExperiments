@@ -28,13 +28,13 @@ layout(binding = 0) buffer SSBO
 {
 	Particle particles[];
 };
-layout(binding = 6) buffer cells3
+//layout(binding = 6) buffer cells3
+//{
+//	uint cellIds[]; // sorted at this point
+//};
+layout(binding = 11) buffer misc
 {
-	uint cellIdsSorted[];
-};
-layout(binding = 2) buffer objects
-{
-	vec4 objectIds[];
+	uint draggedParticleIndex;
 };
 
 
@@ -262,8 +262,16 @@ void updateParticle()
 
 void setParticleColor()
 {
+	if (draggedParticleIndex - 1 == gl_VertexID)
+	{
+		particleColor = vec3(1.0, 0.0, 0.0);
+		return;
+	}
+
 	float pressure = particles[gl_VertexID].Pressure / 120.0;
-	pressure = float(gl_VertexID) / float(particlesCount);
+	particles[gl_VertexID].Pressure *= 0.96;
+
+//pressure = float(gl_VertexID) / float(particlesCount);
 	// gradient for pressure coloring
 	vec3 firstColor =  vec3(0.0, 0.0, 1.0);
 	vec3 middleColor = vec3(0.0, 1.0, 0.0);
@@ -281,11 +289,11 @@ void setParticleColor()
 ////	uint shift = uint(mod(gl_VertexID, 2)) * 16;
 ////	uint cellId = (cellIds1[cellIndex] >> shift) & 255;
 //
-//	uvec2 cellIdsPacked = uvec2(cellIdsSorted[cellIndex], cellIdsSorted[cellIndex + 1]);
-//	uint hCellId = cellIdsSorted[cellIndex];
-//	uint pCellId1 = cellIdsSorted[cellIndex + 1];
-//	uint pCellId2 = cellIdsSorted[cellIndex + 2];
-//	uint pCellId3 = cellIdsSorted[cellIndex + 3];
+//	uvec2 cellIdsPacked = uvec2(cellIds[cellIndex], cellIds[cellIndex + 1]);
+//	uint hCellId = cellIds[cellIndex];
+//	uint pCellId1 = cellIds[cellIndex + 1];
+//	uint pCellId2 = cellIds[cellIndex + 2];
+//	uint pCellId3 = cellIds[cellIndex + 3];
 //
 //	particleData[hCellId + cellsCount].z += 0.7;
 //	particleData[pCellId1 + cellsCount].z += 0.7;

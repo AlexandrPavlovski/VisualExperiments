@@ -405,12 +405,13 @@ private:
 
 	GLint frameCount = 0;
 
-	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0;
+	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0, ssboCollisionList = 0, ssboMisc = 0;
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,
 		radixPhase1Pass1CompShaderProgram = 0, radixPhase1Pass2CompShaderProgram = 0,
 		radixPhase2CompShaderProgram = 0,
 		radixPhase3Pass1CompShaderProgram = 0, radixPhase3Pass2CompShaderProgram = 0,
-		findAndResolveCollisionsCompShaderProgram = 0,
+		findCollisionCellsCompShaderProgram = 0,
+		resolveCollisionsCompShaderProgram = 0,
 		gridShaderProgram = 0;
 
 	bool isManualAttractorControlEnabled = false;

@@ -8,7 +8,6 @@ layout(location = 20) uniform vec4 uColor;
 
 layout(location = 0) in vec3 particleColor;
 layout(location = 1) in vec3 gridCellColor;
-layout(location = 2) in flat uint isGridCell;
 
 out vec4 color;
 
@@ -18,8 +17,5 @@ void main() {
 	float distSqared = dot(pCoord, pCoord);
 	float circle = smoothstep(1.0, 0.9, distSqared);
 
-	if (isGridCell == 0)
-		color = vec4(particleColor, circle);
-	else
-		color = vec4(gridCellColor, 1.0);
+	color = vec4(particleColor, circle);
 }

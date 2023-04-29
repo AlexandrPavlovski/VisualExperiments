@@ -15,7 +15,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 32768 * 16; // 32768 * 16 = 524288 -> 20ms 50fps
+	startupParams.ParticlesCount = 20; // 32768 * 16 = 524288 -> 20ms 50fps
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -26,7 +26,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	runtimeParams.Color[1] = 1.0;
 	runtimeParams.Color[2] = 1.0;
 	runtimeParams.Color[3] = 1.0;
-	runtimeParams.particleSize = 4.0;
+	runtimeParams.particleSize = 40.0;
 	runtimeParams.cellSize = runtimeParams.particleSize;//ceil(sqrt(windowWidth * windowHeight / 65535));
 }
 
@@ -46,8 +46,8 @@ void Particles2dCollisionEffect::initialize()
 	particles = std::vector<Particle>(currentParticlesCount);
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		particles[i].PosX = random(2.0, 1278.0);
-		particles[i].PosY = random(2.0, 798.0);
+		particles[i].PosX = random(2.0, 1000.0);
+		particles[i].PosY = random(2.0, 600.0);
 		//particles[i].VelX = random(-3.0, 3.0);
 		//particles[i].VelY = random(-3.0, 3.0);
 	}
@@ -129,7 +129,7 @@ void Particles2dCollisionEffect::initialize()
 		throw "Initialize failed";
 	}
 	gridShaderProgram = newShaderProgram;
-	
+
 	elementsPerThread = ceil(currentCellsCount / (phase1GroupCount * threadsInWorkGroup));
 	elementsPerGroup = threadsInThreadGroup * elementsPerThread;
 	threadGroupsTotal = ceil(currentCellsCount / (double)elementsPerGroup);
@@ -223,9 +223,12 @@ void Particles2dCollisionEffect::initialize()
 		bufferObjectIdsInputShaderParam,
 		bufferObjectIdsOutputShaderParam
 	};
-	std::vector<ShaderParams> findAndResolveCollisionsShaderParams
+	std::vector<ShaderParams> findCollisionCellsShaderParams
 	{
 		cellIdsLengthShaderParam
+	};
+	std::vector<ShaderParams> ResolveCollisionsShaderParams
+	{
 	};
 
 	createComputeShaderProgram(fillCellIdAndObjectIdArraysCompShaderProgram, "FillCellIdAndObjectIdArrays.comp", fragShaderParams);
@@ -234,7 +237,8 @@ void Particles2dCollisionEffect::initialize()
 	createComputeShaderProgram(radixPhase2CompShaderProgram, "RadixSortPhase2.comp", phase2ShaderParams);
 	createComputeShaderProgram(radixPhase3Pass1CompShaderProgram, "RadixSortPhase3.comp", phase3Pass1ShaderParams);
 	createComputeShaderProgram(radixPhase3Pass2CompShaderProgram, "RadixSortPhase3.comp", phase3Pass2ShaderParams);
-	createComputeShaderProgram(findAndResolveCollisionsCompShaderProgram, "FindAndResolveCollisions.comp", findAndResolveCollisionsShaderParams);
+	createComputeShaderProgram(findCollisionCellsCompShaderProgram, "FindCollisionCells.comp", findCollisionCellsShaderParams);
+	createComputeShaderProgram(resolveCollisionsCompShaderProgram, "ResolveCollisions.comp", ResolveCollisionsShaderParams);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -270,6 +274,16 @@ void Particles2dCollisionEffect::initialize()
 	glBufferData(GL_SHADER_STORAGE_BUFFER, 20000 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+	glGenBuffers(1, &ssboCollisionList);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, ssboMisc);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, 777 * sizeof(GLint), NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	glGenBuffers(1, &ssboMisc);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, ssboMisc);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint), NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
 #ifdef VLAIDATE
 	validator = new Validator;
 #endif
@@ -301,10 +315,6 @@ GLuint* totalSumms = nullptr;
 	{
 		GLdouble oldCursorPosX = cursorPosX, oldCursorPosY = cursorPosY;
 		glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
-		if (isLeftMouseBtnDown)
-		{
-
-		}
 
 		glUseProgram(fillCellIdAndObjectIdArraysCompShaderProgram);
 
@@ -345,7 +355,6 @@ delete[] globalCounters;
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		// ===================================================
 #ifdef VLAIDATE
-//GLfloat* test = readFromBuffer<GLfloat>(1026, bufferTest);
 globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
 totalSumms = readFromBuffer<GLuint>(radixCountersLength, buffer);
 validator->ValidateSortPhase2(threadGroupsTotal, globalCounters, totalSumms);
@@ -370,7 +379,6 @@ validator->ValidateSortPhase3(0, threadsInWorkGroup, threadGroupsInWorkGroup, th
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		// ===================================================
 #ifdef VLAIDATE
-//GLfloat* test = readFromBuffer<GLfloat>(20000, bufferTest);
 globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
 validator->ValidateSortPhase1(1, threadsInWorkGroup, threadGroupsInWorkGroup, threadsInThreadGroup, elementsPerGroup, globalCounters);
 delete[] globalCounters;
@@ -400,7 +408,7 @@ validator->ValidateSortPhase3(1, threadsInWorkGroup, threadGroupsInWorkGroup, th
 		GLuint cellsPerThread = 10; // TODO calculate this
 		GLuint threadsInBlock = 1024;
 		GLuint blocks = currentCellsCount / (cellsPerThread * threadsInBlock) + 1;
-		glUseProgram(findAndResolveCollisionsCompShaderProgram);
+		glUseProgram(findCollisionCellsCompShaderProgram);
 
 		glUniform2f(0, windowWidth, windowHeight);
 		glUniform1f(6, runtimeParams.particleSize);
@@ -408,6 +416,26 @@ validator->ValidateSortPhase3(1, threadsInWorkGroup, threadGroupsInWorkGroup, th
 
 		glDispatchCompute(blocks, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+
+		// =========== collisions resolving ==================
+		glUseProgram(resolveCollisionsCompShaderProgram);
+
+		glUniform2f(0, windowWidth, windowHeight);
+		glUniform1f(1, runtimeParams.cellSize);
+		glUniform2f(2, (float)cursorPosX, (float)cursorPosY);
+		glUniform1i(3, isLeftMouseBtnPressed);
+		glUniform1ui(4, currentCellsCount);
+		glUniform1f(5, runtimeParams.particleSize);
+		glUniform1i(6, isLeftMouseBtnReleased);
+		glUniform2f(7, (float)(cursorPosX - oldCursorPosX), (float)(cursorPosY - oldCursorPosY));
+
+		GLuint groupsCOunt = ceil(currentCellsCount / 1024.0);
+		glDispatchCompute(groupsCOunt, 1, 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		// ===================================================
+GLfloat* test = readFromBuffer<GLfloat>(200, bufferTest);
+
 
 		frameCount++;
 	}

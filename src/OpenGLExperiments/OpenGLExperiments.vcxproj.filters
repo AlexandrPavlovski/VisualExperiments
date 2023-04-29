@@ -16,19 +16,16 @@
     <Filter Include="Effects\Particles2dNBodyGravityEffect">
       <UniqueIdentifier>{a6e539ac-833b-453d-a554-f954414f5c84}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Effects\Fractal2dEffect">
-      <UniqueIdentifier>{45876e7d-6b3f-4682-b04e-11f6bbf8d946}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Effects\Particles2dCollisionEffect">
       <UniqueIdentifier>{beacfb1e-d8cf-4766-8313-0cff5c7ab759}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\Fractal2dEffect">
+      <UniqueIdentifier>{45876e7d-6b3f-4682-b04e-11f6bbf8d946}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Particles2dGravityEffect.cpp">
       <Filter>Effects\Particles2dGravityEffect</Filter>
-    </ClCompile>
-    <ClCompile Include="AbstractEffect.cpp">
-      <Filter>Effects\AbstractEffect</Filter>
     </ClCompile>
     <ClCompile Include="imgui_impl_glfw.cpp">
       <Filter>GUI</Filter>
@@ -57,6 +54,9 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Particles2dCollisionEffect.cpp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </ClCompile>
+    <ClCompile Include="AbstractEffect.cpp">
+      <Filter>Effects\AbstractEffect</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -145,13 +145,16 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <None Include="FindAndResolveCollisions.comp">
+    <None Include="FindCollisionCells.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </None>
     <None Include="Grid.vert">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </None>
     <None Include="Grid.frag">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </None>
+    <None Include="ResolveCollisions.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </None>
   </ItemGroup>

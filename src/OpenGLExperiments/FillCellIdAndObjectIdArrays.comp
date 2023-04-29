@@ -36,6 +36,10 @@ layout(binding = 2) buffer objects1
 {
 	uint objectIds[];
 };
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
 
 void main()
 {
