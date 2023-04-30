@@ -7,6 +7,17 @@ layout(location = 0) uniform float cellSize;
 layout(location = 1) uniform vec2 mousePos;
 layout(location = 2) uniform int windowHeight;
 
+struct collCell
+{
+	uint index;
+	uint phantomAndHomeCellsCountPacked;
+};
+
+layout(binding = 10) buffer collisionList
+{
+	collCell collisionCells[];
+};
+
 out vec4 color;
 
 void main() {

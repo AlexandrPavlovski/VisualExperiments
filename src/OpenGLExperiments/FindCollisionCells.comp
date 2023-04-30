@@ -21,7 +21,6 @@ struct Particle
 	float Pressure;
 	float Unused;
 };
-
 struct collCell
 {
 	uint index;
@@ -46,7 +45,7 @@ layout(binding = 9) buffer tetete
 };
 layout(binding = 10) buffer collisionList
 {
-	uint collisionCells[];
+	collCell collisionCells2[];
 };
 
 
@@ -54,7 +53,6 @@ void main()
 {
 	const uint thid = gl_GlobalInvocationID.x;
 	const uint startIndex = thid * cellsPerThread;
-
 //uint t = 0;
 //for(int o = 0;o<100;o++){test[o]=888;}
 
@@ -74,7 +72,10 @@ void main()
 
 	uint i;
 	uint currCellId;
-	for (i = 1; (i <= cellsPerThread + 1 || !isTransitionFound) && startIndex + i < cellIdsLength; i++) // TODO doesn't work when all hCells are in the end of cellIds
+	for (i = 1;
+			(i <= cellsPerThread + 1 || !isTransitionFound) // scanning until the transition is found after the end of assigned to thread part of cellIds
+			&& startIndex + i < cellIdsLength + 1; // scanning past the end of cellIds to catch a collision cell at the end of cellIds
+		i++)
 	{
 		isTransitionFound = false;
 		currCellId = cellIds[startIndex + i];
@@ -190,8 +191,13 @@ void main()
 //test[t++] = pCount;
 //test[t++] = hCount;
 //}
-//						particles[objectIds[collisionCellIndex + h]].Vel += norm * 0.1;
-//						particles[objectIds[collisionCellIndex + c]].Vel += -norm * 0.1;
+						particles[objectIds[collisionCellIndex + h]].Vel += norm * 0.1;
+						particles[objectIds[collisionCellIndex + c]].Vel += -norm * 0.1;
+
+						particles[objectIds[collisionCellIndex + h]].Pressure = 0.0;
+						particles[objectIds[collisionCellIndex + c]].Pressure = 0.0;
+						particles[objectIds[collisionCellIndex + h]].Pressure += covered / particleSize;
+						particles[objectIds[collisionCellIndex + c]].Pressure += covered / particleSize;
 					}
 				}
 			}

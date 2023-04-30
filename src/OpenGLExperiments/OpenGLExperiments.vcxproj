@@ -240,10 +240,18 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <None Include="FindCollisionCells.comp" />
-    <None Include="Grid.frag" />
-    <None Include="Grid.vert" />
-    <None Include="ResolveCollisions.comp" />
+    <CopyFileToFolders Include="FindCollisionCells.comp">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Grid.frag">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Grid.vert">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="ResolveCollisions.comp">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

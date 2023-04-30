@@ -330,11 +330,6 @@ public:
 	std::vector<GLuint> objectIdsOutput;
 	std::vector<GLuint> globalCounters;
 	std::vector<GLuint> totalSumms;
-
-	void DumpToFile(char* fileName, char* content)
-	{
-		
-	}
 };
 
 
@@ -391,7 +386,7 @@ private:
 		GLfloat TimeScale;
 		GLfloat Color[4];
 		GLfloat particleSize;
-		GLuint cellSize;
+		GLfloat cellSize;
 	};
 
 	StartupParams startupParams;

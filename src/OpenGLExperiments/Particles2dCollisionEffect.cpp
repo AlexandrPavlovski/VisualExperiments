@@ -15,7 +15,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 20; // 32768 * 16 = 524288 -> 20ms 50fps
+	startupParams.ParticlesCount = 200000; // 32768 * 16 = 524288 -> 20ms 50fps
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
@@ -26,8 +26,8 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	runtimeParams.Color[1] = 1.0;
 	runtimeParams.Color[2] = 1.0;
 	runtimeParams.Color[3] = 1.0;
-	runtimeParams.particleSize = 40.0;
-	runtimeParams.cellSize = runtimeParams.particleSize;//ceil(sqrt(windowWidth * windowHeight / 65535));
+	runtimeParams.particleSize = 4.0;
+	runtimeParams.cellSize = 4.0;//ceil(sqrt(windowWidth * windowHeight / 65535));
 }
 
 Particles2dCollisionEffect::~Particles2dCollisionEffect()
@@ -275,7 +275,7 @@ void Particles2dCollisionEffect::initialize()
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	glGenBuffers(1, &ssboCollisionList);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, ssboMisc);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, ssboCollisionList);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, 777 * sizeof(GLint), NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -311,10 +311,11 @@ GLuint* globalCounters = nullptr;
 GLuint* totalSumms = nullptr;
 #endif
 
+	GLdouble oldCursorPosX = cursorPosX, oldCursorPosY = cursorPosY;
+	glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
+
 	if (!isPaused || isAdvanceOneFrame)
 	{
-		GLdouble oldCursorPosX = cursorPosX, oldCursorPosY = cursorPosY;
-		glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
 
 		glUseProgram(fillCellIdAndObjectIdArraysCompShaderProgram);
 
@@ -325,7 +326,6 @@ GLuint* totalSumms = nullptr;
 		glUniform1f(4, dt);
 		glUniform1i(5, isPaused && !isAdvanceOneFrame);
 		glUniform1f(6, runtimeParams.particleSize);
-		runtimeParams.cellSize = runtimeParams.particleSize;
 		glUniform1ui(7, runtimeParams.cellSize);
 
 		GLuint groupCount = ceil(currentParticlesCount / 64.0f);
@@ -416,34 +416,30 @@ validator->ValidateSortPhase3(1, threadsInWorkGroup, threadGroupsInWorkGroup, th
 
 		glDispatchCompute(blocks, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-
-		// =========== collisions resolving ==================
-		glUseProgram(resolveCollisionsCompShaderProgram);
-
-		glUniform2f(0, windowWidth, windowHeight);
-		glUniform1f(1, runtimeParams.cellSize);
-		glUniform2f(2, (float)cursorPosX, (float)cursorPosY);
-		glUniform1i(3, isLeftMouseBtnPressed);
-		glUniform1ui(4, currentCellsCount);
-		glUniform1f(5, runtimeParams.particleSize);
-		glUniform1i(6, isLeftMouseBtnReleased);
-		glUniform2f(7, (float)(cursorPosX - oldCursorPosX), (float)(cursorPosY - oldCursorPosY));
-
-		GLuint groupsCOunt = ceil(currentCellsCount / 1024.0);
-		glDispatchCompute(groupsCOunt, 1, 1);
-		glMemoryBarrier(GL_ALL_BARRIER_BITS);
-		// ===================================================
-GLfloat* test = readFromBuffer<GLfloat>(200, bufferTest);
-
-
-		frameCount++;
 	}
+
+	// =========== collisions resolving ==================
+	glUseProgram(resolveCollisionsCompShaderProgram);
+
+	glUniform2f(0, windowWidth, windowHeight);
+	glUniform1f(1, runtimeParams.cellSize);
+	glUniform2f(2, (float)cursorPosX, (float)cursorPosY);
+	glUniform1i(3, isLeftMouseBtnPressed);
+	glUniform1ui(4, currentCellsCount);
+	glUniform1f(5, runtimeParams.particleSize);
+	glUniform1i(6, isLeftMouseBtnReleased);
+	glUniform2f(7, (float)(cursorPosX - oldCursorPosX), (float)(cursorPosY - oldCursorPosY));
+
+	GLuint groupsCOunt = ceil(currentCellsCount / 1024.0);
+	glDispatchCompute(groupsCOunt, 1, 1);
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+	// ===================================================
+//GLfloat* test = readFromBuffer<GLfloat>(200, bufferTest);
 
 	if (isDebug)
 	{
 		glUseProgram(gridShaderProgram);
-		glUniform1f(0, runtimeParams.particleSize);
+		glUniform1f(0, runtimeParams.cellSize);
 		glUniform2f(1, (float)cursorPosX, (float)cursorPosY);
 		glUniform1i(2, windowHeight);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -538,7 +534,8 @@ void Particles2dCollisionEffect::drawGUI()
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.01, 100.0);
 	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 5.0);
-	ImGui::SliderFloat("Size", &runtimeParams.particleSize, 1.0, 500.0);
+	ImGui::SliderFloat("Particle Size", &runtimeParams.particleSize, 1.0, 500.0);
+	ImGui::SliderFloat("Cell Size", &runtimeParams.cellSize, 4.0, 500.0);
 	ImGui::End();
 }
 

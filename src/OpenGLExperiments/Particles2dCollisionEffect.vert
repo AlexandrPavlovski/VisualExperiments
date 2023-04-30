@@ -243,7 +243,9 @@ void updateParticle()
 	if (!isPaused)
 	{
 		particle = screenBoundsCollision(particle);
-		const vec2 gravityAcc = vec2(0, 0.0);
+		const vec2 gravityAcc = draggedParticleIndex - 1 == gl_VertexID
+			? vec2(0, 0.0)
+			: vec2(0, 0.05);
 
 		vec2 newVel = (particle.Acc + gravityAcc) * deltaT;
 		if (dot(newVel, newVel) > 25)
@@ -252,7 +254,7 @@ void updateParticle()
 		}
 
 		particle.Vel += newVel;
-//		particle.Vel *= velocityDamping;
+		particle.Vel *= velocityDamping;
 		particle.Pos += particle.Vel * deltaT;
 
 		particle.Acc = vec2(0.0);
@@ -268,8 +270,7 @@ void setParticleColor()
 		return;
 	}
 
-	float pressure = particles[gl_VertexID].Pressure / 120.0;
-	particles[gl_VertexID].Pressure *= 0.96;
+	float pressure = particles[gl_VertexID].Pressure;
 
 //pressure = float(gl_VertexID) / float(particlesCount);
 	// gradient for pressure coloring
@@ -364,8 +365,8 @@ vec2 worldToScreen(vec2 worldPos)
 
 void main()
 {
-	updateParticle();
 	setParticleColor();
+	updateParticle();
 
 	vec2 screenPos = worldToScreen(particles[gl_VertexID].Pos);
 	gl_Position = vec4(screenPos, 0.0, 1.0);

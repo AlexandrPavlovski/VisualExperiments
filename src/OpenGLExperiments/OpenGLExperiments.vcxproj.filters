@@ -143,18 +143,18 @@
     <CopyFileToFolders Include="RadixSortPhase3.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="ResolveCollisions.comp">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Grid.frag">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
     <None Include="FindCollisionCells.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </None>
     <None Include="Grid.vert">
-      <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </None>
-    <None Include="Grid.frag">
-      <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </None>
-    <None Include="ResolveCollisions.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </None>
   </ItemGroup>

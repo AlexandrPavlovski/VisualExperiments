@@ -22,6 +22,11 @@ struct Particle
 	float Pressure;
 	float Unused;
 };
+struct collCell
+{
+	uint index;
+	uint phantomAndHomeCellsCountPacked;
+};
 
 
 layout(binding = 0) buffer SSBO
@@ -42,7 +47,7 @@ layout(binding = 9) buffer tetete
 };
 layout(binding = 10) buffer collisionList
 {
-	uint collisionCells[];
+	collCell collisionCells2[];
 };
 layout(binding = 11) buffer misc
 {
@@ -58,6 +63,8 @@ void main()
 	if (draggedParticleIndex != 0 && thid == 0)
 	{
 		particles[draggedParticleIndex - 1].Pos += mouseMoveDelta;
+		particles[draggedParticleIndex - 1].Vel = vec2(0);
+		particles[draggedParticleIndex - 1].Acc = vec2(0);
 	}
 	if (!isLeftMouseBtnReleased && thid < currentCellsCount)
 	{
@@ -84,4 +91,7 @@ void main()
 		draggedParticleIndex = 0;
 	}
 	// ===================================
+
+test[0] = collisionCells2.length();
+test[1] = collisionCells2[0].index;
 }
