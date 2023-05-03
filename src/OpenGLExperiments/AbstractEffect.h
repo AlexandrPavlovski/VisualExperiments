@@ -55,7 +55,10 @@ protected:
 
 	GLint createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
 	GLint createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
+	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams);
 	GLint checkShaderPrgramLinkErrors(GLuint shaderProgram);
+
+
 private:
 	GLint checkShaderCompileErrors(GLuint shader);
 

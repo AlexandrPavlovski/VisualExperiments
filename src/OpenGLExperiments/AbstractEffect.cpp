@@ -149,6 +149,22 @@ GLint AbstractEffect::createShader(const char* shaderFilePath, GLint shaderProgr
 	return 1;
 }
 
+void AbstractEffect::createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams)
+{
+	GLint newShaderProgram = glCreateProgram();
+	if (createShader(shaderFilePath, newShaderProgram, GL_COMPUTE_SHADER, shaderParams) == -1)
+	{
+		throw "Compute shader compilation failed";
+	}
+	glLinkProgram(newShaderProgram);
+	if (checkShaderPrgramLinkErrors(newShaderProgram) == -1)
+	{
+		glDeleteProgram(newShaderProgram);
+		throw "Compute shader program linking failed";
+	}
+	compShaderProgram = newShaderProgram;
+}
+
 GLint AbstractEffect::checkShaderCompileErrors(GLuint shader)
 {
 	GLint isCompiled = 0;

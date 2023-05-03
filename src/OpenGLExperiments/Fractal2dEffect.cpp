@@ -7,8 +7,8 @@ Fractal2dEffect::Fractal2dEffect(GLFWwindow* window)
 	fragmentShaderFilePath = fragmentShaderFilePathSingle;
 
 	startupParams = {};
-	startupParams.Iterations = 100;
-	startupParams.AntiAliasing = 1;
+	startupParams.Iterations = 1;
+	startupParams.AntiAliasing = 2;
 	startupParams.isDoublePrecision = false;
 
 	runtimeParams = {};
@@ -25,44 +25,32 @@ Fractal2dEffect::Fractal2dEffect(GLFWwindow* window)
 Fractal2dEffect::~Fractal2dEffect()
 {
 	glDeleteProgram(shaderProgram);
-	glDeleteBuffers(1, &ssbo);
-	glDeleteVertexArrays(1, &vao);
+	glDeleteProgram(computeShaderProgram);
+	glDeleteBuffers(1, &ssboCompute);
 }
 
 
 void Fractal2dEffect::initialize()
 {
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
 	if (startupParams.isDoublePrecision)
 	{
-		isDoublePrecision = true;
 		fragmentShaderFilePath = fragmentShaderFilePathDouble;
 	}
 	else
 	{
-		isDoublePrecision = false;
 		fragmentShaderFilePath = fragmentShaderFilePathSingle;
 	}
 
-	std::vector<GLfloat> trianglesData;
-	// triangle strip
-	trianglesData.push_back(-1.0);trianglesData.push_back(1.0);
-	trianglesData.push_back(1.0);trianglesData.push_back(1.0);
-	trianglesData.push_back(-1.0);trianglesData.push_back(-1.0);
-	trianglesData.push_back(1.0);trianglesData.push_back(-1.0);
-
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	glGenBuffers(1, &ssbo);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, trianglesData.size() * sizeof(GLfloat), &trianglesData[0], GL_DYNAMIC_DRAW);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	ShaderParams iterationsShaderParam   { "#define iterations 0", "#define iterations " + std::to_string(startupParams.Iterations) };
+	ShaderParams antiAliasingShaderParam { "#define AA 0",         "#define AA "         + std::to_string(startupParams.AntiAliasing) };
 
 	std::vector<ShaderParams> fragShaderParams
 	{
-		ShaderParams {"#define iterations 0", "#define iterations " + std::to_string(startupParams.Iterations)},
-		ShaderParams {"#define AA 0", "#define AA " + std::to_string(startupParams.AntiAliasing)}
+		iterationsShaderParam,
+		antiAliasingShaderParam
 	};
 	GLint newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParams>(), fragShaderParams);
 	if (newShaderProgram == -1)
@@ -71,7 +59,28 @@ void Fractal2dEffect::initialize()
 	}
 
 	shaderProgram = newShaderProgram;
-	glUseProgram(shaderProgram);
+
+	std::vector<ShaderParams> computeShaderParams
+	{
+		iterationsShaderParam,
+		antiAliasingShaderParam
+	};
+	createComputeShaderProgram(computeShaderProgram, "Fractal2dEffect.comp", computeShaderParams);
+
+	samplesWidth = windowWidth * startupParams.AntiAliasing;
+	samplesHeight = windowHeight * startupParams.AntiAliasing;
+	samplesCount = samplesWidth * samplesHeight;
+
+	groupsX = ceil(samplesWidth / 32.0);
+	groupsY = ceil(samplesHeight / 32.0);
+
+	glGenBuffers(1, &ssboCompute);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssboCompute);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, samplesCount * sizeof(GLfloat) * 3, NULL, GL_DYNAMIC_DRAW);
+	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32F, GL_RED, GL_FLOAT, NULL);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	frameNumber = 1;
 }
 
 void Fractal2dEffect::draw(GLdouble deltaTime)
@@ -88,17 +97,41 @@ void Fractal2dEffect::draw(GLdouble deltaTime)
 
 		runtimeParams.viewPosX += deltaX / zoom;
 		runtimeParams.viewPosY += deltaY / zoom;
+
+		if (deltaX != 0 || deltaY != 0)
+		{
+			resetViewBuffer();
+		}
 	}
 
-	// fragment shader params
+	if (frameNumber < 10000) // preventing overflow
+	{
+		glUseProgram(computeShaderProgram);
+		glUniform1ui(0, samplesWidth);
+		glUniform1ui(1, samplesHeight);
+		glUniform2d(5, runtimeParams.viewPosX, runtimeParams.viewPosY);
+		glUniform1d(6, zoom);
+
+		glDispatchCompute(groupsX, groupsY, 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+//GLfloat* test = readFromBuffer<GLfloat>(samplesCount * 3, ssboCompute);
+//delete[] test;
+
+		frameNumber++;
+	}
+
+	glUseProgram(shaderProgram);
 	glUniform2d(0, runtimeParams.viewPosX, runtimeParams.viewPosY);
 	glUniform1d(1, zoom);
-	if (isDoublePrecision == false)
+	if (startupParams.isDoublePrecision == false)
 	{
 		glUniform1f(2, runtimeParams.a1);
 		glUniform1f(3, runtimeParams.a2);
 		glUniform1f(4, runtimeParams.a3);
 	}
+	glUniform1ui(5, samplesWidth);
+	glUniform1i(6, windowHeight);
+	glUniform1ui(7, frameNumber - 1);
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
@@ -106,7 +139,7 @@ void Fractal2dEffect::draw(GLdouble deltaTime)
 void Fractal2dEffect::drawGUI()
 {
 	ImGui::Begin("Startup params (Fractals)");
-	ImGui::Text("Pan: Right mouse button");
+	ImGui::Text("Pan: Left mouse button");
 	ImGui::Text("Zoom: Scroll");
 	ImGui::Text("Fast Zoom: Left shift + scroll");
 	ImGui::InputInt("Iterations", &startupParams.Iterations, 100, 1000);
@@ -114,7 +147,7 @@ void Fractal2dEffect::drawGUI()
 	ImGui::Checkbox("Double precision (can go deeper)", &startupParams.isDoublePrecision);
 	ImGui::End();
 
-	if (isDoublePrecision == false)
+	if (startupParams.isDoublePrecision == false)
 	{
 		ImGui::Begin("Runtime params (Fractals)");
 		ImGui::Text("f(z) = a3*z^3 + a2*z^2 + a1*z + c");
@@ -128,8 +161,8 @@ void Fractal2dEffect::drawGUI()
 void Fractal2dEffect::restart()
 {
 	glDeleteProgram(shaderProgram);
-	glDeleteBuffers(1, &ssbo);
-	glDeleteVertexArrays(1, &vao);
+	glDeleteProgram(computeShaderProgram);
+	glDeleteBuffers(1, &ssboCompute);
 
 	initialize();
 }
@@ -158,6 +191,25 @@ void Fractal2dEffect::mouseButtonCallback(int button, int action, int mods)
 	}
 }
 
+void Fractal2dEffect::windowSizeCallback(int width, int height)
+{
+	AbstractEffect::windowSizeCallback(width, height);
+
+	samplesWidth = windowWidth * startupParams.AntiAliasing;
+	samplesHeight = windowHeight * startupParams.AntiAliasing;
+	samplesCount = samplesWidth * samplesHeight;
+
+	groupsX = ceil(samplesWidth / 32.0);
+	groupsY = ceil(samplesHeight / 32.0);
+
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssboCompute);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, samplesCount * sizeof(GLfloat) * 3, NULL, GL_DYNAMIC_DRAW);
+	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32F, GL_RED, GL_FLOAT, NULL);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	frameNumber = 1;
+}
+
 void Fractal2dEffect::scrollCallback(double xoffset, double yoffset)
 {
 	// this is needed because in shader (0, 0) is bottom left with positive direction up
@@ -184,4 +236,26 @@ void Fractal2dEffect::scrollCallback(double xoffset, double yoffset)
 
 	runtimeParams.viewPosX += beforeZoomCursorPosX - afterZoomCursorPosX;
 	runtimeParams.viewPosY += beforeZoomCursorPosY - afterZoomCursorPosY;
+
+	resetViewBuffer();
+}
+
+template< typename T >
+T* Fractal2dEffect::readFromBuffer(int elemCount, GLuint ssbo)
+{
+	T* buf = new T[elemCount];
+	T* p = (T*)glMapNamedBufferRange(ssbo, 0, elemCount * sizeof(T), GL_MAP_READ_BIT);
+	memcpy(buf, p, elemCount * sizeof(T));
+	glUnmapNamedBuffer(ssbo);
+
+	return buf;
+}
+
+void Fractal2dEffect::resetViewBuffer()
+{
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssboCompute);
+	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32F, GL_RED, GL_FLOAT, NULL);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	frameNumber = 1;
 }

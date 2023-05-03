@@ -1,0 +1,56 @@
+#version 460 core
+
+#define iterations 0
+#define AA 0
+#define bailout 256.0 * 256.0
+
+
+layout(local_size_x = 32, local_size_y = 32) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform uint samplesWidth;
+layout(location = 1) uniform uint samplesHeight;
+layout(location = 2) uniform float a1;
+layout(location = 3) uniform float a2;
+layout(location = 4) uniform float a3;
+layout(location = 5) uniform dvec2 uViewPos;
+layout(location = 6) uniform double uViewZoom;
+
+layout(binding = 0) buffer data
+{
+	float sampleIterations[];
+};
+
+
+// complex numbers operations
+vec2 cmul(vec2 a, vec2 b)  { return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
+vec2 cadd(vec2 a, float s) { return vec2(a.x+s, a.y); }
+vec2 cpow(vec2 z, float n) { float r = length(z); float a = atan(z.y, z.x); return pow(r, n) * vec2(cos(a*n), sin(a*n)); }
+// --------------------------
+
+void main()
+{
+	if (gl_GlobalInvocationID.x >= samplesWidth) return;
+
+	uint sampleIndex = (gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * samplesWidth) * 3;
+	uint zxIndex = sampleIndex + 1;
+	uint zyIndex = sampleIndex + 2;
+
+	vec2 z = vec2(sampleIterations[zxIndex], sampleIterations[zyIndex]);
+	if (dot(z,z) < bailout)
+	{
+		vec2 c = vec2(gl_GlobalInvocationID.xy / float(AA) / float(uViewZoom)) + vec2(uViewPos);
+		float i = sampleIterations[sampleIndex];
+
+		float maxIterations = i + iterations;
+		for (; i <= maxIterations && dot(z, z) < bailout; i++)
+		{
+			z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
+		}
+
+		sampleIterations[sampleIndex] = i;
+		sampleIterations[zxIndex] = z.x;
+		sampleIterations[zyIndex] = z.y;
+	}
+}

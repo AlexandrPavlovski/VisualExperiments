@@ -1,9 +1,12 @@
 #version 460 core
 
-layout(std430, binding = 0) buffer SSBO
-{
-	vec2 trianglesData[];
-};
+vec2 trianglesData[4] = vec2[4]
+(
+	vec2(-1.0, 1.0),
+	vec2(1.0, 1.0),
+	vec2(-1.0, -1.0),
+	vec2(1.0, -1.0)
+);
 
 void main() {
 	vec2 pos = trianglesData[gl_VertexID];
