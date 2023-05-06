@@ -29,7 +29,7 @@ const char* effectNames[effectsCount] =
 	"2D Fractals",
 	"2D Collisions"
 };
-int currentEffectIndex = 3;
+int currentEffectIndex = 2;
 
 GLFWwindow* window;
 bool isFullscreen = false;

@@ -1,0 +1,46 @@
+#version 460 core
+
+#define iterations 0
+#define AA 0
+#define bailout 256.0 * 256.0
+
+
+layout(local_size_x = 32, local_size_y = 32) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform uint samplesWidth;
+layout(location = 1) uniform dvec2 uViewPos;
+layout(location = 2) uniform double uViewZoom;
+
+layout(binding = 0) buffer data
+{
+	double sampleIterations[];
+};
+
+void main()
+{
+	if (gl_GlobalInvocationID.x >= samplesWidth) return;
+
+	uint sampleIndex = (gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * samplesWidth) * 3;
+	uint zxIndex = sampleIndex + 1;
+	uint zyIndex = sampleIndex + 2;
+
+	dvec2 z = dvec2(sampleIterations[zxIndex], sampleIterations[zyIndex]);
+	if (dot(z,z) < bailout)
+	{
+		dvec2 c = dvec2(gl_GlobalInvocationID.xy / double(AA) / uViewZoom) + uViewPos;
+		double i = sampleIterations[sampleIndex];
+
+		double maxIterations = i + iterations;
+		while(i <= maxIterations && dot(z, z) < bailout)
+		{
+			z = dvec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
+			i++;
+		}
+
+		sampleIterations[sampleIndex] = i;
+		sampleIterations[zxIndex] = z.x;
+		sampleIterations[zyIndex] = z.y;
+	}
+}

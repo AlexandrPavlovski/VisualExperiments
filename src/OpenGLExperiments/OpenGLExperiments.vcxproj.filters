@@ -149,13 +149,17 @@
     <CopyFileToFolders Include="Grid.frag">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="FindCollisionCells.comp">
+    <CopyFileToFolders Include="Fractal2dSingleEffect.comp">
+      <Filter>Effects\Fractal2dEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Grid.vert">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </None>
-    <None Include="Grid.vert">
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="FindCollisionCells.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </None>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Fractal2dDoubleEffect.comp">
+      <Filter>Effects\Fractal2dEffect</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -22,6 +22,7 @@ public:
 	virtual void keyCallback(int key, int scancode, int action, int mode);
 	virtual void mouseButtonCallback(int button, int action, int mods);
 	virtual void scrollCallback(double xoffset, double yoffset);
+	virtual void windowSizeCallback(int width, int height);
 
 private:
 	struct StartupParams
@@ -40,13 +41,30 @@ private:
 	StartupParams startupParams;
 	RuntimeParams runtimeParams;
 
-	bool isDoublePrecision;
-	bool isLeftMouseBtnDown = false;
-	GLdouble cursorPosX, cursorPosY;
-	GLdouble zoomSpeed;
+	bool isDoublePrecision = false;
 
-	GLuint vao = 0, ssbo = 0;
+	bool isLeftMouseBtnDown = false;
+
+	GLdouble cursorPosX = 0.0, cursorPosY = 0.0;
+	GLdouble zoomSpeed;
+	GLuint samplesCount = 0, samplesWidth = 0, samplesHeight = 0;
+	GLuint groupsX = 0, groupsY = 0;
+	GLuint frameNumber = 0;
+
+
+	GLuint vao = 0, ssboCompute = 0;
+	GLuint computeShaderProgramSingle = 0, computeShaderProgramDouble = 0;
+	GLuint shaderProgramDouble = 0;
 
 	const char* fragmentShaderFilePathSingle = "Fractal2dSingleEffect.frag";
 	const char* fragmentShaderFilePathDouble = "Fractal2dDoubleEffect.frag";
+	const char* computeShaderFilePathSingle = "Fractal2dSingleEffect.comp";
+	const char* computeShaderFilePathDouble = "Fractal2dDoubleEffect.comp";
+
+	template< typename T >
+	T* readFromBuffer(int elemCount, GLuint ssbo);
+
+	void cleanup();
+	void resetViewBuffer();
+	void createViewBuffer();
 };

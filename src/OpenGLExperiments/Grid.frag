@@ -3,6 +3,10 @@
 // 0 is replaced at runtime with an actual value
 #define particlesCount 0
 
+
+layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
+
+
 layout(location = 0) uniform float cellSize;
 layout(location = 1) uniform vec2 mousePos;
 layout(location = 2) uniform int windowHeight;
@@ -21,9 +25,7 @@ layout(binding = 10) buffer collisionList
 out vec4 color;
 
 void main() {
-	vec2 fragCoord = vec2(gl_FragCoord.x, windowHeight - gl_FragCoord.y); // moving origin to top left
-
-	vec2 pixelGridPos = floor(fragCoord / cellSize);
+	vec2 pixelGridPos = floor(gl_FragCoord.xy / cellSize);
 	vec2 mouseGridPos = floor(mousePos / cellSize);
 
 	color = pixelGridPos == mouseGridPos 
