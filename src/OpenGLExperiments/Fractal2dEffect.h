@@ -41,7 +41,10 @@ private:
 	StartupParams startupParams;
 	RuntimeParams runtimeParams;
 
+	bool isDoublePrecision = false;
+
 	bool isLeftMouseBtnDown = false;
+
 	GLdouble cursorPosX = 0.0, cursorPosY = 0.0;
 	GLdouble zoomSpeed;
 	GLuint samplesCount = 0, samplesWidth = 0, samplesHeight = 0;
@@ -50,13 +53,18 @@ private:
 
 
 	GLuint vao = 0, ssboCompute = 0;
-	GLuint computeShaderProgram = 0;
+	GLuint computeShaderProgramSingle = 0, computeShaderProgramDouble = 0;
+	GLuint shaderProgramDouble = 0;
 
 	const char* fragmentShaderFilePathSingle = "Fractal2dSingleEffect.frag";
 	const char* fragmentShaderFilePathDouble = "Fractal2dDoubleEffect.frag";
+	const char* computeShaderFilePathSingle = "Fractal2dSingleEffect.comp";
+	const char* computeShaderFilePathDouble = "Fractal2dDoubleEffect.comp";
 
 	template< typename T >
 	T* readFromBuffer(int elemCount, GLuint ssbo);
 
+	void cleanup();
 	void resetViewBuffer();
+	void createViewBuffer();
 };

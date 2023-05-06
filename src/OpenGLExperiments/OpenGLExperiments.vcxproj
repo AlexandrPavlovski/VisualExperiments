@@ -254,7 +254,12 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="Fractal2dEffect.comp">
+    <CopyFileToFolders Include="Fractal2dSingleEffect.comp">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="Fractal2dDoubleEffect.comp">
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>
