@@ -3,22 +3,26 @@
 // zeros is replaced at runtime with an actual values
 #define particlesCount 0
 #define cellsCount 0
+#define nBody 0
+
+// screen edge behavior - bounce = 1 or stick = 0
+#define bounce 0
+
+
 
 layout(std430) buffer;
 
 layout(location = 0) uniform vec2 windowSize;
-layout(location = 1) uniform float forceScale;
-layout(location = 2) uniform float velocityDamping;
-layout(location = 3) uniform float minDistanceToAttractor;
-layout(location = 4) uniform float deltaTime;
-layout(location = 5) uniform bool isPaused;
-layout(location = 6) uniform float particleSize;
-layout(location = 7) uniform uint cellSize;
+layout(location = 1) uniform float velocityDamping;
+layout(location = 2) uniform float deltaTime;
+layout(location = 3) uniform bool isPaused;
+layout(location = 4) uniform float particleSize;
+layout(location = 5) uniform uint cellSize;
 
 struct Particle
 {
 	vec2 Pos;
-	vec2 Vel;
+	vec2 PosPrev;
 	vec2 Acc;
 	float Pressure;
 	float Unused;
@@ -28,10 +32,7 @@ layout(binding = 0) buffer SSBO
 {
 	Particle particles[];
 };
-//layout(binding = 6) buffer cells3
-//{
-//	uint cellIds[]; // sorted at this point
-//};
+
 layout(binding = 11) buffer misc
 {
 	uint draggedParticleIndex;
@@ -42,125 +43,29 @@ layout(location = 0) out vec3 particleColor;
 layout(location = 1) out vec3 gridCellColor;
 layout(location = 2) out flat uint isGridCell;
 
-//void screenBounds()
-//{
-//	vec4 particle = particleData[gl_VertexID];
-//	vec2 pos = particle.xy;
-//	vec2 vel = particle.zw;
-//
-//	float halfParticleSize = particleSize / 2;
-//	float leftWall = halfParticleSize;
-//	float rightWall = windowSize.x - halfParticleSize;
-//	float topWall = halfParticleSize;
-//	float bottomWall = windowSize.y - halfParticleSize;
-//
-//	if (pos.x < leftWall)
-//	{
-//		pos.x = leftWall + leftWall - pos.x;
-//		vel.x *= -velocityDamping;
-//	}
-//	if (pos.y < topWall)
-//	{
-//		pos.y = topWall + topWall - pos.y;
-//		vel.y *= -velocityDamping;
-//	}
-//	if (pos.x > rightWall)
-//	{
-//		pos.x = rightWall - (pos.x - rightWall);
-//		vel.x *= -velocityDamping;
-//	}
-//	if (pos.y > bottomWall)
-//	{
-//		pos.y = bottomWall - (pos.y - bottomWall);
-//		vel.y *= -velocityDamping;
-//	}
-//
-//	particleData[gl_VertexID] = vec4(pos, vel);
-//}
-//
-//void ballToBall()
-//{
-//	vec4 particle = particleData[gl_VertexID];
-//	vec2 pos = particle.xy;
-//	vec2 vel = particle.zw;
-//
-//	for (uint j = 0; j < particlesCount; ++j)
-//	{
-//		if (j == gl_VertexID) continue;
-//		vec2 otherPos = particleData[j].xy;
-//		vec2 otherVel = particleData[j].zw;
-//
-//		const vec2 posDiff = pos - otherPos;
-//		const float distSquared = dot(posDiff, posDiff);
-//	
-//		if (distSquared < particleSize * particleSize)
-//		{
-//			// Move Away
-//			const float dist = sqrt(distSquared);
-//			const vec2 n = posDiff / dist;
-//			const float covered = particleSize - dist;
-//			const vec2 moveVec = n * (covered / 2.0f);
-//
-//			pos += moveVec;
-//			otherPos -= moveVec;
-//	
-//			// Change Velocity Direction
-//			const float p = 2 * (dot(n, vel) - dot(n, otherVel)) / 2.0;
-//			vel = vel - n * p;
-//			otherVel = otherVel + n * p;
-//		}
-//
-//		particleData[j] = vec4(otherPos, otherVel);
-//	}
-//
-//	particleData[gl_VertexID] = vec4(pos, vel);
-//}
-//
-//vec2 getBodyToBodyAcceleration(vec2 b1, vec2 b2)
-//{
-//	vec2 dir = b2 - b1;
-//	
-//	float distSquared = max(dot(dir, dir), minDistanceToAttractor);
-//	float distSixth = distSquared * distSquared * distSquared;
-//	float invDistCube = 1.0f / sqrt(distSixth) * forceScale;
-//
-//	return dir * invDistCube;
-//}
-//
-//void nBodyGravity()
-//{
-//	vec4 p = particleData[gl_VertexID];
-//	vec2 pos = p.xy;
-//	vec2 vel = p.zw;
-//
-//	vec2 acc = vec2(0.0);
-//	for (int i = 0; i < particlesCount; i += 1)
-//	{
-//		acc += getBodyToBodyAcceleration(pos, particleData[i].xy);
-////		acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);
-////		acc += getBodyToBodyAcceleration(pos, particleData[i+2].xy);
-////		acc += getBodyToBodyAcceleration(pos, particleData[i+3].xy);
-//	}
-//
-//	vel += acc * deltaTime;
-//	vel *= velocityDamping;
-//
-//	particleData[gl_VertexID] = vec4(pos, vel);
-//}
-//
-//void updatePosition()
-//{
-//	vec4 particle = particleData[gl_VertexID];
-//	vec2 pos = particle.xy;
-//	vec2 vel = particle.zw;
-//
-//	vel += vec2(0.0, 0.001) * deltaTime;
-//	pos += vel * deltaTime;
-//
-//	particleData[gl_VertexID] = vec4(pos, vel);
-//}
+vec2 getBodyToBodyAcceleration(vec2 b1, vec2 b2)
+{
+	vec2 dir = b2 - b1;
+	
+	float distSquared = max(dot(dir, dir), 1.0);
+	float distSixth = distSquared * distSquared * distSquared;
+	float invDistCube = 1.0f / sqrt(distSixth);
 
-vec2 collisionResponse(float penetrationDepth, vec2 norm, vec2 relativeVel)
+	return dir * invDistCube;
+}
+
+void nBodyGravity(inout Particle p)
+{
+	for (int i = 0; i < particlesCount; i += 1)
+	{
+		p.Acc += getBodyToBodyAcceleration(p.Pos, particles[i].Pos);
+//		acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);
+//		acc += getBodyToBodyAcceleration(pos, particleData[i+2].xy);
+//		acc += getBodyToBodyAcceleration(pos, particleData[i+3].xy);
+	}
+}
+
+vec2 springCollisionResponse(float penetrationDepth, vec2 norm, vec2 relativeVel)
 {
 	const float k = 1.0;
 	const float b = 0.05;
@@ -170,7 +75,7 @@ vec2 collisionResponse(float penetrationDepth, vec2 norm, vec2 relativeVel)
 	return acc * norm;
 }
 
-vec2 screenBoundsCollisionSoft(vec2 pos, vec2 vel)
+vec2 springScreenBoundsCollision(vec2 pos, vec2 vel)
 {
 	vec2 acc = vec2(0.0);
 
@@ -182,19 +87,19 @@ vec2 screenBoundsCollisionSoft(vec2 pos, vec2 vel)
 
 	if (pos.x < leftWall)
 	{
-		acc += collisionResponse(leftWall - pos.x, vec2(1.0, 0.0), vel);
+		acc += springCollisionResponse(leftWall - pos.x, vec2(1.0, 0.0), vel);
 	}
 	if (pos.y < topWall)
 	{
-		acc += collisionResponse(topWall - pos.y, vec2(0.0, 1.0), vel);
+		acc += springCollisionResponse(topWall - pos.y, vec2(0.0, 1.0), vel);
 	}
 	if (pos.x > rightWall)
 	{
-		acc += collisionResponse(pos.x - rightWall, vec2(-1.0, 0.0), vel);
+		acc += springCollisionResponse(pos.x - rightWall, vec2(-1.0, 0.0), vel);
 	}
 	if (pos.y > bottomWall)
 	{
-		acc += collisionResponse(pos.y - bottomWall, vec2(0.0, -1.0), vel);
+		acc += springCollisionResponse(pos.y - bottomWall, vec2(0.0, -1.0), vel);
 	}
 
 	return acc;
@@ -203,6 +108,7 @@ vec2 screenBoundsCollisionSoft(vec2 pos, vec2 vel)
 Particle screenBoundsCollision(Particle particle)
 {
 	const vec2 pos = particle.Pos;
+	const vec2 posPrev = particle.PosPrev;
 
 	const float halfParticleSize = particleSize / 2;
 	const float leftWall = halfParticleSize;
@@ -212,23 +118,39 @@ Particle screenBoundsCollision(Particle particle)
 
 	if (pos.x < leftWall)
 	{
+#if (bounce == 1)
 		particle.Pos.x = leftWall + leftWall - pos.x;
-		particle.Vel.x = -particle.Vel.x;
+		particle.PosPrev.x = leftWall - (posPrev.x - leftWall);
+#else
+		particle.Pos.x = particle.PosPrev.x = leftWall;
+#endif
 	}
 	if (pos.x > rightWall)
 	{
+#if (bounce == 1)
 		particle.Pos.x = rightWall - (pos.x - rightWall);
-		particle.Vel.x = -particle.Vel.x;
+		particle.PosPrev.x = rightWall + rightWall - posPrev.x;
+#else
+		particle.Pos.x = particle.PosPrev.x = rightWall;
+#endif
 	}
 	if (pos.y < topWall)
 	{
+#if (bounce == 1)
 		particle.Pos.y = topWall + topWall - pos.y;
-		particle.Vel.y = -particle.Vel.y;
+		particle.PosPrev.y = topWall - (posPrev.y - topWall);
+#else
+		particle.Pos.y = particle.PosPrev.y = topWall;
+#endif
 	}
 	if (pos.y > bottomWall)
 	{
+#if (bounce == 1)
 		particle.Pos.y = bottomWall - (pos.y - bottomWall);
-		particle.Vel.y = -particle.Vel.y;
+		particle.PosPrev.y = bottomWall + bottomWall - posPrev.y;
+#else
+		particle.Pos.y = particle.PosPrev.y = bottomWall;
+#endif
 	}
 
 	return particle;
@@ -236,30 +158,29 @@ Particle screenBoundsCollision(Particle particle)
 
 void updateParticle()
 {
-	float deltaT = deltaTime * 0.04;
-
 	Particle particle = particles[gl_VertexID];
 
 	if (!isPaused)
 	{
-		particle = screenBoundsCollision(particle);
-		const vec2 gravityAcc = draggedParticleIndex - 1 == gl_VertexID
-			? vec2(0, 0.0)
-			: vec2(0, 0.05);
-
-		vec2 newVel = (particle.Acc + gravityAcc) * deltaT;
-		if (dot(newVel, newVel) > 25)
+		if (draggedParticleIndex - 1 != gl_VertexID)
 		{
-			newVel = normalize(newVel) * 4;
+#if (nBody == 1)
+			nBodyGravity(particle);
+#else
+			const vec2 gravityAcc = vec2(0, 0.005);
+			particle.Acc += gravityAcc;
+#endif
+			vec2 newPos = particle.Pos * 2 - particle.PosPrev + particle.Acc * deltaTime * deltaTime;
+			vec2 vel = (newPos - particle.Pos) * velocityDamping;
+//			particle.PosPrev = newPos - vel;
+//			particle.Pos = newPos;
+
+			particle.Acc = vec2(0.0);
+			particle.Pressure = 0.0;
 		}
-
-		particle.Vel += newVel;
-		particle.Vel *= velocityDamping;
-		particle.Pos += particle.Vel * deltaT;
-
-		particle.Acc = vec2(0.0);
-		particles[gl_VertexID] = particle;
 	}
+	particle = screenBoundsCollision(particle);
+	particles[gl_VertexID] = particle;
 }
 
 void setParticleColor()
@@ -283,25 +204,7 @@ void setParticleColor()
 
 	particleColor = vec3(col);
 }
-//
-//void setGridColor()
-//{
-//	uint cellIndex = gl_VertexID * 4;
-////	uint shift = uint(mod(gl_VertexID, 2)) * 16;
-////	uint cellId = (cellIds1[cellIndex] >> shift) & 255;
-//
-//	uvec2 cellIdsPacked = uvec2(cellIds[cellIndex], cellIds[cellIndex + 1]);
-//	uint hCellId = cellIds[cellIndex];
-//	uint pCellId1 = cellIds[cellIndex + 1];
-//	uint pCellId2 = cellIds[cellIndex + 2];
-//	uint pCellId3 = cellIds[cellIndex + 3];
-//
-//	particleData[hCellId + cellsCount].z += 0.7;
-//	particleData[pCellId1 + cellsCount].z += 0.7;
-//	particleData[pCellId2 + cellsCount].z += 0.7;
-//	particleData[pCellId3 + cellsCount].z += 0.7;
-//}
-//
+
 vec2 worldToScreen(vec2 worldPos)
 {
 	vec2 windowCenter = windowSize / 2;
@@ -310,58 +213,6 @@ vec2 worldToScreen(vec2 worldPos)
 
 	return screenPos;
 }
-//
-//void drawParticle()
-//{
-//	updateParticle();
-//	setParticleColor();
-//	setGridColor();
-//
-//	vec2 screenPos = worldToScreen(particleData[gl_VertexID].xy);
-//	gl_Position = vec4(screenPos, 0.0, 1.0);
-//}
-//
-//void updateGridCells()
-//{
-//	uint gridWidth = uint(windowSize.x / cellSize) + 2;
-//	uint cellId = gl_VertexID - cellsCount;
-//
-//	vec4 gridCell = particleData[gl_VertexID];
-//
-//	gridCell.y = ceil(cellId / gridWidth);
-//	gridCell.x = cellId - gridCell.y * gridWidth;
-//	gridCell.xy *= cellSize;
-//	gridCell.xy -= cellSize / 2;
-//
-//	gridCellColor = vec3(gridCell.z);
-//	
-////gridCell.xy += 43;
-////uint cellIndex = ((gl_VertexID % gridWidth) % 2) + ((gl_VertexID / gridWidth) % 2) * 2;
-////if (cellIndex == 0)
-////{
-////	gridCellColor = vec3(1.0);
-////}
-//
-//	particleData[gl_VertexID].z = mod(gl_VertexID, 2) / 10 + 0.1;
-//
-//	vec2 screenPos = worldToScreen(gridCell.xy);
-//	gl_Position = vec4(screenPos, 0.0, 1.0);
-//}
-//
-//void main()
-//{
-//	if (gl_VertexID < particlesCount)
-//	{
-//		drawParticle();
-//		isGridCell = 0;
-//	}
-//	else
-//	{
-//		updateGridCells();
-//		isGridCell = 1;
-//	}
-//}
-
 
 void main()
 {

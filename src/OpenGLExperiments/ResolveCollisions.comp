@@ -17,7 +17,7 @@ layout(location = 7) uniform vec2 mouseMoveDelta;
 struct Particle
 {
 	vec2 Pos;
-	vec2 Vel;
+	vec2 PosPrev;
 	vec2 Acc;
 	float Pressure;
 	float Unused;
@@ -62,11 +62,13 @@ void main()
 	// === particle draging with mouse ===
 	if (draggedParticleIndex != 0 && thid == 0)
 	{
-		particles[draggedParticleIndex - 1].Pos += mouseMoveDelta;
-		particles[draggedParticleIndex - 1].Vel = vec2(0);
+		vec2 newPos = particles[draggedParticleIndex - 1].Pos;
+		particles[draggedParticleIndex - 1].PosPrev = newPos;
+		newPos += mouseMoveDelta;
+		particles[draggedParticleIndex - 1].Pos = newPos;
 		particles[draggedParticleIndex - 1].Acc = vec2(0);
 	}
-	if (!isLeftMouseBtnReleased && thid < currentCellsCount)
+	if (isLeftMouseBtnPressed && !isLeftMouseBtnReleased && thid < currentCellsCount)
 	{
 		uint gridWidth = uint(windowSize.x / cellSize) + 2; // the grid is bigger than screen because particle can intersect screen edges
 		vec2 mouseGridPos = floor((mousePos + cellSize) / cellSize); // mouse position (0,0) is top left corner, but should be (cellSize, cellSize)
@@ -74,15 +76,13 @@ void main()
 		if (cellIds[thid] == mouseCellId)
 		{
 			uint objId = objectIds[thid];
-			particles[objId].Pressure = 60.0;
-			if (isLeftMouseBtnPressed)
+//			particles[objId].Pressure = 60.0;
+		
+			vec2 pos = particles[objId].Pos;
+			vec2 mouseToPos = pos - mousePos;
+			if (length(mouseToPos) < particleSize / 2)
 			{
-				vec2 pos = particles[objId].Pos;
-				vec2 mouseToPos = pos - mousePos;
-				if (length(mouseToPos) < particleSize / 2)
-				{
-					draggedParticleIndex = (objId & 0x7fffffff) + 1; // omiting most significant bit as it is used for indicating a home cell. 0 means no particle is dragged
-				}
+				draggedParticleIndex = (objId & 0x7fffffff) + 1; // omiting most significant bit as it is used for indicating a home cell. 0 means no particle is dragged
 			}
 		}
 	}
@@ -92,6 +92,6 @@ void main()
 	}
 	// ===================================
 
-test[0] = collisionCells2.length();
-test[1] = collisionCells2[0].index;
+//test[0] = collisionCells2.length();
+//test[1] = collisionCells2[0].index;
 }

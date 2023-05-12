@@ -18,7 +18,7 @@
 #include "Particles2dCollisionEffect.h"
 
 
-bool isVsyncEnabled = true;
+bool isVsyncEnabled = false;
 
 const int effectsCount = 4;
 AbstractEffect* effect;
@@ -29,7 +29,7 @@ const char* effectNames[effectsCount] =
 	"2D Fractals",
 	"2D Collisions"
 };
-int currentEffectIndex = 2;
+int currentEffectIndex = 3;
 
 GLFWwindow* window;
 bool isFullscreen = false;
