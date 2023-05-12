@@ -14,8 +14,8 @@ struct Particle
 {
 	GLfloat PosX;
 	GLfloat PosY;
-	GLfloat VelX;
-	GLfloat VelY;
+	GLfloat PosXprev;
+	GLfloat PosYprev;
 	GLfloat AccX;
 	GLfloat AccY;
 	GLfloat Pressure;
@@ -374,19 +374,17 @@ private:
 	struct StartupParams
 	{
 		int ParticlesCount;
+		bool IsNBodyGravity;
 	};
 
 	struct RuntimeParams
 	{
-		GLdouble AttractorX;
-		GLdouble AttractorY;
 		GLfloat ForceScale;
 		GLfloat VelocityDamping;
-		GLfloat MinDistanceToAttractor;
 		GLfloat TimeScale;
-		GLfloat Color[4];
 		GLfloat particleSize;
 		GLfloat cellSize;
+		GLint substeps;
 	};
 
 	StartupParams startupParams;
@@ -396,7 +394,7 @@ private:
 	GLint currentCellsCount = 0;
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
-	bool isDebug = true;
+	bool isDebug = false;
 
 	GLint frameCount = 0;
 
@@ -425,4 +423,8 @@ private:
 	T* readFromBuffer(int elemCount, GLuint ssbo);
 
 	void cleanup();
+
+
+	Particle* particlesPrev = 0;
+	double tX0 = 0, tX1 = 0, tX2 = 0, tX3 = 0, tX4 = 0, tX5 = 0, tX6 = 0, tX7 = 0, tX8 = 0, tX9 = 0, tX10 = 0;
 };
