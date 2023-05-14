@@ -118,7 +118,7 @@ public:
 
 	void ValidateSortPhase1(GLuint pass, GLuint threadsInWorkGroup, GLuint threadGroupsInWorkGroup, GLuint threadsInThreadGroup, GLuint elementsPerGroup, GLuint* globalCountersFromGPU)
 	{
-		GLuint cellIdShift = pass == 0 ? 0 : 8;
+		GLuint cellIdShift = pass * 8;
 
 		for (int workGroupID = 0; workGroupID < phase1WorkGroupsCount; workGroupID++)
 		{
@@ -230,7 +230,7 @@ public:
 		}
 
 		GLuint sharedCountersLength = 12032;
-		GLuint cellIdShift = pass == 0 ? 0 : 8;
+		GLuint cellIdShift = pass * 8;
 
 		for (int workGroupID = 0; workGroupID < phase1WorkGroupsCount; workGroupID++)
 		{
@@ -387,6 +387,40 @@ private:
 		GLint substeps;
 	};
 
+	struct ShaderParams
+	{
+		ShaderParam nBody;
+		ShaderParam particlesCount;
+		ShaderParam cellIdsLength;
+		ShaderParam threadsInWorkGroup;
+		ShaderParam threadGroupsInWorkGroup;
+		ShaderParam radixCountersLength;
+		ShaderParam threadsInThreadGroup;
+		ShaderParam elementsPerGroup;
+		ShaderParam threadGroupsTotal;
+		ShaderParam phase2Iterations;
+		ShaderParam bindingCellIds1;
+		ShaderParam bindingCellIds2;
+		ShaderParam cellIdShift;
+		ShaderParam cells1;
+		ShaderParam cells2;
+		ShaderParam bindingCellIdsInput;
+		ShaderParam bindingCellIdsOutput;
+		ShaderParam bufferCellIdsInput;
+		ShaderParam bufferCellIdsOutput;
+		ShaderParam bindingObjectIdsInput;
+		ShaderParam bindingObjectIdsOutput;
+		ShaderParam bufferObjectIdsInput;
+		ShaderParam bufferObjectIdsOutput;
+	};
+
+	struct RadixSortPhase
+	{
+		GLuint Phase1;
+		GLuint Phase2;
+		GLuint Phase3;
+	};
+
 	StartupParams startupParams;
 	RuntimeParams runtimeParams;
 
@@ -398,14 +432,15 @@ private:
 
 	GLint frameCount = 0;
 
+	const static GLuint totalSortPasses = 2;
+
 	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0, ssboCollisionList = 0, ssboMisc = 0;
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,
-		radixPhase1Pass1CompShaderProgram = 0, radixPhase1Pass2CompShaderProgram = 0,
-		radixPhase2CompShaderProgram = 0,
-		radixPhase3Pass1CompShaderProgram = 0, radixPhase3Pass2CompShaderProgram = 0,
 		findCollisionCellsCompShaderProgram = 0,
 		resolveCollisionsCompShaderProgram = 0,
 		gridShaderProgram = 0;
+	RadixSortPhase RadixSortPasses[totalSortPasses] = { 0 };
+
 
 	bool isManualAttractorControlEnabled = false;
 	GLuint phase1GroupCount = 0;
@@ -417,14 +452,26 @@ private:
 	GLdouble cursorPosX = 0.0, cursorPosY = 0.0;
 	// ------------------- //
 
-	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
+	void initBuffers();
+	void initParticles();
+	ShaderParams initShaderParams();
+	void initRadixSortShaderProgramms(ShaderParams shaderParams);
+
+	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
+	void cleanup();
 
 	template< typename T >
 	T* readFromBuffer(int elemCount, GLuint ssbo);
 
-	void cleanup();
-
-
+	
 	Particle* particlesPrev = 0;
-	double tX0 = 0, tX1 = 0, tX2 = 0, tX3 = 0, tX4 = 0, tX5 = 0, tX6 = 0, tX7 = 0, tX8 = 0, tX9 = 0, tX10 = 0;
+
+	// === for performance profiling ===
+	static const int queriesSize = 4;
+	static const int queriesForRadixSortSize = totalSortPasses * 3;
+	double accumulatedTimeCpu = 0;
+	double accumulatedTimeGpu[queriesSize] = { 0 }, accumulatedTimeGpuRadixSort[queriesForRadixSortSize] = { 0 };
+	float averageFrameTimeCpu = 0;
+	double averageFrameTimeGpu[queriesSize] = { 0 }, averageFrameTimeGpuRadixSort[queriesForRadixSortSize] = { 0 };
+	// =================================
 };

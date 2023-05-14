@@ -135,8 +135,8 @@ void main()
 //						particleB.PosPrev = particleB.Pos;
 
 						vec2 move = norm * covered * 0.5 * forceScale;
-//						particleA.Pos += move;
-//						particleB.Pos -= move;
+						particleA.Pos += move;
+						particleB.Pos -= move;
 
 						particleA.Pressure += covered / particleSize * 0.5;
 						particleB.Pressure += covered / particleSize * 0.5;

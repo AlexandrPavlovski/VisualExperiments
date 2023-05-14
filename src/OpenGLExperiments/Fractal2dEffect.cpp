@@ -33,16 +33,16 @@ void Fractal2dEffect::initialize()
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	ShaderParams iterationsShaderParam   { "#define iterations 0", "#define iterations " + std::to_string(startupParams.Iterations) };
-	ShaderParams antiAliasingShaderParam { "#define AA 0",         "#define AA "         + std::to_string(startupParams.AntiAliasing) };
+	ShaderParam iterationsShaderParam   { "#define iterations 0", "#define iterations " + std::to_string(startupParams.Iterations) };
+	ShaderParam antiAliasingShaderParam { "#define AA 0",         "#define AA "         + std::to_string(startupParams.AntiAliasing) };
 
-	std::vector<ShaderParams> fragShaderParams
+	std::vector<ShaderParam> fragShaderParams
 	{
 		iterationsShaderParam,
 		antiAliasingShaderParam
 	};
 	fragmentShaderFilePath = fragmentShaderFilePathSingle;
-	GLint newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParams>(), fragShaderParams);
+	GLint newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParam>(), fragShaderParams);
 	if (newShaderProgram == -1)
 	{
 		throw "Initialize failed";
@@ -50,14 +50,14 @@ void Fractal2dEffect::initialize()
 	shaderProgram = newShaderProgram;
 
 	fragmentShaderFilePath = fragmentShaderFilePathDouble;
-	newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParams>(), fragShaderParams);
+	newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParam>(), fragShaderParams);
 	if (newShaderProgram == -1)
 	{
 		throw "Initialize failed";
 	}
 	shaderProgramDouble = newShaderProgram;
 
-	std::vector<ShaderParams> computeShaderParams
+	std::vector<ShaderParam> computeShaderParams
 	{
 		iterationsShaderParam,
 		antiAliasingShaderParam
