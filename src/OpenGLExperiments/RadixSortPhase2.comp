@@ -1,14 +1,12 @@
 #version 460 core
 
 #define radixCountersLength 1
-#define threadsInThreadGroup 0
-#define threadGroupsInWorkGroup 0
-#define elementsPerGroup 0
 #define threadGroupsTotal 1
-#define sharedCountersSize 1024
 #define iterations 0
 
-layout(local_size_x = sharedCountersSize) in;
+#define threadsInWorkGroup 1024
+
+layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
 
 
@@ -26,7 +24,7 @@ layout(binding = 9) buffer tetete
 };
 
 shared uint iterationTotal = 0;
-shared uint sharedCounters[sharedCountersSize];
+shared uint sharedCounters[threadsInWorkGroup];
 
 
 void presumm(uint thid, uint n)
@@ -81,27 +79,27 @@ void main()
 	for (uint i = 0; i < iterations; i++)
 	{
 		// TODO maybe change global counters layout to get better memroy read coalescing
-		uint globalCounterIndex = thid * radixCountersLength + sharedCountersSize * radixCountersLength * i + gl_WorkGroupID.x;
+		uint globalCounterIndex = thid * radixCountersLength + threadsInWorkGroup * radixCountersLength * i + gl_WorkGroupID.x;
 		uint currentCounter = globalCounters[globalCounterIndex];
 
 		uint m = globalCounterIndex < totalGlobalCounters ? 1 : 0;
 		sharedCounters[thid] = currentCounter * m;
 
-		presumm(thid, sharedCountersSize);
+		presumm(thid, threadsInWorkGroup);
 		barrier();
 		if (globalCounterIndex < totalGlobalCounters)
 		{
 			globalCounters[globalCounterIndex] = sharedCounters[thid] + iterationTotal;
 		}
 
-		if (thid == sharedCountersSize - 1 && i == iterations - 1) // last thread of last iteration writes total summ to global
+		if (thid == threadsInWorkGroup - 1 && i == iterations - 1) // last thread of last iteration writes total summ to global
 		{
-			totalSumms[gl_WorkGroupID.x] = sharedCounters[sharedCountersSize - 1] + iterationTotal + currentCounter;
+			totalSumms[gl_WorkGroupID.x] = sharedCounters[threadsInWorkGroup - 1] + iterationTotal + currentCounter;
 //if(i == iterations - 1 && gl_WorkGroupID.x == 70){test[0] = currentCounter;}
 		}
 
 		barrier();
-		if (thid == sharedCountersSize - 1) // last thread of current iteration writes total summ for next iteration to use
+		if (thid == threadsInWorkGroup - 1) // last thread of current iteration writes total summ for next iteration to use
 		{
 			iterationTotal = globalCounters[globalCounterIndex] + currentCounter;
 		}

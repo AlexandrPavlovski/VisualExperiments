@@ -32,11 +32,11 @@ layout(binding = 0) buffer SSBO
 {
 	Particle particles[];
 };
-layout(binding = 6) buffer cells3
+layout(binding = 1) buffer cells1
 {
 	uint cellIds[];
 };
-layout(binding = 8) buffer objects3
+layout(binding = 2) buffer objects1
 {
 	uint objectIds[];
 };
