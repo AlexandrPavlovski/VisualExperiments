@@ -22,6 +22,9 @@
     <Filter Include="Effects\Fractal2dEffect">
       <UniqueIdentifier>{45876e7d-6b3f-4682-b04e-11f6bbf8d946}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Effects\Particles2dCollisionEffect\RadixSort">
+      <UniqueIdentifier>{b4b0fc13-7385-4bd8-aff5-2c32a612b4c4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Particles2dGravityEffect.cpp">
@@ -128,19 +131,7 @@
     <CopyFileToFolders Include="Particles2dCollisionEffect.frag">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="FillCellIdAndObjectIdArrays.comp">
-      <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </CopyFileToFolders>
     <CopyFileToFolders Include="Particles2dCollisionEffect.comp">
-      <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RadixSortPhase2.comp">
-      <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RadixSortPhase1.comp">
-      <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="RadixSortPhase3.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="ResolveCollisions.comp">
@@ -160,6 +151,18 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="Fractal2dDoubleEffect.comp">
       <Filter>Effects\Fractal2dEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="FillCellIdAndObjectIdArrays.comp">
+      <Filter>Effects\Particles2dCollisionEffect\RadixSort</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="RadixSortPhase1.comp">
+      <Filter>Effects\Particles2dCollisionEffect\RadixSort</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="RadixSortPhase2.comp">
+      <Filter>Effects\Particles2dCollisionEffect\RadixSort</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="RadixSortPhase3.comp">
+      <Filter>Effects\Particles2dCollisionEffect\RadixSort</Filter>
     </CopyFileToFolders>
   </ItemGroup>
 </Project>

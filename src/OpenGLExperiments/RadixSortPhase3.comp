@@ -6,9 +6,8 @@
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 1
 #define elementsPerGroup 0
-#define sharedCountersLength 12032
-
-#define cellIdShift 0
+#define sharedCountersLength 1
+#define bitMask 1
 
 #define bindingCellIdsInput 1
 #define bindingCellIdsOutput 5
@@ -23,6 +22,7 @@
 layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
 
+layout(location = 0) uniform uint cellIdShift;
 
 layout(binding = bindingCellIdsInput) buffer bufferCellIdsInput
 {
@@ -103,7 +103,7 @@ void presumm(uint thid, uint n)
 void main()
 {
 int t=0;
-//if (cellIdShift != 0){for (int ii = 0; ii < 400; ii++) test[ii] = 777;}
+if (gl_LocalInvocationID.x == 0){test[cellIdShift] = bindingCellIdsInput;}
 	const uint thid = gl_LocalInvocationID.x;
 	const uint indexInWrap = uint(mod(thid, 16));
 	uint i;
@@ -152,7 +152,7 @@ int t=0;
 	{
 		const uint cellId = cellIdsInput[cellIndex + i];
 		const uint objectId = objectIdsInput[cellIndex + i];
-		const uint radix = (cellId >> cellIdShift) & 255;
+		const uint radix = (cellId >> cellIdShift) & bitMask;
 		const uint indexInSharedCounters = counterIndexOffset + radix;
 
 		barrier(); // TODO may be unnecessary

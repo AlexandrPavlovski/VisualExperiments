@@ -54,9 +54,9 @@ void Particles2dNBodyGravityEffect::initialize()
 	particlesData.clear();
 	currentParticlesCount = startupParams.ParticlesCount;
 
-	std::vector<ShaderParams> vertShaderParams
+	std::vector<ShaderParam> vertShaderParams
 	{
-		ShaderParams {"#define particlesCount 0", "#define particlesCount " + std::to_string(currentParticlesCount)}
+		ShaderParam {"#define particlesCount 0", "#define particlesCount " + std::to_string(currentParticlesCount)}
 	};
 	GLint newShaderProgram = createShaderProgramFromFiles(vertShaderParams);
 	if (newShaderProgram == -1)

@@ -2,11 +2,10 @@
 
 // zeros is replaced at runtime with an actual values
 #define particlesCount 0
-#define cellsCount 0
 #define nBody 0
 
 // screen edge behavior - bounce = 1 or stick = 0
-#define bounce 0
+#define bounce 1
 
 
 
@@ -172,8 +171,8 @@ void updateParticle()
 #endif
 			vec2 newPos = particle.Pos * 2 - particle.PosPrev + particle.Acc * deltaTime * deltaTime;
 			vec2 vel = (newPos - particle.Pos) * velocityDamping;
-//			particle.PosPrev = newPos - vel;
-//			particle.Pos = newPos;
+			particle.PosPrev = newPos - vel;
+			particle.Pos = newPos;
 
 			particle.Acc = vec2(0.0);
 			particle.Pressure = 0.0;

@@ -22,318 +22,6 @@ struct Particle
 	GLfloat Unused;
 };
 
-
-class Validator
-{
-public:
-	void Init(Particle* particles, GLuint particlesCount, GLuint cellSize, float windowWidth, float windowHeight, GLuint phase1WorkGroupsCount)
-	{
-		this->particles = particles;
-
-		this->particlesCount = particlesCount;
-		this->cellsCount = particlesCount * 4;
-		this->cellSize = cellSize;
-		this->windowWidth = windowWidth;
-		this->windowHeight = windowHeight;
-		this->phase1WorkGroupsCount = phase1WorkGroupsCount;
-		this->globalCountersCount = phase1WorkGroupsCount * sharedCountersLength;
-
-		cellIds = std::vector<GLuint>(cellsCount);
-		objectIds = std::vector<GLuint>(cellsCount);
-		cellIdsOutput = std::vector<GLuint>(cellsCount);
-		objectIdsOutput = std::vector<GLuint>(cellsCount);
-		globalCounters = std::vector<GLuint>(globalCountersCount);
-		totalSumms = std::vector<GLuint>(256);
-	}
-
-	void ValidateFilledArrays(GLuint* cellsFromGPU, GLuint* objectsFromGPU)
-	{
-		GLuint gridWidth = windowWidth / cellSize + 2;
-
-		for (int i = 0; i < particlesCount; i++)
-		{
-			Particle p = particles[i];
-
-			double gridPosX, gridPosY;
-			double cellPosX = modf(p.PosX / cellSize, &gridPosX);
-			double cellPosY = modf(p.PosY / cellSize, &gridPosY);
-			gridPosX++;
-			gridPosY++;
-
-			GLuint hCellId = gridPosX + gridPosY * gridWidth;
-
-			GLuint pCellIdsX, pCellIdsY, pCellIdsZ;
-			if (cellPosX > 0.5)
-			{
-				pCellIdsX = hCellId + 1;
-				if (cellPosY > 0.5)
-				{
-					pCellIdsY = hCellId + gridWidth;
-					pCellIdsZ = hCellId + gridWidth + 1;
-				}
-				else
-				{
-					pCellIdsY = hCellId - gridWidth;
-					pCellIdsZ = hCellId - gridWidth + 1;
-				}
-			}
-			else
-			{
-				pCellIdsX = hCellId - 1;
-				if (cellPosY > 0.5)
-				{
-					pCellIdsY = hCellId + gridWidth;
-					pCellIdsZ = hCellId + gridWidth - 1;
-				}
-				else
-				{
-					pCellIdsY = hCellId - gridWidth;
-					pCellIdsZ = hCellId - gridWidth - 1;
-				}
-			}
-
-			cellIds[i] = hCellId;
-			cellIds[i + particlesCount] = pCellIdsX;
-			cellIds[i + particlesCount * 2] = pCellIdsY;
-			cellIds[i + particlesCount * 3] = pCellIdsZ;
-
-			objectIds[i] = i | 0x80000000;
-			objectIds[i + particlesCount] = i;
-			objectIds[i + particlesCount * 2] = i;
-			objectIds[i + particlesCount * 3] = i;
-		}
-
-		for (int i = 0; i < particlesCount; i++)
-		{
-			if (cellsFromGPU[i] != cellIds[i])
-			{
-				__debugbreak();
-			}
-			if (objectsFromGPU[i] != objectIds[i])
-			{
-				__debugbreak();
-			}
-		}
-	}
-
-	void ValidateSortPhase1(GLuint pass, GLuint threadsInWorkGroup, GLuint threadGroupsInWorkGroup, GLuint threadsInThreadGroup, GLuint elementsPerGroup, GLuint* globalCountersFromGPU)
-	{
-		GLuint cellIdShift = pass == 0 ? 0 : 8;
-
-		for (int workGroupID = 0; workGroupID < phase1WorkGroupsCount; workGroupID++)
-		{
-			GLuint globalCountersOffset = workGroupID * sharedCountersLength;
-
-			for (int localInvocationID = 0; localInvocationID < threadsInWorkGroup; localInvocationID++)
-			{
-				GLuint indexInGroup = localInvocationID % threadsInThreadGroup;
-				GLuint groupIndex = localInvocationID / threadsInThreadGroup;
-				GLuint cellIndexToReadFrom = (workGroupID * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
-				GLuint counterIndexOffset = groupIndex * 256;
-
-				for (int i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
-				{
-					if (cellIndexToReadFrom + i < cellsCount)
-					{
-						GLuint cellId = cellIds[cellIndexToReadFrom + i];
-						GLuint radix = (cellId >> cellIdShift) & 255;
-						GLuint indexInSharedCounters = counterIndexOffset + radix;
-
-						globalCounters[indexInSharedCounters + globalCountersOffset]++;
-					}
-				}
-			}
-		}
-
-		for (int i = 0; i < globalCountersCount; i++)
-		{
-			if (globalCountersFromGPU[i] != globalCounters[i])
-			{
-				__debugbreak();
-				if (i == -1)
-				{
-					std::ofstream MyFile("c:/ValidateSortPhase1 globalCountersFromGPU.txt");
-					for (int b = 0; b < globalCountersCount; b += 256)
-					{
-						for (int c = 0; c < 256; c++)
-						{
-							MyFile << globalCountersFromGPU[b + c] << "\t";
-						}
-						MyFile << "\r";
-					}
-					MyFile.close();
-				}
-			}
-		}
-	}
-
-	void ValidateSortPhase2(GLuint threadGroupsTotal, GLuint* globalCountersFromGPU, GLuint* totalSummsFromGPU)
-	{
-		for (int radix = 0; radix < 256; radix++)
-		{
-			GLuint summ = 0;
-			for (int threadGroup = 0; threadGroup < threadGroupsTotal; threadGroup++)
-			{
-				GLuint globalCounterIndex = threadGroup * 256 + radix;
-
-				GLuint counter = globalCounters[globalCounterIndex];
-				globalCounters[globalCounterIndex] = summ;
-				summ += counter;
-			}
-			totalSumms[radix] = summ;
-		}
-
-		for (int i = 0; i < globalCountersCount; i++)
-		{
-			if (globalCountersFromGPU[i] != globalCounters[i])
-			{
-				__debugbreak();
-				if (i == -1)
-				{
-					std::ofstream MyFile("c:/ValidateSortPhase2 globalCountersFromGPU.txt");
-					for (int b = 0; b < globalCountersCount; b+=256)
-					{
-						for (int c = 0; c < 256; c++)
-						{
-							MyFile << globalCountersFromGPU[b + c] << "\t";
-						}
-						MyFile << "\r";
-					}
-					MyFile.close();
-				}
-			}
-		}
-		for (int i = 0; i < 256; i++)
-		{
-			if (totalSummsFromGPU[i] != totalSumms[i])
-			{
-				__debugbreak();
-			}
-		}
-	}
-
-	void ValidateSortPhase3(
-		GLuint pass,
-		GLuint threadsInWorkGroup,
-		GLuint threadGroupsInWorkGroup,
-		GLuint threadsInThreadGroup,
-		GLuint elementsPerGroup,
-		GLuint* cellsFromGPU,
-		GLuint* objectsFromGPU)
-	{
-		GLuint summ = 0;
-		for (int i = 0; i < 256; i++)
-		{
-			GLuint counter = totalSumms[i];
-			totalSumms[i] = summ;
-			summ += counter;
-		}
-
-		GLuint sharedCountersLength = 12032;
-		GLuint cellIdShift = pass == 0 ? 0 : 8;
-
-		for (int workGroupID = 0; workGroupID < phase1WorkGroupsCount; workGroupID++)
-		{
-			std::vector<GLuint> sharedCounters = std::vector<GLuint>(sharedCountersLength);
-			for (int i = 0; i < sharedCountersLength; i++)
-			{
-				sharedCounters[i] = globalCounters[workGroupID * sharedCountersLength + i] + totalSumms[i % 256];
-			}
-
-			for (int localInvocationID = 0; localInvocationID < threadsInWorkGroup; localInvocationID++)
-			{
-				GLuint indexInGroup = localInvocationID % threadsInThreadGroup;
-				GLuint groupIndex = localInvocationID / (float)threadsInThreadGroup;
-				GLuint cellIndexToReadFrom = (workGroupID * threadGroupsInWorkGroup+ groupIndex) * elementsPerGroup + indexInGroup;
-				GLuint counterIndexOffset = groupIndex * 256;
-
-				for (int i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
-				{
-					if (cellIndexToReadFrom + i < cellsCount)
-					{
-						GLuint cellId = cellIds[cellIndexToReadFrom + i];
-						GLuint objectId = objectIds[cellIndexToReadFrom + i];
-						GLuint radix = (cellId >> cellIdShift) & 255;
-						GLuint indexInSharedCounters = counterIndexOffset + radix;
-
-						GLuint offset = sharedCounters[indexInSharedCounters];
-
-						cellIdsOutput[offset] = cellId;
-						objectIdsOutput[offset] = objectId;
-
-						sharedCounters[indexInSharedCounters]++;
-					}
-				}
-			}
-
-			sharedCounters.clear();
-		}
-
-		if (cellsFromGPU != nullptr && objectsFromGPU != nullptr)
-		{
-			for (int i = 0; i < cellsCount; i++)
-			{
-				if (cellsFromGPU[i] != cellIdsOutput[i])
-				{
-					__debugbreak();
-				}
-				if (objectsFromGPU[i] != objectIdsOutput[i])
-				{
-					__debugbreak();
-				}
-			}
-		}
-
-		cellIds.clear();
-		objectIds.clear();
-		cellIds.shrink_to_fit();
-		objectIds.shrink_to_fit();
-
-		cellIds = cellIdsOutput;
-		objectIds = objectIdsOutput;
-
-		cellIdsOutput.clear();
-		objectIdsOutput.clear();
-		globalCounters.clear();
-
-		globalCounters = std::vector<GLuint>(globalCountersCount);
-		cellIdsOutput = std::vector<GLuint>(cellsCount);
-		objectIdsOutput = std::vector<GLuint>(cellsCount);
-	}
-
-	void Clear()
-	{
-		cellIds.clear();
-		objectIds.clear();
-		globalCounters.clear();
-		totalSumms.clear();
-		cellIdsOutput.clear();
-		objectIdsOutput.clear();
-
-		cellIds.shrink_to_fit();
-		objectIds.shrink_to_fit();
-		globalCounters.shrink_to_fit();
-		totalSumms.shrink_to_fit();
-		cellIdsOutput.shrink_to_fit();
-		objectIdsOutput.shrink_to_fit();
-	}
-
-	GLuint sharedCountersLength = 12032;
-
-	GLuint particlesCount, cellsCount, cellSize, phase1WorkGroupsCount, globalCountersCount;
-	float windowWidth, windowHeight;
-
-	Particle* particles;
-	std::vector<GLuint> cellIds;
-	std::vector<GLuint> objectIds;
-	std::vector<GLuint> cellIdsOutput;
-	std::vector<GLuint> objectIdsOutput;
-	std::vector<GLuint> globalCounters;
-	std::vector<GLuint> totalSumms;
-};
-
-
-
 class Particles2dCollisionEffect :public AbstractEffect
 {
 public:
@@ -347,28 +35,6 @@ public:
 
 	virtual void keyCallback(int key, int scancode, int action, int mode);
 	virtual void mouseButtonCallback(int button, int action, int mods);
-
-	GLuint radixCountersLength = 0;
-	GLuint sharedCountersLength = 0;
-	GLuint maxWorkGroupCount = 0;
-	GLuint threadGroupsInWorkGroup = 0;
-	GLuint threadsInThreadGroup = 0;
-	GLfloat threadsInWorkGroup = 0;
-	GLuint elementsPerThread = 0;
-	GLuint elementsPerGroup = 0;
-	GLuint threadGroupsTotal = 0;
-
-	std::vector<Particle> particles;
-
-	// temp vars
-	GLuint buffer = 0;
-	GLuint buffer5 = 0;
-	GLuint buffer6 = 0;
-	GLuint buffer7 = 0;
-	GLuint buffer8 = 0;
-	GLuint bufferTest = 0;
-	GLuint frame = 0;
-	Validator* validator = nullptr;
 
 private:
 	struct StartupParams
@@ -387,8 +53,71 @@ private:
 		GLint substeps;
 	};
 
+	struct ShaderParams
+	{
+		ShaderParam nBody;
+		ShaderParam particlesCount;
+		ShaderParam cellIdsLength;
+		ShaderParam threadsInWorkGroup;
+		ShaderParam threadGroupsInWorkGroup;
+		ShaderParam radixCountersLength;
+		ShaderParam threadsInThreadGroup;
+		ShaderParam elementsPerGroup;
+		ShaderParam threadGroupsTotal;
+		ShaderParam phase2Iterations;
+		ShaderParam sharedCountersLength;
+		ShaderParam bitMask;
+
+		ShaderParam bindingCellIds;
+		ShaderParam cells;
+
+		ShaderParam bindingCellIdsInput;
+		ShaderParam bindingCellIdsOutput;
+		ShaderParam bufferCellIdsInput;
+		ShaderParam bufferCellIdsOutput;
+		ShaderParam bindingObjectIdsInput;
+		ShaderParam bindingObjectIdsOutput;
+		ShaderParam bufferObjectIdsInput;
+		ShaderParam bufferObjectIdsOutput;
+	};
+
+	struct RadixSortPhase
+	{
+		GLuint Phase1;
+		GLuint Phase2;
+		GLuint Phase3;
+	};
+
 	StartupParams startupParams;
 	RuntimeParams runtimeParams;
+
+	// core parameters for the whole simulation
+	static const GLuint cellIdBits = 16;
+	static const GLuint bitsPerSortPass = 8;
+	GLuint sharedCountersLength = 12032; // 12288 is maximum on my laptop's 3060, but in phase 3 need some additional shared memory for total summs counting
+	GLfloat maxThreadsInWorkGroup = 1024.0; // 1024 is maximum threads per work group on my laptop's 3060
+
+	static const GLuint totalSortPasses = cellIdBits / bitsPerSortPass;
+	GLuint radixCountersLength = pow(2, bitsPerSortPass);
+	GLuint bitMask = radixCountersLength - 1;
+	GLuint threadGroupsInWorkGroup = sharedCountersLength / radixCountersLength;
+	GLuint threadsInThreadGroup = 16; //TODO std::max((int)floor(maxThreadsInWorkGroup / threadGroupsInWorkGroup), 16); // 16 is maximum for inter-thread synchronization to work
+	GLuint threadsInWorkGroupInPhases1And3 = threadGroupsInWorkGroup * threadsInThreadGroup;
+
+	GLuint maxWorkGroupCount = 0;
+	GLuint elementsPerThread = 0;
+	GLuint elementsPerGroup = 0;
+	GLuint threadGroupsTotal = 0;
+
+	std::vector<Particle> particles;
+
+	// temp vars
+	GLuint buffer = 0;
+	GLuint buffer5 = 0;
+	GLuint buffer6 = 0;
+	GLuint buffer7 = 0;
+	GLuint buffer8 = 0;
+	GLuint bufferTest = 0;
 
 	GLint currentParticlesCount = 0;
 	GLint currentCellsCount = 0;
@@ -398,14 +127,14 @@ private:
 
 	GLint frameCount = 0;
 
+
 	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0, ssboCollisionList = 0, ssboMisc = 0;
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,
-		radixPhase1Pass1CompShaderProgram = 0, radixPhase1Pass2CompShaderProgram = 0,
-		radixPhase2CompShaderProgram = 0,
-		radixPhase3Pass1CompShaderProgram = 0, radixPhase3Pass2CompShaderProgram = 0,
 		findCollisionCellsCompShaderProgram = 0,
 		resolveCollisionsCompShaderProgram = 0,
 		gridShaderProgram = 0;
+	std::vector<RadixSortPhase> RadixSortPasses = std::vector<RadixSortPhase>(totalSortPasses);
+
 
 	bool isManualAttractorControlEnabled = false;
 	GLuint phase1GroupCount = 0;
@@ -417,14 +146,48 @@ private:
 	GLdouble cursorPosX = 0.0, cursorPosY = 0.0;
 	// ------------------- //
 
-	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
+	void initBuffers();
+	void initParticles();
+	ShaderParams initShaderParams();
+	void initRadixSortShaderProgramms(ShaderParams shaderParams);
+
+	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
+	void cleanup();
 
 	template< typename T >
 	T* readFromBuffer(int elemCount, GLuint ssbo);
 
-	void cleanup();
-
-
+	
 	Particle* particlesPrev = 0;
-	double tX0 = 0, tX1 = 0, tX2 = 0, tX3 = 0, tX4 = 0, tX5 = 0, tX6 = 0, tX7 = 0, tX8 = 0, tX9 = 0, tX10 = 0;
+
+	// === for validation ===
+	void initValidation(Particle* particles);
+	void validateFilledArrays(GLuint* cellsFromGPU, GLuint* objectsFromGPU);
+	void validateSortPhase1(GLuint pass, GLuint* globalCountersFromGPU);
+	void validateSortPhase2(GLuint* globalCountersFromGPU, GLuint* totalSummsFromGPU);
+	void validateSortPhase3(GLuint pass, GLuint* cellsFromGPU, GLuint* objectsFromGPU);
+	void clearValidation();
+
+	GLuint vGlobalCountersCount;
+
+	Particle* vParticles;
+	std::vector<GLuint> vCellIds;
+	std::vector<GLuint> vObjectIds;
+	std::vector<GLuint> vCellIdsOutput;
+	std::vector<GLuint> vObjectIdsOutput;
+	std::vector<GLuint> vGlobalCounters;
+	std::vector<GLuint> vTotalSumms;
+	// ======================
+
+
+	// === for performance profiling ===
+	static const int queriesSize = 4;
+	static const int queriesForRadixSortSize = totalSortPasses * 3;
+	double accumulatedTimeCpu = 0;
+	double accumulatedTimeGpu[queriesSize] = { 0 };
+	std::vector<double> accumulatedTimeGpuRadixSort = std::vector<double>(queriesForRadixSortSize);
+	float averageFrameTimeCpu = 0;
+	double averageFrameTimeGpu[queriesSize] = { 0 };
+	std::vector<double> averageFrameTimeGpuRadixSort = std::vector<double>(queriesForRadixSortSize);
+	// =================================
 };

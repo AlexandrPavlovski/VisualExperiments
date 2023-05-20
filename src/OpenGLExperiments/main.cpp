@@ -18,7 +18,7 @@
 #include "Particles2dCollisionEffect.h"
 
 
-bool isVsyncEnabled = false;
+bool isVsyncEnabled = true;
 
 const int effectsCount = 4;
 AbstractEffect* effect;
@@ -179,6 +179,13 @@ void drawGUI()
 	effect->drawGUI();
 }
 
+void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+	if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM)
+	{
+		std::cout << message << std::endl;
+	}
+}
+
 int main()
 {
 	glfwInit();
@@ -187,11 +194,11 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 	if (!isVsyncEnabled)
 	{
 		glfwWindowHint(GLFW_DOUBLEBUFFER, GL_FALSE);
 	}
-
 
 	window = glfwCreateWindow(WindowWidth, WindowHeight, "Particles 2D", NULL, NULL);
 	if (window == NULL)
@@ -210,7 +217,6 @@ int main()
 	glfwSetWindowSizeCallback(window, windowSizeCallback);
 
 	windowSizeCallback(window, WindowWidth, WindowHeight);
-
 
 	glewExperimental = GL_TRUE;
 	if (glewInit() != GLEW_OK)
@@ -232,6 +238,9 @@ int main()
 		getchar();
 		return -1;
 	}
+
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(ErrorMessageCallback, 0);
 
 
 	// ------ GUI setup ------ //

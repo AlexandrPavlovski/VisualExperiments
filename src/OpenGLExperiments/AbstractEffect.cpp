@@ -59,8 +59,8 @@ void AbstractEffect::hotReloadShaders()
 GLint AbstractEffect::createShaderProgramFromFiles(
 	const char* customVertexShaderFilePath,
 	const char* customFragmentShaderFilePath,
-	std::vector<ShaderParams> vertShaderParams,
-	std::vector<ShaderParams> fragShaderParams)
+	std::vector<ShaderParam> vertShaderParams,
+	std::vector<ShaderParam> fragShaderParams)
 {
 	const char* tempVertexShaderFilePath = vertexShaderFilePath;
 	const char* tempFragmentShaderFilePath = fragmentShaderFilePath;
@@ -76,7 +76,7 @@ GLint AbstractEffect::createShaderProgramFromFiles(
 	return newShaderProgram;
 }
 
-GLint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> vertShaderParams, std::vector<ShaderParams> fragShaderParams)
+GLint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParam> vertShaderParams, std::vector<ShaderParam> fragShaderParams)
 {
 	GLint newShaderProgram = glCreateProgram();
 
@@ -107,7 +107,7 @@ GLint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParams> ver
 }
 
 
-GLint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams)
+GLint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams)
 {
 	const char* shaderFilePath;
 	switch (shaderType)
@@ -122,7 +122,7 @@ GLint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::v
 	return createShader(shaderFilePath, shaderProgram, shaderType, shaderParams);
 }
 
-GLint AbstractEffect::createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams)
+GLint AbstractEffect::createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams)
 {
 	std::string shaderStr = readShaderFromFile(shaderFilePath);
 	for (auto p : shaderParams)
@@ -149,7 +149,7 @@ GLint AbstractEffect::createShader(const char* shaderFilePath, GLint shaderProgr
 	return 1;
 }
 
-void AbstractEffect::createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams)
+void AbstractEffect::createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams)
 {
 	GLint newShaderProgram = glCreateProgram();
 	if (createShader(shaderFilePath, newShaderProgram, GL_COMPUTE_SHADER, shaderParams) == -1)

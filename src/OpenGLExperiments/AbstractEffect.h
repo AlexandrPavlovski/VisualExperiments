@@ -28,7 +28,7 @@ public:
 	virtual void windowSizeCallback(int width, int height);
 
 protected:
-	struct ShaderParams
+	struct ShaderParam
 	{
 		std::string Placeholder;
 		std::string Value;
@@ -45,17 +45,17 @@ protected:
 	GLfloat random(GLfloat low, GLfloat high);
 
 	GLint createShaderProgramFromFiles(
-		std::vector<ShaderParams> vertShaderParams = std::vector<ShaderParams>(),
-		std::vector<ShaderParams> fragShaderParams = std::vector<ShaderParams>());
+		std::vector<ShaderParam> vertShaderParams = std::vector<ShaderParam>(),
+		std::vector<ShaderParam> fragShaderParams = std::vector<ShaderParam>());
 	GLint createShaderProgramFromFiles(
 		const char* customVertexShaderFilePath,
 		const char* customFragmentShaderFilePath,
-		std::vector<ShaderParams> vertShaderParams = std::vector<ShaderParams>(),
-		std::vector<ShaderParams> fragShaderParams = std::vector<ShaderParams>());
+		std::vector<ShaderParam> vertShaderParams = std::vector<ShaderParam>(),
+		std::vector<ShaderParam> fragShaderParams = std::vector<ShaderParam>());
 
-	GLint createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
-	GLint createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParams> shaderParams = std::vector<ShaderParams>());
-	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParams> shaderParams);
+	GLint createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
+	GLint createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
+	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams);
 	GLint checkShaderPrgramLinkErrors(GLuint shaderProgram);
 
 
