@@ -37,19 +37,11 @@ shared uint sharedCounters[sharedCountersLength];
 void main()
 {
 	const uint thid = gl_LocalInvocationID.x;
-//test[0] = cellIdsLength;
-//test[1] = radixCountersLength;
-//test[2] = threadsInWorkGroup;
-//test[3] = threadsInThreadGroup;
-//test[4] = threadGroupsInWorkGroup;
-//test[4] = elementsPerGroup;
-//test[5] = sharedCountersLength;
-//test[6] = bitMask;
+
 	for (uint i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
 	{
 		sharedCounters[thid + i] = 0; // clearing shared memory between passes
 	}
-	barrier(); // TODO might be unnecessary
 
 	const uint indexInGroup = uint(mod(thid, threadsInThreadGroup));
 	const uint groupIndex = thid / threadsInThreadGroup;
@@ -61,8 +53,6 @@ void main()
 		const uint cellId = cellIds1[cellIndexToReadFrom + i];
 		const uint radix = (cellId >> cellIdShift) & bitMask; // taking only a part of cellId
 		const uint indexInSharedCounters = counterIndexOffset + radix;
-
-//		barrier(); // TODO maybe remove
 
 		for (uint g = 0; g < threadsInThreadGroup; g++)
 		{

@@ -45,6 +45,8 @@ void Particles2dCollisionEffect::initialize()
 	elementsPerGroup = threadsInThreadGroup * elementsPerThread;
 	threadGroupsTotal = ceil(currentCellsCount / (double)elementsPerGroup);
 
+	phase2Iterations = ceil(threadGroupsTotal / maxThreadsInWorkGroup / 2);
+
 	initParticles();
 	initBuffers();
 
@@ -104,8 +106,8 @@ void Particles2dCollisionEffect::initParticles()
 	particles = std::vector<Particle>(currentParticlesCount);
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		particles[i].PosX = random(1.0, 1192.0);
-		particles[i].PosY = random(1.0, 792.0);
+		particles[i].PosX = random(101.0, 1002.0);
+		particles[i].PosY = random(101.0, 702.0);
 
 		particles[i].PosXprev = particles[i].PosX;
 		particles[i].PosYprev = particles[i].PosY;
@@ -206,8 +208,6 @@ void Particles2dCollisionEffect::initBuffers()
 
 Particles2dCollisionEffect::ShaderParams Particles2dCollisionEffect::initShaderParams()
 {
-	GLuint phase2Iterations = ceil(threadGroupsTotal / maxThreadsInWorkGroup);
-
 	ShaderParams shaderParams{};
 
 	shaderParams.nBody =                   { "#define nBody 0",                    "#define nBody "                   + std::to_string(startupParams.IsNBodyGravity ? 1 : 0) };
@@ -567,6 +567,8 @@ delete[] totalSumms;
 glEndQuery(GL_TIME_ELAPSED);
 auto tEnd = std::chrono::steady_clock::now();
 
+currentlyAveragedFrames++;
+
 GLint done = 0;
 while (!done) { // waiting for GPU
 	glGetQueryObjectiv(queries[queriesSize - 1], GL_QUERY_RESULT_AVAILABLE, &done);
@@ -588,16 +590,30 @@ for (int i = 0; i < queriesForRadixSortSize; i++)
 
 float d = 1000000.0; // nanoseconds to miliseconds
 accumulatedTimeCpu += std::chrono::duration_cast<std::chrono::nanoseconds>(tEnd - tBegin).count() / d;
-averageFrameTimeCpu = accumulatedTimeCpu / (float)frameCount;
+averageFrameTimeCpu = accumulatedTimeCpu / (float)currentlyAveragedFrames;
 for (int i = 0; i < queriesSize; i++)
 {
 	accumulatedTimeGpu[i] += elapsedTimes[i] / d;
-	averageFrameTimeGpu[i] = accumulatedTimeGpu[i] / (float)frameCount;
+	averageFrameTimeGpu[i] = accumulatedTimeGpu[i] / (float)currentlyAveragedFrames;
 }
 for (int i = 0; i < queriesForRadixSortSize; i++)
 {
 	accumulatedTimeGpuRadixSort[i] += elapsedTimesSort[i] / d;
-	averageFrameTimeGpuRadixSort[i] = accumulatedTimeGpuRadixSort[i] / (float)frameCount;
+	averageFrameTimeGpuRadixSort[i] = accumulatedTimeGpuRadixSort[i] / (float)currentlyAveragedFrames;
+}
+
+if (currentlyAveragedFrames % framesToAvegare == 0)
+{
+	currentlyAveragedFrames = 0;
+	accumulatedTimeCpu = 0.0;
+	for (int i = 0; i < queriesSize; i++)
+	{
+		accumulatedTimeGpu[i] = 0.0;
+	}
+	for (int i = 0; i < queriesForRadixSortSize; i++)
+	{
+		accumulatedTimeGpuRadixSort[i] = 0.0;
+	}
 }
 #endif
 }

@@ -102,15 +102,15 @@ void presumm(uint thid, uint n)
 
 void main()
 {
-int t=0;
-if (gl_LocalInvocationID.x == 0){test[cellIdShift] = bindingCellIdsInput;}
+//int t=0;
+//if (gl_LocalInvocationID.x == 0){test[cellIdShift] = bindingCellIdsInput;}
 	const uint thid = gl_LocalInvocationID.x;
 	const uint indexInWrap = uint(mod(thid, 16));
 	uint i;
 
-	for (i = 0; thid + i < radixCountersLength; i += threadsInWorkGroup)
+	if (thid < radixCountersLength)
 	{
-		totalSummShared[thid + i] = totalSumms[thid + i];
+		totalSummShared[thid] = totalSumms[thid];
 	}
 
 //for (i = 0; thid + i < radixCountersLength; i += threadsInWorkGroup)
@@ -119,8 +119,6 @@ if (gl_LocalInvocationID.x == 0){test[cellIdShift] = bindingCellIdsInput;}
 //}
 
 	presumm(thid, radixCountersLength);
-
-	barrier();
 
 	for (i = 0; thid + i < sharedCountersLength; i += threadsInWorkGroup)
 	{
@@ -155,11 +153,11 @@ if (gl_LocalInvocationID.x == 0){test[cellIdShift] = bindingCellIdsInput;}
 		const uint radix = (cellId >> cellIdShift) & bitMask;
 		const uint indexInSharedCounters = counterIndexOffset + radix;
 
-		barrier(); // TODO may be unnecessary
+//		barrier(); // TODO may be unnecessary
 
 		if (cellIndex + i < cellIdsLength)
 		{
-			for (uint j = 0; j < 16; j++)
+			for (uint j = 0; j < threadsInThreadGroup; j++)
 			{
 				if (indexInWrap == j)
 				{

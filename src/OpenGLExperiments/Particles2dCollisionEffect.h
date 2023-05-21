@@ -108,6 +108,7 @@ private:
 	GLuint elementsPerThread = 0;
 	GLuint elementsPerGroup = 0;
 	GLuint threadGroupsTotal = 0;
+	GLuint phase2Iterations = 0;
 
 	std::vector<Particle> particles;
 
@@ -181,6 +182,8 @@ private:
 
 
 	// === for performance profiling ===
+	static const int framesToAvegare = 100;
+	int currentlyAveragedFrames = 0;
 	static const int queriesSize = 4;
 	static const int queriesForRadixSortSize = totalSortPasses * 3;
 	double accumulatedTimeCpu = 0;
