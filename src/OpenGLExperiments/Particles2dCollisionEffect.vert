@@ -5,7 +5,7 @@
 #define nBody 0
 
 // screen edge behavior - bounce = 1 or stick = 0
-#define bounce 0
+#define bounce 1
 
 
 

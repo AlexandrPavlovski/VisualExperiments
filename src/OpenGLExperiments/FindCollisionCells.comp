@@ -138,7 +138,7 @@ void main()
 						particleA.Pos += move;
 						particleB.Pos -= move;
 
-						particleA.Pressure += covered / particleSize * 0.5;
+						particleA.Pressure += covered / particleSize * 0.5; // TODO divide by substeps
 						particleB.Pressure += covered / particleSize * 0.5;
 
 						particles[objectIds[collisionCellIndex + h]] = particleA;

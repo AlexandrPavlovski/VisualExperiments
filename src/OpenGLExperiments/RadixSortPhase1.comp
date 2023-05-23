@@ -6,6 +6,7 @@
 #define threadsInThreadGroup 0
 #define threadGroupsInWorkGroup 1
 #define elementsPerGroup 0
+#define elementsPerThread 0
 #define sharedCountersLength 1
 #define bitMask 1
 
@@ -45,8 +46,8 @@ void main()
 
 	const uint indexInGroup = uint(mod(thid, threadsInThreadGroup));
 	const uint groupIndex = thid / threadsInThreadGroup;
-	const uint cellIndexToReadFrom = (gl_WorkGroupID.x * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
 	const uint counterIndexOffset = groupIndex * radixCountersLength;
+	const uint cellIndexToReadFrom = (gl_WorkGroupID.x * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
 
 	for (uint i = 0; i < elementsPerGroup && cellIndexToReadFrom + i < cellIdsLength; i += threadsInThreadGroup)
 	{

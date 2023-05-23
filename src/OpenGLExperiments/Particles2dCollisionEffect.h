@@ -63,6 +63,7 @@ private:
 		ShaderParam radixCountersLength;
 		ShaderParam threadsInThreadGroup;
 		ShaderParam elementsPerGroup;
+		ShaderParam elementsPerThread;
 		ShaderParam threadGroupsTotal;
 		ShaderParam phase2Iterations;
 		ShaderParam sharedCountersLength;
@@ -96,6 +97,7 @@ private:
 	static const GLuint bitsPerSortPass = 8;
 	GLuint sharedCountersLength = 12032; // 12288 is maximum on my laptop's 3060, but in phase 3 need some additional shared memory for total summs counting
 	GLfloat maxThreadsInWorkGroup = 1024.0; // 1024 is maximum threads per work group on my laptop's 3060
+	GLuint elementsPerThread = 32; // number of cells each thread in phases 1 and 3 will process
 
 	static const GLuint totalSortPasses = cellIdBits / bitsPerSortPass;
 	GLuint radixCountersLength = pow(2, bitsPerSortPass);
@@ -105,7 +107,6 @@ private:
 	GLuint threadsInWorkGroupInPhases1And3 = threadGroupsInWorkGroup * threadsInThreadGroup;
 
 	GLuint maxWorkGroupCount = 0;
-	GLuint elementsPerThread = 0;
 	GLuint elementsPerGroup = 0;
 	GLuint threadGroupsTotal = 0;
 	GLuint phase2Iterations = 0;
