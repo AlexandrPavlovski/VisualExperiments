@@ -3,7 +3,7 @@
 
 //#define VLAIDATE
 //#define MISC_TESTS
-#define PROFILE
+//#define PROFILE
 
 #include <chrono>
 #include <iostream>
@@ -39,11 +39,12 @@ void Particles2dCollisionEffect::initialize()
 	currentParticlesCount = startupParams.ParticlesCount;
 	currentCellsCount = startupParams.ParticlesCount * 4;
 
-	phase1GroupCount = ceil(currentCellsCount / (float)threadsInWorkGroupInPhases1And3);
+	phase1GroupCount = ceil(currentCellsCount / (float)threadsInWorkGroupInPhases1And3 / elementsPerThread);
 
-	elementsPerThread = ceil(currentCellsCount / (phase1GroupCount * (float)threadsInWorkGroupInPhases1And3));
 	elementsPerGroup = threadsInThreadGroup * elementsPerThread;
 	threadGroupsTotal = ceil(currentCellsCount / (double)elementsPerGroup);
+
+	phase2Iterations = ceil(threadGroupsTotal / maxThreadsInWorkGroup / 2);
 
 	initParticles();
 	initBuffers();
@@ -104,8 +105,8 @@ void Particles2dCollisionEffect::initParticles()
 	particles = std::vector<Particle>(currentParticlesCount);
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		particles[i].PosX = random(1.0, 1192.0);
-		particles[i].PosY = random(1.0, 792.0);
+		particles[i].PosX = random(101.0, 1002.0);
+		particles[i].PosY = random(101.0, 702.0);
 
 		particles[i].PosXprev = particles[i].PosX;
 		particles[i].PosYprev = particles[i].PosY;
@@ -206,8 +207,6 @@ void Particles2dCollisionEffect::initBuffers()
 
 Particles2dCollisionEffect::ShaderParams Particles2dCollisionEffect::initShaderParams()
 {
-	GLuint phase2Iterations = ceil(threadGroupsTotal / maxThreadsInWorkGroup);
-
 	ShaderParams shaderParams{};
 
 	shaderParams.nBody =                   { "#define nBody 0",                    "#define nBody "                   + std::to_string(startupParams.IsNBodyGravity ? 1 : 0) };
@@ -218,6 +217,7 @@ Particles2dCollisionEffect::ShaderParams Particles2dCollisionEffect::initShaderP
 	shaderParams.radixCountersLength =     { "#define radixCountersLength 1",      "#define radixCountersLength "     + std::to_string(radixCountersLength) };
 	shaderParams.threadsInThreadGroup =    { "#define threadsInThreadGroup 0",     "#define threadsInThreadGroup "    + std::to_string(threadsInThreadGroup) };
 	shaderParams.elementsPerGroup =        { "#define elementsPerGroup 0",         "#define elementsPerGroup "        + std::to_string(elementsPerGroup) };
+	shaderParams.elementsPerThread =       { "#define elementsPerThread 0",        "#define elementsPerThread "       + std::to_string(elementsPerThread) };
 	shaderParams.threadGroupsTotal =       { "#define threadGroupsTotal 1",        "#define threadGroupsTotal "       + std::to_string(threadGroupsTotal) };
 	shaderParams.phase2Iterations =        { "#define iterations 0",               "#define iterations "              + std::to_string(phase2Iterations) };
 	shaderParams.sharedCountersLength =    { "#define sharedCountersLength 1",     "#define sharedCountersLength "    + std::to_string(sharedCountersLength) };
@@ -249,6 +249,7 @@ void Particles2dCollisionEffect::initRadixSortShaderProgramms(ShaderParams shade
 		shaderParams.threadGroupsInWorkGroup,
 		shaderParams.threadsInThreadGroup,
 		shaderParams.elementsPerGroup,
+		shaderParams.elementsPerThread,
 		shaderParams.sharedCountersLength,
 		shaderParams.bitMask
 	};
@@ -272,6 +273,7 @@ void Particles2dCollisionEffect::initRadixSortShaderProgramms(ShaderParams shade
 		shaderParams.radixCountersLength,
 		shaderParams.threadsInThreadGroup,
 		shaderParams.elementsPerGroup,
+		shaderParams.elementsPerThread,
 		shaderParams.sharedCountersLength,
 		shaderParams.bitMask
 	};
@@ -388,7 +390,6 @@ glBeginQuery(GL_TIME_ELAPSED, queriesForRadixSort[i * 3]);
 				glDispatchCompute(phase1GroupCount, 1, 1);
 				glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // TODO figure out what barrirers to use
 				// ============================================
-//GLfloat* test = readFromBuffer<GLfloat>(200, bufferTest);
 #ifdef VLAIDATE
 globalCounters = readFromBuffer<GLuint>(sharedCountersLength * phase1GroupCount, ssboGlobalCounters);
 validateSortPhase1(i, globalCounters);
@@ -423,7 +424,7 @@ glBeginQuery(GL_TIME_ELAPSED, queriesForRadixSort[i * 3 + 2]);
 				glDispatchCompute(phase1GroupCount, 1, 1);
 				glMemoryBarrier(GL_ALL_BARRIER_BITS);
 				// ============================================
-
+//GLfloat* test = readFromBuffer<GLfloat>(sharedCountersLength, bufferTest);
 #ifdef VLAIDATE
 cells = readFromBuffer<GLuint>(currentCellsCount, phase3CellsBuffer);
 objs = readFromBuffer<GLuint>(currentCellsCount, phase3ObjsBuffer);
@@ -567,6 +568,8 @@ delete[] totalSumms;
 glEndQuery(GL_TIME_ELAPSED);
 auto tEnd = std::chrono::steady_clock::now();
 
+currentlyAveragedFrames++;
+
 GLint done = 0;
 while (!done) { // waiting for GPU
 	glGetQueryObjectiv(queries[queriesSize - 1], GL_QUERY_RESULT_AVAILABLE, &done);
@@ -588,16 +591,30 @@ for (int i = 0; i < queriesForRadixSortSize; i++)
 
 float d = 1000000.0; // nanoseconds to miliseconds
 accumulatedTimeCpu += std::chrono::duration_cast<std::chrono::nanoseconds>(tEnd - tBegin).count() / d;
-averageFrameTimeCpu = accumulatedTimeCpu / (float)frameCount;
+averageFrameTimeCpu = accumulatedTimeCpu / (float)currentlyAveragedFrames;
 for (int i = 0; i < queriesSize; i++)
 {
 	accumulatedTimeGpu[i] += elapsedTimes[i] / d;
-	averageFrameTimeGpu[i] = accumulatedTimeGpu[i] / (float)frameCount;
+	averageFrameTimeGpu[i] = accumulatedTimeGpu[i] / (float)currentlyAveragedFrames;
 }
 for (int i = 0; i < queriesForRadixSortSize; i++)
 {
 	accumulatedTimeGpuRadixSort[i] += elapsedTimesSort[i] / d;
-	averageFrameTimeGpuRadixSort[i] = accumulatedTimeGpuRadixSort[i] / (float)frameCount;
+	averageFrameTimeGpuRadixSort[i] = accumulatedTimeGpuRadixSort[i] / (float)currentlyAveragedFrames;
+}
+
+if (currentlyAveragedFrames % framesToAvegare == 0)
+{
+	currentlyAveragedFrames = 0;
+	accumulatedTimeCpu = 0.0;
+	for (int i = 0; i < queriesSize; i++)
+	{
+		accumulatedTimeGpu[i] = 0.0;
+	}
+	for (int i = 0; i < queriesForRadixSortSize; i++)
+	{
+		accumulatedTimeGpuRadixSort[i] = 0.0;
+	}
 }
 #endif
 }
@@ -816,20 +833,17 @@ void Particles2dCollisionEffect::validateSortPhase1(GLuint pass, GLuint* globalC
 		for (int localInvocationID = 0; localInvocationID < threadsInWorkGroupInPhases1And3; localInvocationID++)
 		{
 			GLuint indexInGroup = localInvocationID % threadsInThreadGroup;
-			GLuint groupIndex = localInvocationID / threadsInThreadGroup;
-			GLuint cellIndexToReadFrom = (workGroupID * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
+			GLuint groupIndex = localInvocationID / (float)threadsInThreadGroup;
 			GLuint counterIndexOffset = groupIndex * radixCountersLength;
+			GLuint cellIndexToReadFrom = (workGroupID * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
 
-			for (int i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
+			for (int i = 0; i < elementsPerGroup && cellIndexToReadFrom + i < currentCellsCount; i += threadsInThreadGroup)
 			{
-				if (cellIndexToReadFrom + i < currentCellsCount)
-				{
-					GLuint cellId = vCellIds[cellIndexToReadFrom + i];
-					GLuint radix = (cellId >> cellIdShift) & bitMask;
-					GLuint indexInSharedCounters = counterIndexOffset + radix;
+				GLuint cellId = vCellIds[cellIndexToReadFrom + i];
+				GLuint radix = (cellId >> cellIdShift) & bitMask;
+				GLuint indexInSharedCounters = counterIndexOffset + radix;
 
-					vGlobalCounters[indexInSharedCounters + globalCountersOffset]++;
-				}
+				vGlobalCounters[indexInSharedCounters + globalCountersOffset]++;
 			}
 		}
 	}
@@ -946,29 +960,27 @@ void Particles2dCollisionEffect::validateSortPhase3(GLuint pass, GLuint* cellsFr
 			sharedCounters[i] = vGlobalCounters[workGroupID * sharedCountersLength + i] + vTotalSumms[i % radixCountersLength];
 		}
 
+		for (int i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
 		for (int localInvocationID = 0; localInvocationID < threadsInWorkGroupInPhases1And3; localInvocationID++)
 		{
 			GLuint indexInGroup = localInvocationID % threadsInThreadGroup;
 			GLuint groupIndex = localInvocationID / (float)threadsInThreadGroup;
-			GLuint cellIndexToReadFrom = (workGroupID * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
 			GLuint counterIndexOffset = groupIndex * radixCountersLength;
+			GLuint cellIndexToReadFrom = (workGroupID * threadGroupsInWorkGroup + groupIndex) * elementsPerGroup + indexInGroup;
 
-			for (int i = 0; i < elementsPerGroup; i += threadsInThreadGroup)
+			if (cellIndexToReadFrom + i < currentCellsCount)
 			{
-				if (cellIndexToReadFrom + i < currentCellsCount)
-				{
-					GLuint cellId = vCellIds[cellIndexToReadFrom + i];
-					GLuint objectId = vObjectIds[cellIndexToReadFrom + i];
-					GLuint radix = (cellId >> cellIdShift) & bitMask;
-					GLuint indexInSharedCounters = counterIndexOffset + radix;
+				GLuint cellId = vCellIds[cellIndexToReadFrom + i];
+				GLuint objectId = vObjectIds[cellIndexToReadFrom + i];
+				GLuint radix = (cellId >> cellIdShift) & bitMask;
+				GLuint indexInSharedCounters = counterIndexOffset + radix;
 
-					GLuint offset = sharedCounters[indexInSharedCounters];
+				GLuint offset = sharedCounters[indexInSharedCounters];
 
-					vCellIdsOutput[offset] = cellId;
-					vObjectIdsOutput[offset] = objectId;
+				vCellIdsOutput[offset] = cellId;
+				vObjectIdsOutput[offset] = objectId;
 
-					sharedCounters[indexInSharedCounters]++;
-				}
+				sharedCounters[indexInSharedCounters]++;
 			}
 		}
 

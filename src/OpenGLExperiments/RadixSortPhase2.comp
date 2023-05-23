@@ -5,6 +5,7 @@
 #define iterations 0
 
 #define threadsInWorkGroup 1024
+#define sharedCountersLength threadsInWorkGroup * 2
 
 layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
@@ -24,8 +25,75 @@ layout(binding = 9) buffer tetete
 };
 
 shared uint iterationTotal = 0;
-shared uint sharedCounters[threadsInWorkGroup];
+shared uint sharedCounters[sharedCountersLength];
+shared uint sharedCountersTemp[sharedCountersLength];
 
+#define NUM_BANKS 1024
+#define LOG_NUM_BANKS 10
+#define CONFLICT_FREE_OFFSET(n)\
+((n) >> NUM_BANKS + (n) >> (2 * LOG_NUM_BANKS))
+void presummNew(uint thid, uint n)
+// version with avoiding bank conflicts
+// profiling showed that it is a little slower than without avoiding bank conflicts
+// it is slower even without two barriers at the beginning and the end, idk why
+{
+	barrier();
+	uint ai = thid;
+	uint bi = thid + (n/2);
+	uint bankOffsetA = CONFLICT_FREE_OFFSET(ai);
+	uint bankOffsetB = CONFLICT_FREE_OFFSET(bi);
+	sharedCountersTemp[ai + bankOffsetA] = sharedCounters[ai];
+	sharedCountersTemp[bi + bankOffsetB] = sharedCounters[bi];
+	
+	uint offset = 1;
+
+	for (uint d = n>>1; d > 0; d >>= 1)
+	{ 
+		barrier();
+		if (thid < d)
+		{
+			// B
+			uint ai = offset*(2*thid+1)-1;
+			uint bi = offset*(2*thid+2)-1;
+			ai += CONFLICT_FREE_OFFSET(ai);
+			bi += CONFLICT_FREE_OFFSET(bi);
+			// B
+			sharedCountersTemp[bi] += sharedCountersTemp[ai];
+		}
+		offset *= 2;
+	}
+
+	// C
+	if (thid == 0) // clear the last element
+	{
+		sharedCountersTemp[n - 1 + CONFLICT_FREE_OFFSET(n - 1)] = 0;
+	}
+	// C
+
+	for (uint d = 1; d < n; d *= 2) // traverse down tree & build scan
+	{
+		offset >>= 1;
+		barrier();
+
+		if (thid < d)
+		{
+			// D
+			uint ai = offset*(2*thid+1)-1;
+			uint bi = offset*(2*thid+2)-1;
+			ai += CONFLICT_FREE_OFFSET(ai);
+			bi += CONFLICT_FREE_OFFSET(bi);
+			// D
+			uint t = sharedCountersTemp[ai];
+			sharedCountersTemp[ai] = sharedCountersTemp[bi];
+			sharedCountersTemp[bi] += t;
+		}
+	}
+
+	barrier();
+	sharedCounters[ai] = sharedCountersTemp[ai + bankOffsetA];
+	sharedCounters[bi] = sharedCountersTemp[bi + bankOffsetB];
+	barrier();
+}
 
 void presumm(uint thid, uint n)
 {
@@ -73,35 +141,47 @@ void presumm(uint thid, uint n)
 void main()
 {
 	const uint thid = gl_LocalInvocationID.x;
-
 	const uint totalGlobalCounters = threadGroupsTotal * radixCountersLength;
 
 	for (uint i = 0; i < iterations; i++)
 	{
 		// TODO maybe change global counters layout to get better memroy read coalescing
-		uint globalCounterIndex = thid * radixCountersLength + threadsInWorkGroup * radixCountersLength * i + gl_WorkGroupID.x;
-		uint currentCounter = globalCounters[globalCounterIndex];
+		// one thread is moving two cell ids from global to shared
+		uint sharedCountersIndex1 = thid * 2;
+		uint sharedCountersIndex2 = thid * 2 + 1;
+		uint iterationAndWorkGroupOffset = sharedCountersLength * radixCountersLength * i + gl_WorkGroupID.x;
+		
+		uint globalCounterIndex1 = sharedCountersIndex1 * radixCountersLength + iterationAndWorkGroupOffset;
+		uint globalCounterIndex2 = sharedCountersIndex2 * radixCountersLength + iterationAndWorkGroupOffset;
+		uint currentCounter1 = globalCounters[globalCounterIndex1];
+		uint currentCounter2 = globalCounters[globalCounterIndex2];
 
-		uint m = globalCounterIndex < totalGlobalCounters ? 1 : 0;
-		sharedCounters[thid] = currentCounter * m;
+		uint m = globalCounterIndex1 < totalGlobalCounters ? 1 : 0;
+		sharedCounters[sharedCountersIndex1] = currentCounter1 * m;
+		m = globalCounterIndex2 < totalGlobalCounters ? 1 : 0;
+		sharedCounters[sharedCountersIndex2] = currentCounter2 * m;
 
-		presumm(thid, threadsInWorkGroup);
-		barrier();
-		if (globalCounterIndex < totalGlobalCounters)
+		presumm(thid, sharedCountersLength);
+
+		if (globalCounterIndex1 < totalGlobalCounters)
 		{
-			globalCounters[globalCounterIndex] = sharedCounters[thid] + iterationTotal;
+			globalCounters[globalCounterIndex1] = sharedCounters[sharedCountersIndex1] + iterationTotal;
+		}
+		if (globalCounterIndex2 < totalGlobalCounters)
+		{
+			globalCounters[globalCounterIndex2] = sharedCounters[sharedCountersIndex2] + iterationTotal;
 		}
 
 		if (thid == threadsInWorkGroup - 1 && i == iterations - 1) // last thread of last iteration writes total summ to global
 		{
-			totalSumms[gl_WorkGroupID.x] = sharedCounters[threadsInWorkGroup - 1] + iterationTotal + currentCounter;
+			totalSumms[gl_WorkGroupID.x] = sharedCounters[sharedCountersLength - 1] + iterationTotal + currentCounter2;
 //if(i == iterations - 1 && gl_WorkGroupID.x == 70){test[0] = currentCounter;}
 		}
 
 		barrier();
 		if (thid == threadsInWorkGroup - 1) // last thread of current iteration writes total summ for next iteration to use
 		{
-			iterationTotal = globalCounters[globalCounterIndex] + currentCounter;
+			iterationTotal = globalCounters[globalCounterIndex2] + currentCounter2;
 		}
 	}
 }
