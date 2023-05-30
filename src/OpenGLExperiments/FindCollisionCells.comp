@@ -1,11 +1,11 @@
 #version 460 core
 
 #define cellIdsLength 0
-#define cellsPerThread 10
-#define threadsInBlock 1024
+#define cellsPerThread 1
 
+#define threadsInWorkGroup 1024
 
-layout(local_size_x = 1024) in;
+layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
 
 
@@ -46,18 +46,153 @@ layout(binding = 9) buffer tetete
 };
 layout(binding = 10) buffer collisionList
 {
-	collCell collisionCells2[];
+	uint collisionCells[];
+};
+layout(binding = 11) buffer cellIdsLookup
+{
+	uint cellIdToCollisionListIdLookup[];
+};
+layout(binding = 12) buffer collCellsFound
+{
+	uint collCellsFoundPerWorkGroup[];
 };
 
 
+shared uint sharedCollCellsFound[threadsInWorkGroup];
+
+
+void presumm(uint thid)
+{
+	uint n = threadsInWorkGroup;
+	uint offset = 1;
+
+	for (uint d = n>>1; d > 0; d >>= 1)
+	{ 
+		barrier();
+		if (thid < d)
+		{
+			// B
+			uint ai = offset*(2*thid+1)-1;
+			uint bi = offset*(2*thid+2)-1;
+			// B
+			sharedCollCellsFound[bi] += sharedCollCellsFound[ai];
+		}
+		offset *= 2;
+	}
+
+	// C
+	if (thid == 0) // clear the last element
+	{
+		sharedCollCellsFound[n - 1] = 0;
+	}
+	// C
+
+	for (uint d = 1; d < n; d *= 2) // traverse down tree & build scan
+	{
+		offset >>= 1;
+		barrier();
+
+		if (thid < d)
+		{
+			// D
+			uint ai = offset*(2*thid+1)-1;
+			uint bi = offset*(2*thid+2)-1; 
+			// D
+			uint t = sharedCollCellsFound[ai];
+			sharedCollCellsFound[ai] = sharedCollCellsFound[bi];
+			sharedCollCellsFound[bi] += t;
+		}
+	}
+}
+
 void main()
+{
+	const uint thid = gl_LocalInvocationID.x;
+	const uint totalOffset = gl_WorkGroupID.x * threadsInWorkGroup * cellsPerThread + thid * cellsPerThread; // work group offset plus cells per thread offest
+
+	sharedCollCellsFound[thid] = 0;
+
+	uint cellIdsMetByThread[cellsPerThread] = uint[cellsPerThread](0);
+	uint transitionIndexes[cellsPerThread] = uint[cellsPerThread](0);
+	uint collisionCellsFound = 0;
+
+	uint prevCellId = cellIds[totalOffset];
+
+	// first thread of first work group ahould always find one collision cell
+	// so for that thread isCollisionCellSplit should always be false in the beginning
+	uint prevThreadCellId = int(totalOffset) - 1 < 0
+		? -1 // because of uint -1 gets converted to max value, prevCellId will never be equal max value
+		: cellIds[totalOffset - 1];
+	bool isCollisionCellSplit = prevThreadCellId == prevCellId; // previous thread ended and current thread started in the middle of collisoin cell
+
+	if (!isCollisionCellSplit && totalOffset < cellIdsLength)
+	{
+		transitionIndexes[0] = totalOffset;
+		cellIdsMetByThread[0] = prevCellId;
+		collisionCellsFound++;
+	}
+
+	for (uint i = 1; i < cellsPerThread && totalOffset + i < cellIdsLength; i++)
+	{
+		uint currCellId = cellIds[totalOffset + i];
+
+//		bool isCellDifferent = prevCellId == currCellId;
+		if (prevCellId != currCellId)
+		{
+			transitionIndexes[collisionCellsFound] = totalOffset + i;
+			cellIdsMetByThread[collisionCellsFound] = currCellId;
+			collisionCellsFound++;
+		}
+
+//		collisionCellsFound += int(isCellDifferent);
+
+		prevCellId = currCellId;
+	}
+
+//	collisionCellsFound += uint(cellIdsLength - totalOffset) <= cellsPerThread ? 1 : 0; // fix for last thread of last workgroup missing last collision cell
+
+//	uint change = cellsPerThreadOffest < cellIdsLength ? uint(isCollisionCellSplit) : 0;
+//	collisionCellsFound -= uint(isCollisionCellSplit);
+	sharedCollCellsFound[thid] = collisionCellsFound;
+//barrier();
+//test[thid]=sharedCollCellsFound[thid];
+//barrier();
+
+	presumm(thid);
+	barrier();
+
+//if(gl_WorkGroupID.x==0)test[thid]=collisionCellsFound;
+
+	for (uint i = 0; i < collisionCellsFound && totalOffset + i < cellIdsLength; i++)
+	{
+//test[thid]=thid;
+		const uint collCellId = sharedCollCellsFound[thid] + i + gl_WorkGroupID.x * threadsInWorkGroup * cellsPerThread;
+//if(thid==288)test[i]=transitionIndexes[i];
+		collisionCells[collCellId] = transitionIndexes[i];
+
+		const uint cellId = cellIdsMetByThread[i];
+		cellIdToCollisionListIdLookup[cellId] = collCellId + 1; // 0 value means no collision cell there
+	}
+
+	if (thid == threadsInWorkGroup - 1)
+	{
+		collCellsFoundPerWorkGroup[gl_WorkGroupID.x] = sharedCollCellsFound[threadsInWorkGroup - 1] + collisionCellsFound;
+	}
+}
+
+
+
+
+
+
+void oldmain()
 {
 	const uint thid = gl_GlobalInvocationID.x;
 	const uint startIndex = thid * cellsPerThread;
 
-	const uint gridWidth = uint(windowSize.x / cellSize) + 2;
+	const uint gridWidth = uint(windowSize.x / cellSize);
 
-	collCell collisionCells[84];
+	collCell collCells[84];
 	uint collisionCellsFound[4] = uint[4](0, 0, 0, 0);
 	bool isFirstTransition = thid != 0;
 	bool isTransitionFound = false;
@@ -72,8 +207,8 @@ void main()
 	uint i;
 	uint currCellId;
 	for (i = 1;
-			(i <= cellsPerThread + 1 || !isTransitionFound) // scanning until the transition is found after the end of assigned to thread part of cellIds
-			&& startIndex + i < cellIdsLength + 1; // scanning past the end of cellIds to catch a collision cell at the end of cellIds
+		(i <= cellsPerThread + 1 || !isTransitionFound) // scanning until the transition is found after the end of assigned to thread part of cellIds
+		&& startIndex + i < cellIdsLength + 1; // scanning past the end of cellIds to catch a collision cell at the end of cellIds
 		i++)
 	{
 		isTransitionFound = false;
@@ -86,7 +221,7 @@ void main()
 				if (hCount > 0 && pCount > 0 || hCount > 1)
 				{
 					uint cellType = ((prevCellId % gridWidth) % 2) + ((prevCellId / gridWidth) % 2) * 2;
-					collisionCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
+					collCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
 					collisionCellsFound[cellType]++;
 				}
 			}
@@ -100,9 +235,8 @@ void main()
 			isTransitionFound = true;
 		}
 
-		homeOrPhantomCell = objectIds[startIndex + i] >> 31;
-		pCount++;
-		pCount -= homeOrPhantomCell;
+		homeOrPhantomCell = objectIds[startIndex + i] >> 31; // 1 - home, 0 - phantom
+		pCount += 1 - homeOrPhantomCell;
 		hCount += homeOrPhantomCell;
 	}
 
@@ -112,7 +246,7 @@ void main()
 
 		for (uint j = 0; j < collCellFound; j++)
 		{
-			collCell collisionCell = collisionCells[i * 21 + j];
+			collCell collisionCell = collCells[i * 21 + j];
 			collisionCellIndex = collisionCell.index;
 			hCount = collisionCell.phantomAndHomeCellsCountPacked >> 16;
 			pCount = collisionCell.phantomAndHomeCellsCountPacked & 65535;

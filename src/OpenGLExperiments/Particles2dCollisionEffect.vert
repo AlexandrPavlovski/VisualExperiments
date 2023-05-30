@@ -32,7 +32,7 @@ layout(binding = 0) buffer SSBO
 	Particle particles[];
 };
 
-layout(binding = 11) buffer misc
+layout(binding = 13) buffer misc
 {
 	uint draggedParticleIndex;
 };

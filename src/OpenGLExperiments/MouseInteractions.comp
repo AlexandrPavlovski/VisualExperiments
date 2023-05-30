@@ -1,0 +1,88 @@
+#version 460 core
+
+layout(local_size_x = 1024) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform vec2 windowSize;
+layout(location = 1) uniform float cellSize;
+layout(location = 2) uniform vec2 mousePos;
+layout(location = 3) uniform bool isLeftMouseBtnPressed;
+layout(location = 4) uniform uint currentCellsCount;
+layout(location = 5) uniform float particleSize;
+layout(location = 6) uniform bool isLeftMouseBtnReleased;
+layout(location = 7) uniform vec2 mouseMoveDelta;
+
+
+struct Particle
+{
+	vec2 Pos;
+	vec2 PosPrev;
+	vec2 Acc;
+	float Pressure;
+	float Unused;
+};
+struct collCell
+{
+	uint index;
+	uint phantomAndHomeCellsCountPacked;
+};
+
+
+layout(binding = 0) buffer SSBO
+{
+	Particle particles[];
+};
+layout(binding = 1) buffer cells1
+{
+	uint cellIds[];
+};
+layout(binding = 2) buffer objects1
+{
+	uint objectIds[];
+};
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+layout(binding = 13) buffer misc
+{
+	uint draggedParticleIndex;
+};
+
+void main()
+{
+	const uint thid = gl_GlobalInvocationID.x;
+//test[thid] = draggedParticleIndex;
+
+	if (draggedParticleIndex != 0 && thid == 0)
+	{
+		vec2 newPos = particles[draggedParticleIndex - 1].Pos;
+		particles[draggedParticleIndex - 1].PosPrev = newPos;
+		newPos += mouseMoveDelta;
+		particles[draggedParticleIndex - 1].Pos = newPos;
+		particles[draggedParticleIndex - 1].Acc = vec2(0);
+	}
+	if (isLeftMouseBtnPressed && !isLeftMouseBtnReleased && thid < currentCellsCount)
+	{
+		uint gridWidth = uint(windowSize.x / cellSize);
+		vec2 mouseGridPos = floor(mousePos / cellSize);
+		uint mouseCellId = uint(mouseGridPos.x + mouseGridPos.y * gridWidth);
+		if (cellIds[thid] == mouseCellId)
+		{
+			uint objId = objectIds[thid];
+//			particles[objId].Pressure = 60.0;
+		
+			vec2 pos = particles[objId].Pos;
+			vec2 mouseToPos = pos - mousePos;
+			if (length(mouseToPos) < particleSize / 2)
+			{
+				draggedParticleIndex = (objId & 0x7fffffff) + 1; // omiting most significant bit as it is used for indicating a home cell. 0 means no particle is dragged
+			}
+		}
+	}
+	if (isLeftMouseBtnReleased)
+	{
+		draggedParticleIndex = 0;
+	}
+}
