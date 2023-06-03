@@ -108,6 +108,7 @@ void presumm(uint thid)
 void main()
 {
 	const uint thid = gl_LocalInvocationID.x;
+//test[thid]=cellIdToCollisionListIdLookup[thid];
 	const uint totalOffset = gl_WorkGroupID.x * threadsInWorkGroup * cellsPerThread + thid * cellsPerThread; // work group offset plus cells per thread offest
 
 	sharedCollCellsFound[thid] = 0;
@@ -170,8 +171,9 @@ void main()
 //if(thid==288)test[i]=transitionIndexes[i];
 		collisionCells[collCellId] = transitionIndexes[i];
 
-		const uint cellId = cellIdsMetByThread[i];
-		cellIdToCollisionListIdLookup[cellId] = collCellId + 1; // 0 value means no collision cell there
+//		const uint cellId = cellIdsMetByThread[i];
+//		cellIdToCollisionListIdLookup[cellId] = collCellId + 1; // 0 value means no collision cell there
+//test[cellId]=collCellId + 1;
 	}
 
 	if (thid == threadsInWorkGroup - 1)

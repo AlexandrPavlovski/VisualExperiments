@@ -99,7 +99,7 @@ private:
 	GLuint sharedCountersLength = 12032; // 12288 is maximum on my laptop's 3060, but in phase 3 need some additional shared memory for total summs counting
 	GLfloat maxThreadsInWorkGroup = 1024.0; // 1024 is maximum threads per work group on my laptop's 3060
 	GLuint elementsPerThread = 32; // number of cells each thread will process in phases 1 and 3
-	GLuint cellsPerThread = 2; // number of cells each thread will process when building collision cell list
+	GLuint cellsPerThread = 32; // number of cells each thread will process when building collision cell list
 
 	static const GLuint totalSortPasses = cellIdBits / bitsPerSortPass;
 	GLuint maxNumberOfCells = pow(2, cellIdBits);
@@ -129,15 +129,17 @@ private:
 	GLint currentCellsCount = 0;
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
-	bool isDebug = true;
+	bool isDebug = false;
 
 	GLint frameCount = 0;
+	GLint frameCount2 = 0;
 
 
 	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0,
 		ssboCollisionList = 0, ssboMisc = 0, ssboCollCellsFound = 0, ssboCellIdsLookup = 0;
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,
 		findCollisionCellsCompShaderProgram = 0,
+		compactCollisionCellsCompShaderProgram = 0,
 		resolveCollisionsCompShaderProgram = 0,
 		mouseInteractionsCompShaderProgram = 0,
 		gridShaderProgram = 0;
@@ -165,6 +167,8 @@ private:
 
 	template< typename T >
 	T* readFromBuffer(int elemCount, GLuint ssbo);
+	template< typename T >
+	T* readFromBuffer2(int elemCount, GLuint ssbo);
 
 	
 	Particle* particlesPrev = 0;
@@ -194,7 +198,7 @@ private:
 	// === for performance profiling ===
 	static const int framesToAvegare = 100;
 	int currentlyAveragedFrames = 0;
-	static const int queriesSize = 4;
+	static const int queriesSize = 5;
 	static const int queriesForRadixSortSize = totalSortPasses * 3;
 	double accumulatedTimeCpu = 0;
 	double accumulatedTimeGpu[queriesSize] = { 0 };
