@@ -22,8 +22,8 @@ struct Particle
 	vec2 Pos;
 	vec2 PosPrev;
 	vec2 Acc;
-	float Pressure;
-	float Unused;
+//	float Pressure;
+//	float Unused;
 };
 struct collCell
 {
@@ -66,17 +66,20 @@ layout(binding = 13) buffer misc
 };
 
 
-void ResolveCollsion(in uint obj1, in uint obj2)
+void ResolveCollsion(in vec2 particle1OriginalPos, inout vec2 particle1CumulativePos, in uint obj2, out bool isUpdated)
 {
-	Particle particleA = particles[obj1];
-	Particle particleB = particles[obj2];
+	Particle particle2 = particles[obj2];
 
-	const vec2 posDiff = particleA.Pos - particleB.Pos + 0.0000000000001; // for case when two particles have exaclty the same posision
-	const float distSquared = dot(posDiff, posDiff);
+	vec2 posDiff = particle1OriginalPos - particle2.Pos;
+	float distSquared = dot(posDiff, posDiff);
+	if (distSquared == 0) // for the case when two particles have exaclty the same posision
+	{
+		distSquared = 0.0000000000001;
+		posDiff.x = 0.0000000000001;
+	}
 
 	if (distSquared < particleSize * particleSize)
 	{
-//if(obj1==obj2)test[gl_GlobalInvocationID.x]=obj2;
 		const float dist = sqrt(distSquared);
 		const vec2 norm = posDiff / dist;
 		const float covered = particleSize - dist;
@@ -85,16 +88,17 @@ void ResolveCollsion(in uint obj1, in uint obj2)
 //		particleB.PosPrev = particleB.Pos;
 
 		vec2 move = norm * covered * 0.5 * forceScale;
-		if (obj1 != draggedParticleIndex - 1)
-			particleA.Pos += move;
+		particle1CumulativePos += move;
+		particle2.Pos -= move;
+
+//		particleA.Pressure += covered / particleSize * 0.5; // TODO divide by substeps
+//		particleB.Pressure += covered / particleSize * 0.5;
+
 		if (obj2 != draggedParticleIndex - 1)
-			particleB.Pos -= move;
-
-		particleA.Pressure += covered / particleSize * 0.5; // TODO divide by substeps
-		particleB.Pressure += covered / particleSize * 0.5;
-
-		particles[obj1] = particleA;
-		particles[obj2] = particleB;
+		{
+			particles[obj2] = particle2;
+		}
+		isUpdated = true;
 	}
 }
 
@@ -118,6 +122,15 @@ ivec2 getNeighbourCollisionStartAndEnd(in ivec2 neighbourCoord, in int gridWidth
 	return ivec2(collisionCellStart, collisionCellEnd);
 }
 
+void resolveNeighbour(in ivec2 neighbour, in vec2 particle1OriginalPos, inout vec2 particle1CumulativePos, out bool isUpdated)
+{
+	for (uint j = neighbour.x; j < neighbour.y; j++)
+	{
+		uint obj2 = objectIds[j];
+		ResolveCollsion(particle1OriginalPos, particle1CumulativePos, obj2, isUpdated);
+	}
+}
+
 void main()
 {
 	uint thid = gl_GlobalInvocationID.x;
@@ -133,51 +146,60 @@ void main()
 //test[thid*2]=collisionCellsStart;
 //test[thid*2+1]=collisionCellsEnd;
 
-	int gridWidth = int(windowSize.x / cellSize);
+	int gridWidth = int(ceil(windowSize.x / cellSize));
+test[thid]=gridWidth;
+
 	int cellId = int(cellIds[collisionCellsStart]);
 	int cellCoordY = cellId / gridWidth;
 	int cellCoordX = cellId - cellCoordY * gridWidth;
 
-	ivec2 topLeftNeighbour = ivec2(cellCoordX - 1, cellCoordY - 1);
-	ivec2 topNeighbour = ivec2(cellCoordX, cellCoordY - 1);
-	ivec2 topRightNeighbour = ivec2(cellCoordX + 1, cellCoordY - 1);
-	ivec2 rightNeighbour = ivec2(cellCoordX + 1, cellCoordY);
+	const int lel = 8;
+	ivec2 neighbours[lel];
+	neighbours[0] = ivec2(cellCoordX - 1, cellCoordY - 1);
+	neighbours[1] = ivec2(cellCoordX,     cellCoordY - 1);
+	neighbours[2] = ivec2(cellCoordX + 1, cellCoordY - 1);
+	neighbours[3] = ivec2(cellCoordX - 1, cellCoordY);
+	neighbours[4] = ivec2(cellCoordX + 1, cellCoordY);
+	neighbours[5] = ivec2(cellCoordX - 1, cellCoordY + 1);
+	neighbours[6] = ivec2(cellCoordX,     cellCoordY + 1);
+	neighbours[7] = ivec2(cellCoordX + 1, cellCoordY + 1);
 //test[thid*2]=rightNeighbour.x;
 //test[thid*2+1]=rightNeighbour.y;
 
-	topLeftNeighbour = getNeighbourCollisionStartAndEnd(topLeftNeighbour, gridWidth);
-	topNeighbour = getNeighbourCollisionStartAndEnd(topNeighbour, gridWidth);
-	topRightNeighbour = getNeighbourCollisionStartAndEnd(topRightNeighbour, gridWidth);
-	rightNeighbour = getNeighbourCollisionStartAndEnd(rightNeighbour, gridWidth);
-
-	for (uint i = collisionCellsStart; i < collisionCellsEnd; i++)
+	for (int i = 0; i < lel; i++)
 	{
-		uint objectId1 = objectIds[i];
-		for (uint j = i + 1; j < collisionCellsEnd; j++)
-		{
-			uint objectId2 = objectIds[j];
-			ResolveCollsion(objectId1, objectId2);
-		}
+		neighbours[i] = getNeighbourCollisionStartAndEnd(neighbours[i], gridWidth);
+	}
 
-		for (uint j = topLeftNeighbour.x; j < topLeftNeighbour.y; j++)
+	int cellType = ((cellId % gridWidth) % 2) + ((cellId / gridWidth) % 2) * 2;
+	for (uint c = 0; c < 4; c ++) // serialyzing thread access to bordering cells to avoid two threads updating same object
+	{
+		if (c == cellType)
 		{
-			uint objectId2 = objectIds[j];
-			ResolveCollsion(objectId1, objectId2);
-		}
-		for (uint j = topNeighbour.x; j < topNeighbour.y; j++)
-		{
-			uint objectId2 = objectIds[j];
-			ResolveCollsion(objectId1, objectId2);
-		}
-		for (uint j = topRightNeighbour.x; j < topRightNeighbour.y; j++)
-		{
-			uint objectId2 = objectIds[j];
-			ResolveCollsion(objectId1, objectId2);
-		}
-		for (uint j = rightNeighbour.x; j < rightNeighbour.y; j++)
-		{
-			uint objectId2 = objectIds[j];
-			ResolveCollsion(objectId1, objectId2);
+			for (uint i = collisionCellsStart; i < collisionCellsEnd; i++)
+			{
+				bool isUpdated = false;
+				uint objectId1 = objectIds[i];
+				Particle particle1 = particles[objectId1];
+				vec2 particle1OriginalPos = particle1.Pos;
+				vec2 particle1CumulativePos = particle1.Pos;
+
+				for (uint j = i + 1; j < collisionCellsEnd; j++)
+				{
+					uint objectId2 = objectIds[j];
+					ResolveCollsion(particle1OriginalPos, particle1CumulativePos, objectId2, isUpdated);
+				}
+				for (int i = 0; i < lel; i++)
+				{
+					resolveNeighbour(neighbours[i], particle1OriginalPos, particle1CumulativePos, isUpdated);
+				}
+
+				if (isUpdated && objectId1 != draggedParticleIndex - 1)
+				{
+					particle1.Pos = particle1CumulativePos;
+					particles[objectId1] = particle1;
+				}
+			}
 		}
 	}
 }

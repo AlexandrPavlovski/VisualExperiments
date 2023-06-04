@@ -19,8 +19,8 @@ struct Particle
 	vec2 Pos;
 	vec2 PosPrev;
 	vec2 Acc;
-	float Pressure;
-	float Unused;
+//	float Pressure;
+//	float Unused;
 };
 struct collCell
 {
@@ -61,11 +61,11 @@ void main()
 		particles[draggedParticleIndex - 1].PosPrev = newPos;
 		newPos += mouseMoveDelta;
 		particles[draggedParticleIndex - 1].Pos = newPos;
-		particles[draggedParticleIndex - 1].Acc = vec2(0);
+//		particles[draggedParticleIndex - 1].Acc = vec2(0);
 	}
 	if (isLeftMouseBtnPressed && !isLeftMouseBtnReleased && thid < currentCellsCount)
 	{
-		uint gridWidth = uint(windowSize.x / cellSize);
+		uint gridWidth = uint(ceil(windowSize.x / cellSize));
 		vec2 mouseGridPos = floor(mousePos / cellSize);
 		uint mouseCellId = uint(mouseGridPos.x + mouseGridPos.y * gridWidth);
 		if (cellIds[thid] == mouseCellId)

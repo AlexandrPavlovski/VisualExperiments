@@ -19,8 +19,8 @@ struct Particle
 	vec2 Pos;
 	vec2 PosPrev;
 	vec2 Acc;
-	float Pressure;
-	float Unused;
+//	float Pressure;
+//	float Unused;
 };
 struct collCell
 {
@@ -179,111 +179,5 @@ void main()
 	if (thid == threadsInWorkGroup - 1)
 	{
 		collCellsFoundPerWorkGroup[gl_WorkGroupID.x] = sharedCollCellsFound[threadsInWorkGroup - 1] + collisionCellsFound;
-	}
-}
-
-
-
-
-
-
-void oldmain()
-{
-	const uint thid = gl_GlobalInvocationID.x;
-	const uint startIndex = thid * cellsPerThread;
-
-	const uint gridWidth = uint(windowSize.x / cellSize);
-
-	collCell collCells[84];
-	uint collisionCellsFound[4] = uint[4](0, 0, 0, 0);
-	bool isFirstTransition = thid != 0;
-	bool isTransitionFound = false;
-
-	uint collisionCellIndex = startIndex;
-	uint prevCellId = cellIds[startIndex];
-	uint homeOrPhantomCell = objectIds[startIndex] >> 31;
-	uint pCount = 1;
-	pCount -= homeOrPhantomCell;
-	uint hCount = homeOrPhantomCell;
-
-	uint i;
-	uint currCellId;
-	for (i = 1;
-		(i <= cellsPerThread + 1 || !isTransitionFound) // scanning until the transition is found after the end of assigned to thread part of cellIds
-		&& startIndex + i < cellIdsLength + 1; // scanning past the end of cellIds to catch a collision cell at the end of cellIds
-		i++)
-	{
-		isTransitionFound = false;
-		currCellId = cellIds[startIndex + i];
-
-		if (currCellId != prevCellId)
-		{
-			if (!isFirstTransition) // thread number 0 is the only one which will enter here on the first iteration, next iterations all threads are entering
-			{
-				if (hCount > 0 && pCount > 0 || hCount > 1)
-				{
-					uint cellType = ((prevCellId % gridWidth) % 2) + ((prevCellId / gridWidth) % 2) * 2;
-					collCells[cellType * 21 + collisionCellsFound[cellType]] = collCell(collisionCellIndex, hCount << 16 | pCount);
-					collisionCellsFound[cellType]++;
-				}
-			}
-			isFirstTransition = false;
-
-			collisionCellIndex = startIndex + i;
-			prevCellId = currCellId;
-			pCount = 0;
-			hCount = 0;
-
-			isTransitionFound = true;
-		}
-
-		homeOrPhantomCell = objectIds[startIndex + i] >> 31; // 1 - home, 0 - phantom
-		pCount += 1 - homeOrPhantomCell;
-		hCount += homeOrPhantomCell;
-	}
-
-	for (i = 0; i < 4; i++)
-	{
-		uint collCellFound = collisionCellsFound[i];
-
-		for (uint j = 0; j < collCellFound; j++)
-		{
-			collCell collisionCell = collCells[i * 21 + j];
-			collisionCellIndex = collisionCell.index;
-			hCount = collisionCell.phantomAndHomeCellsCountPacked >> 16;
-			pCount = collisionCell.phantomAndHomeCellsCountPacked & 65535;
-			for (uint h = 0; h < hCount; h++)
-			{
-				Particle particleA = particles[objectIds[collisionCellIndex + h]];
-				for (uint c = h + 1; c < hCount + pCount; c++)
-				{
-					Particle particleB = particles[objectIds[collisionCellIndex + c]];
-					const vec2 posDiff = particleA.Pos - particleB.Pos + 0.0000000000001; // for case when two particles have exaclty the same posision
-					const float distSquared = dot(posDiff, posDiff);
-
-					if (distSquared < particleSize * particleSize)
-					{
-						const float dist = sqrt(distSquared);
-						const vec2 norm = posDiff / dist;
-						const float covered = particleSize - dist;
-
-//						particleA.PosPrev = particleA.Pos;
-//						particleB.PosPrev = particleB.Pos;
-
-						vec2 move = norm * covered * 0.5 * forceScale;
-						particleA.Pos += move;
-						particleB.Pos -= move;
-
-						particleA.Pressure += covered / particleSize * 0.5; // TODO divide by substeps
-						particleB.Pressure += covered / particleSize * 0.5;
-
-						particles[objectIds[collisionCellIndex + h]] = particleA;
-						particles[objectIds[collisionCellIndex + c]] = particleB;
-					}
-				}
-			}
-		}
-
-		barrier();
 	}
 }

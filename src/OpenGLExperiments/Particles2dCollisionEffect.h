@@ -18,8 +18,8 @@ struct Particle
 	GLfloat PosYprev;
 	GLfloat AccX;
 	GLfloat AccY;
-	GLfloat Pressure;
-	GLfloat Unused;
+	//GLfloat Pressure;
+	//GLfloat Unused;
 };
 
 class Particles2dCollisionEffect :public AbstractEffect

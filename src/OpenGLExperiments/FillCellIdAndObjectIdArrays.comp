@@ -12,10 +12,10 @@ layout(location = 1) uniform uint cellSize;
 struct Particle
 {
 	vec2 Pos;
-	vec2 Vel;
+	vec2 PosPrev;
 	vec2 Acc;
-	float Pressure;
-	float Unused;
+//	float Pressure;
+//	float Unused;
 };
 
 layout(binding = 0) buffer SSBO
@@ -41,7 +41,7 @@ void main()
 	if (thid >= particlesCount)
 		return;
 
-	uint gridWidth = uint(windowSize.x / cellSize);
+	uint gridWidth = uint(ceil(windowSize.x / cellSize));
 	vec2 gridPos; // integer part of mod operation
 	modf(particles[thid].Pos / cellSize, gridPos); // float part of mod operation
 
