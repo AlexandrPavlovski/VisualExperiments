@@ -17,11 +17,6 @@ struct collCell
 	uint phantomAndHomeCellsCountPacked;
 };
 
-layout(binding = 10) buffer collisionList
-{
-	collCell collisionCells[];
-};
-
 out vec4 color;
 
 void main() {

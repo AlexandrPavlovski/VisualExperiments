@@ -180,7 +180,7 @@ void drawGUI()
 }
 
 void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
-	if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM)
+	if (severity == GL_DEBUG_SEVERITY_HIGH)// || severity == GL_DEBUG_SEVERITY_MEDIUM)
 	{
 		std::cout << message << std::endl;
 	}

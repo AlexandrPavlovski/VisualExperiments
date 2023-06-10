@@ -23,16 +23,19 @@ struct Particle
 	vec2 Pos;
 	vec2 PosPrev;
 	vec2 Acc;
-	float Pressure;
-	float Unused;
+//	float Pressure;
+//	float Unused;
 };
 
 layout(binding = 0) buffer SSBO
 {
 	Particle particles[];
 };
-
-layout(binding = 11) buffer misc
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+layout(binding = 13) buffer misc
 {
 	uint draggedParticleIndex;
 };
@@ -107,11 +110,11 @@ vec2 springScreenBoundsCollision(vec2 pos, vec2 vel)
 Particle screenBoundsCollision(Particle particle)
 {
 	const vec2 pos = particle.Pos;
-	const vec2 posPrev = particle.PosPrev;
+//	const vec2 posPrev = particle.PosPrev;
 
 	const float halfParticleSize = particleSize / 2;
-	const float leftWall = halfParticleSize;
-	const float rightWall = windowSize.x - halfParticleSize;
+	const float leftWall = halfParticleSize;// + 400;
+	const float rightWall = windowSize.x - halfParticleSize;// - 300;
 	const float topWall = halfParticleSize;
 	const float bottomWall = windowSize.y - halfParticleSize;
 
@@ -119,7 +122,7 @@ Particle screenBoundsCollision(Particle particle)
 	{
 #if (bounce == 1)
 		particle.Pos.x = leftWall + leftWall - pos.x;
-		particle.PosPrev.x = leftWall - (posPrev.x - leftWall);
+//		particle.PosPrev.x = leftWall - (posPrev.x - leftWall);
 #else
 		particle.Pos.x = particle.PosPrev.x = leftWall;
 #endif
@@ -128,7 +131,7 @@ Particle screenBoundsCollision(Particle particle)
 	{
 #if (bounce == 1)
 		particle.Pos.x = rightWall - (pos.x - rightWall);
-		particle.PosPrev.x = rightWall + rightWall - posPrev.x;
+//		particle.PosPrev.x = rightWall + rightWall - posPrev.x;
 #else
 		particle.Pos.x = particle.PosPrev.x = rightWall;
 #endif
@@ -137,7 +140,7 @@ Particle screenBoundsCollision(Particle particle)
 	{
 #if (bounce == 1)
 		particle.Pos.y = topWall + topWall - pos.y;
-		particle.PosPrev.y = topWall - (posPrev.y - topWall);
+//		particle.PosPrev.y = topWall - (posPrev.y - topWall);
 #else
 		particle.Pos.y = particle.PosPrev.y = topWall;
 #endif
@@ -146,7 +149,7 @@ Particle screenBoundsCollision(Particle particle)
 	{
 #if (bounce == 1)
 		particle.Pos.y = bottomWall - (pos.y - bottomWall);
-		particle.PosPrev.y = bottomWall + bottomWall - posPrev.y;
+//		particle.PosPrev.y = bottomWall + bottomWall - posPrev.y;
 #else
 		particle.Pos.y = particle.PosPrev.y = bottomWall;
 #endif
@@ -154,7 +157,6 @@ Particle screenBoundsCollision(Particle particle)
 
 	return particle;
 }
-
 void updateParticle()
 {
 	Particle particle = particles[gl_VertexID];
@@ -171,11 +173,15 @@ void updateParticle()
 #endif
 			vec2 newPos = particle.Pos * 2 - particle.PosPrev + particle.Acc * deltaTime * deltaTime;
 			vec2 vel = (newPos - particle.Pos) * velocityDamping;
+			
+//			float velLenghtSquared = dot(vel, vel);
+//			if (velLenghtSquared > 15) vel *= 0.9;
+
 			particle.PosPrev = newPos - vel;
 			particle.Pos = newPos;
 
 			particle.Acc = vec2(0.0);
-			particle.Pressure = 0.0;
+//			particle.Pressure = 0.0;
 		}
 	}
 	particle = screenBoundsCollision(particle);
@@ -190,7 +196,7 @@ void setParticleColor()
 		return;
 	}
 
-	float pressure = particles[gl_VertexID].Pressure;
+	float pressure = 0.1;//particles[gl_VertexID].Pressure;
 
 //pressure = float(gl_VertexID) / float(particlesCount);
 	// gradient for pressure coloring
@@ -217,7 +223,7 @@ void main()
 {
 	setParticleColor();
 	updateParticle();
-
+//test[gl_VertexID]=velLenghtSquared;
 	vec2 screenPos = worldToScreen(particles[gl_VertexID].Pos);
 	gl_Position = vec4(screenPos, 0.0, 1.0);
 }

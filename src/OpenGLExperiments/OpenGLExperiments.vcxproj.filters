@@ -164,5 +164,13 @@
     <CopyFileToFolders Include="RadixSortPhase3.comp">
       <Filter>Effects\Particles2dCollisionEffect\RadixSort</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="MouseInteractions.comp">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="CompactCollisionCells.comp">
+      <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -1,0 +1,66 @@
+#version 460 core
+
+#define cellIdsLength 0
+#define cellsPerThread 1
+
+#define threadsInWorkGroup 1024
+
+layout(local_size_x = threadsInWorkGroup) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform uint workGroupsCountInFindCollisionCellsPhase;
+layout(location = 1) uniform float particleSize;
+layout(location = 2) uniform uint cellSize;
+layout(location = 3) uniform float forceScale;
+layout(location = 4) uniform vec2 windowSize;
+
+
+layout(binding = 1) buffer cells1
+{
+	uint cellIds[];
+};
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+layout(binding = 10) buffer collisionList
+{
+	uint collisionCells[];
+};
+layout(binding = 11) buffer cellIdsLookup
+{
+	uint cellIdToCollisionListIdLookup[];
+};
+layout(binding = 12) buffer collCellsFound
+{
+	uint collCellsFoundPerWorkGroup[];
+};
+
+
+void main()
+{
+	uint thid = gl_GlobalInvocationID.x;
+
+	uint workGroupOffset = 0;
+	uint threadOffset = 0;
+	uint totalCollisions = collCellsFoundPerWorkGroup[0];
+	while (totalCollisions < thid + 1 && workGroupOffset < workGroupsCountInFindCollisionCellsPhase)
+	{
+		workGroupOffset++;
+		threadOffset = totalCollisions;
+		totalCollisions += collCellsFoundPerWorkGroup[workGroupOffset];
+	}
+	if (workGroupOffset >= workGroupsCountInFindCollisionCellsPhase)
+	{
+		return;
+	}
+
+	uint collisionCellsStartIndex = workGroupOffset * threadsInWorkGroup * cellsPerThread + thid - threadOffset;
+	uint collisionCellsStart = collisionCells[collisionCellsStartIndex];
+
+	collisionCells[thid] = collisionCellsStart;
+
+	uint cellId = cellIds[collisionCellsStart];
+	cellIdToCollisionListIdLookup[cellId] = thid + 1; // 0 value means no collision cell there
+}

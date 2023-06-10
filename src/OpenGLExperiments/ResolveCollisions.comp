@@ -1,17 +1,20 @@
 #version 460 core
 
-layout(local_size_x = 1024) in;
+#define cellIdsLength 0
+#define cellsPerThread 1
+
+#define threadsInWorkGroup 1024
+
+layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
 
 
-layout(location = 0) uniform vec2 windowSize;
-layout(location = 1) uniform float cellSize;
-layout(location = 2) uniform vec2 mousePos;
-layout(location = 3) uniform bool isLeftMouseBtnPressed;
-layout(location = 4) uniform uint currentCellsCount;
-layout(location = 5) uniform float particleSize;
-layout(location = 6) uniform bool isLeftMouseBtnReleased;
-layout(location = 7) uniform vec2 mouseMoveDelta;
+layout(location = 0) uniform uint workGroupsCountInFindCollisionCellsPhase;
+layout(location = 1) uniform float particleSize;
+layout(location = 2) uniform uint cellSize;
+layout(location = 3) uniform float forceScale;
+layout(location = 4) uniform vec2 windowSize;
+layout(location = 5) uniform uint totalCollisionCells;
 
 
 struct Particle
@@ -19,8 +22,8 @@ struct Particle
 	vec2 Pos;
 	vec2 PosPrev;
 	vec2 Acc;
-	float Pressure;
-	float Unused;
+//	float Pressure;
+//	float Unused;
 };
 struct collCell
 {
@@ -47,51 +50,156 @@ layout(binding = 9) buffer tetete
 };
 layout(binding = 10) buffer collisionList
 {
-	collCell collisionCells2[];
+	uint collisionCells[];
 };
-layout(binding = 11) buffer misc
+layout(binding = 11) buffer cellIdsLookup
+{
+	uint cellIdToCollisionListIdLookup[];
+};
+layout(binding = 12) buffer collCellsFound
+{
+	uint collCellsFoundPerWorkGroup[];
+};
+layout(binding = 13) buffer misc
 {
 	uint draggedParticleIndex;
 };
 
+
+void ResolveCollsion(in vec2 particle1OriginalPos, inout vec2 particle1CumulativePos, in uint obj2, out bool isUpdated)
+{
+	Particle particle2 = particles[obj2];
+
+	vec2 posDiff = particle1OriginalPos - particle2.Pos;
+	float distSquared = dot(posDiff, posDiff);
+	if (distSquared == 0) // for the case when two particles have exaclty the same posision
+	{
+		distSquared = 0.0000000000001;
+		posDiff.x = 0.0000000000001;
+	}
+
+	if (distSquared < particleSize * particleSize)
+	{
+		const float dist = sqrt(distSquared);
+		const vec2 norm = posDiff / dist;
+		const float covered = particleSize - dist;
+
+//		particleA.PosPrev = particleA.Pos;
+//		particleB.PosPrev = particleB.Pos;
+
+		vec2 move = norm * covered * 0.5 * forceScale;
+		particle1CumulativePos += move;
+		particle2.Pos -= move;
+
+//		particleA.Pressure += covered / particleSize * 0.5; // TODO divide by substeps
+//		particleB.Pressure += covered / particleSize * 0.5;
+
+		if (obj2 != draggedParticleIndex - 1)
+		{
+			particles[obj2] = particle2;
+		}
+		isUpdated = true;
+	}
+}
+
+ivec2 getNeighbourCollisionStartAndEnd(in ivec2 neighbourCoord, in int gridWidth)
+{
+	if (neighbourCoord.y < 0 || neighbourCoord.x >= gridWidth)
+	{
+		return ivec2(0);
+	}
+	int neighbourId = neighbourCoord.x + neighbourCoord.y * gridWidth;
+	uint collisionIndex = cellIdToCollisionListIdLookup[neighbourId];
+	if (collisionIndex == 0)
+	{
+		return ivec2(0);
+	}
+	uint collisionCellStart = collisionCells[collisionIndex - 1];
+	uint collisionCellEnd = collisionIndex < totalCollisionCells
+		? collisionCells[collisionIndex]
+		: cellIdsLength;
+
+	return ivec2(collisionCellStart, collisionCellEnd);
+}
+
+void resolveNeighbour(in ivec2 neighbour, in vec2 particle1OriginalPos, inout vec2 particle1CumulativePos, out bool isUpdated)
+{
+	for (uint j = neighbour.x; j < neighbour.y; j++)
+	{
+		uint obj2 = objectIds[j];
+		ResolveCollsion(particle1OriginalPos, particle1CumulativePos, obj2, isUpdated);
+	}
+}
+
 void main()
 {
-	const uint thid = gl_GlobalInvocationID.x;
-//test[thid] = draggedParticleIndex;
-
-	// === particle draging with mouse ===
-	if (draggedParticleIndex != 0 && thid == 0)
+	uint thid = gl_GlobalInvocationID.x;
+	if (thid >= totalCollisionCells)
 	{
-		vec2 newPos = particles[draggedParticleIndex - 1].Pos;
-		particles[draggedParticleIndex - 1].PosPrev = newPos;
-		newPos += mouseMoveDelta;
-		particles[draggedParticleIndex - 1].Pos = newPos;
-		particles[draggedParticleIndex - 1].Acc = vec2(0);
+		return;
 	}
-	if (isLeftMouseBtnPressed && !isLeftMouseBtnReleased && thid < currentCellsCount)
+
+	uint collisionCellsStart = collisionCells[thid];
+	uint collisionCellsEnd = thid + 1 < totalCollisionCells
+		? collisionCells[thid + 1]
+		: cellIdsLength;
+//test[thid*2]=collisionCellsStart;
+//test[thid*2+1]=collisionCellsEnd;
+
+	int gridWidth = int(ceil(windowSize.x / cellSize));
+test[thid]=gridWidth;
+
+	int cellId = int(cellIds[collisionCellsStart]);
+	int cellCoordY = cellId / gridWidth;
+	int cellCoordX = cellId - cellCoordY * gridWidth;
+
+	const int lel = 8;
+	ivec2 neighbours[lel];
+	neighbours[0] = ivec2(cellCoordX - 1, cellCoordY - 1);
+	neighbours[1] = ivec2(cellCoordX,     cellCoordY - 1);
+	neighbours[2] = ivec2(cellCoordX + 1, cellCoordY - 1);
+	neighbours[3] = ivec2(cellCoordX - 1, cellCoordY);
+	neighbours[4] = ivec2(cellCoordX + 1, cellCoordY);
+	neighbours[5] = ivec2(cellCoordX - 1, cellCoordY + 1);
+	neighbours[6] = ivec2(cellCoordX,     cellCoordY + 1);
+	neighbours[7] = ivec2(cellCoordX + 1, cellCoordY + 1);
+//test[thid*2]=rightNeighbour.x;
+//test[thid*2+1]=rightNeighbour.y;
+
+	for (int i = 0; i < lel; i++)
 	{
-		uint gridWidth = uint(windowSize.x / cellSize) + 2; // the grid is bigger than screen because particle can intersect screen edges
-		vec2 mouseGridPos = floor((mousePos + cellSize) / cellSize); // mouse position (0,0) is top left corner, but should be (cellSize, cellSize)
-		uint mouseCellId = uint(mouseGridPos.x + mouseGridPos.y * gridWidth);
-		if (cellIds[thid] == mouseCellId)
+		neighbours[i] = getNeighbourCollisionStartAndEnd(neighbours[i], gridWidth);
+	}
+
+	int cellType = ((cellId % gridWidth) % 2) + ((cellId / gridWidth) % 2) * 2;
+	for (uint c = 0; c < 4; c ++) // serialyzing thread access to bordering cells to avoid two threads updating same object
+	{
+		if (c == cellType)
 		{
-			uint objId = objectIds[thid];
-//			particles[objId].Pressure = 60.0;
-		
-			vec2 pos = particles[objId].Pos;
-			vec2 mouseToPos = pos - mousePos;
-			if (length(mouseToPos) < particleSize / 2)
+			for (uint i = collisionCellsStart; i < collisionCellsEnd; i++)
 			{
-				draggedParticleIndex = (objId & 0x7fffffff) + 1; // omiting most significant bit as it is used for indicating a home cell. 0 means no particle is dragged
+				bool isUpdated = false;
+				uint objectId1 = objectIds[i];
+				Particle particle1 = particles[objectId1];
+				vec2 particle1OriginalPos = particle1.Pos;
+				vec2 particle1CumulativePos = particle1.Pos;
+
+				for (uint j = i + 1; j < collisionCellsEnd; j++)
+				{
+					uint objectId2 = objectIds[j];
+					ResolveCollsion(particle1OriginalPos, particle1CumulativePos, objectId2, isUpdated);
+				}
+				for (int i = 0; i < lel; i++)
+				{
+					resolveNeighbour(neighbours[i], particle1OriginalPos, particle1CumulativePos, isUpdated);
+				}
+
+				if (isUpdated && objectId1 != draggedParticleIndex - 1)
+				{
+					particle1.Pos = particle1CumulativePos;
+					particles[objectId1] = particle1;
+				}
 			}
 		}
 	}
-	if (isLeftMouseBtnReleased)
-	{
-		draggedParticleIndex = 0;
-	}
-	// ===================================
-
-//test[0] = collisionCells2.length();
-//test[1] = collisionCells2[0].index;
 }
