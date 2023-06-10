@@ -140,15 +140,15 @@ void Particles2dCollisionEffect::initParticles()
 
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		particles[i].PosX = random(501.0, 1001.0);
+		particles[i].PosX = random(101.0, 1001.0);
 		particles[i].PosY = random(101.0, 702.0);
 
 		//particles[i].PosX += 40;
 		//particles[i].PosY += 40;
 
 
-		particles[i].PosXprev = particles[i].PosX;// +random(-10, 10);
-		particles[i].PosYprev = particles[i].PosY;// +random(-10, 10);
+		particles[i].PosXprev = particles[i].PosX +random(-10, 10);
+		particles[i].PosYprev = particles[i].PosY +random(-10, 10);
 
 
 		//particles[i].VelX = random(-3.0, 3.0);
@@ -535,6 +535,7 @@ glBeginQuery(GL_TIME_ELAPSED, queries[4]);
 
 	glPointSize(runtimeParams.particleSize);
 	glDrawArrays(GL_POINTS, 0, currentParticlesCount);
+//GLfloat* test = readFromBuffer<GLfloat>(1024, bufferTest);
 
 #ifdef MISC_TESTS
 GLuint* cells = readFromBuffer<GLuint>(currentCellsCount, buffer6);

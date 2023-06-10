@@ -5,7 +5,7 @@
 #define nBody 0
 
 // screen edge behavior - bounce = 1 or stick = 0
-#define bounce 0
+#define bounce 1
 
 
 
@@ -31,7 +31,10 @@ layout(binding = 0) buffer SSBO
 {
 	Particle particles[];
 };
-
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
 layout(binding = 13) buffer misc
 {
 	uint draggedParticleIndex;
@@ -154,7 +157,6 @@ Particle screenBoundsCollision(Particle particle)
 
 	return particle;
 }
-
 void updateParticle()
 {
 	Particle particle = particles[gl_VertexID];
@@ -171,6 +173,10 @@ void updateParticle()
 #endif
 			vec2 newPos = particle.Pos * 2 - particle.PosPrev + particle.Acc * deltaTime * deltaTime;
 			vec2 vel = (newPos - particle.Pos) * velocityDamping;
+			
+//			float velLenghtSquared = dot(vel, vel);
+//			if (velLenghtSquared > 15) vel *= 0.9;
+
 			particle.PosPrev = newPos - vel;
 			particle.Pos = newPos;
 
@@ -217,7 +223,7 @@ void main()
 {
 	setParticleColor();
 	updateParticle();
-
+//test[gl_VertexID]=velLenghtSquared;
 	vec2 screenPos = worldToScreen(particles[gl_VertexID].Pos);
 	gl_Position = vec4(screenPos, 0.0, 1.0);
 }
