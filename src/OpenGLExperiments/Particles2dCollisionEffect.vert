@@ -17,6 +17,9 @@ layout(location = 2) uniform float deltaTime;
 layout(location = 3) uniform bool isPaused;
 layout(location = 4) uniform float particleSize;
 layout(location = 5) uniform uint cellSize;
+layout(location = 6) uniform vec2 viewPos;
+layout(location = 7) uniform float viewZoom;
+layout(location = 8) uniform vec2 simulationArea;
 
 struct Particle
 {
@@ -83,9 +86,9 @@ vec2 springScreenBoundsCollision(vec2 pos, vec2 vel)
 
 	const float halfParticleSize = particleSize / 2;
 	const float leftWall = halfParticleSize;
-	const float rightWall = windowSize.x - halfParticleSize;
+	const float rightWall = simulationArea.x - halfParticleSize;
 	const float topWall = halfParticleSize;
-	const float bottomWall = windowSize.y - halfParticleSize;
+	const float bottomWall = simulationArea.y - halfParticleSize;
 
 	if (pos.x < leftWall)
 	{
@@ -114,9 +117,9 @@ Particle screenBoundsCollision(Particle particle)
 
 	const float halfParticleSize = particleSize / 2;
 	const float leftWall = halfParticleSize;// + 400;
-	const float rightWall = windowSize.x - halfParticleSize;// - 300;
+	const float rightWall = simulationArea.x - halfParticleSize;// - 300;
 	const float topWall = halfParticleSize;
-	const float bottomWall = windowSize.y - halfParticleSize;
+	const float bottomWall = simulationArea.y - halfParticleSize;
 
 	if (pos.x < leftWall)
 	{
@@ -210,13 +213,15 @@ void setParticleColor()
 	particleColor = vec3(col);
 }
 
-vec2 worldToScreen(vec2 worldPos)
+vec2 worldToScreen(vec2 particleWorldPos)
 {
 	vec2 windowCenter = windowSize / 2;
-	vec2 screenPos = (worldPos - windowCenter) / windowCenter; // convering to clip space [-1; 1]
-	screenPos.y = -screenPos.y;
+	vec2 particleNormalizedPos = (particleWorldPos + viewPos) / windowSize * viewZoom;
+	vec2 particleScreenPos = particleNormalizedPos * 2 - 1;
 
-	return screenPos;
+	particleScreenPos.y = -particleScreenPos.y;
+
+	return particleScreenPos;
 }
 
 void main()

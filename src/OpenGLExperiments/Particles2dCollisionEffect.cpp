@@ -3,7 +3,7 @@
 
 //#define VLAIDATE
 //#define MISC_TESTS
-#define PROFILE
+//#define PROFILE
 
 #include <chrono>
 #include <iostream>
@@ -17,16 +17,22 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 10000;//83969;
+	startupParams.ParticlesCount = 1000;
 	startupParams.IsNBodyGravity = false;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
 	runtimeParams.VelocityDamping = 0.999;
 	runtimeParams.TimeScale = 1.000;
-	runtimeParams.particleSize = 5.0;
-	runtimeParams.cellSize = 5.0;//ceil(sqrt(windowWidth * windowHeight / pow(2, cellIdBits)));
+	runtimeParams.particleSize = 20.0;
+	runtimeParams.cellSize = 20.0;//ceil(sqrt(windowWidth * windowHeight / pow(2, cellIdBits)));
 	runtimeParams.substeps = 2;
+
+	runtimeParams.viewZoom = 1.0;
+	runtimeParams.viewPosX = 0.0;
+	runtimeParams.viewPosY = 0.0;
+
+	zoomSpeed = 0.1;
 }
 
 Particles2dCollisionEffect::~Particles2dCollisionEffect()
@@ -105,6 +111,7 @@ void Particles2dCollisionEffect::initialize()
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glPointSize(runtimeParams.particleSize * runtimeParams.viewZoom);
 
 #ifdef MISC_TESTS
 particlesPrev = new Particle[currentParticlesCount];
@@ -147,8 +154,8 @@ void Particles2dCollisionEffect::initParticles()
 		//particles[i].PosY += 40;
 
 
-		particles[i].PosXprev = particles[i].PosX +random(-10, 10);
-		particles[i].PosYprev = particles[i].PosY +random(-10, 10);
+		particles[i].PosXprev = particles[i].PosX;// +random(-10, 10);
+		particles[i].PosYprev = particles[i].PosY;// +random(-10, 10);
 
 
 		//particles[i].VelX = random(-3.0, 3.0);
@@ -293,6 +300,7 @@ auto tBegin = std::chrono::steady_clock::now();
 
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
+	glPointSize(runtimeParams.particleSize * runtimeParams.viewZoom);
 
 	//GLfloat dt = ((GLfloat)deltaTime) * 50 * runtimeParams.TimeScale;
 	GLfloat dt = 0.01666666 * 50 * runtimeParams.TimeScale;
@@ -313,6 +321,14 @@ GLuint* totalSumms = nullptr;
 
 	GLdouble oldCursorPosX = cursorPosX, oldCursorPosY = cursorPosY;
 	glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
+	GLfloat cursorDX = cursorPosX - oldCursorPosX;
+	GLfloat cursorDY = cursorPosY - oldCursorPosY;
+
+	if (isRightMouseBtnDown)
+	{
+		runtimeParams.viewPosX += cursorDX / runtimeParams.viewZoom;
+		runtimeParams.viewPosY += cursorDY / runtimeParams.viewZoom;
+	}
 
 	for (GLuint subSteps = 0; subSteps < runtimeParams.substeps; subSteps++)
 	{
@@ -324,7 +340,7 @@ glBeginQuery(GL_TIME_ELAPSED, queries[0]);
 		glClearNamedBufferData(ssboCellIdsLookup, GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
 
 		glUseProgram(fillCellIdAndObjectIdArraysCompShaderProgram);
-		glUniform2f(0, windowWidth, windowHeight);
+		glUniform2f(0, simulationAreaWidth, simulationAreaHeight);
 		glUniform1ui(1, runtimeParams.cellSize);
 		GLuint groupCount = ceil(currentParticlesCount / 1024.0f);
 		glDispatchCompute(groupCount, 1, 1);
@@ -422,7 +438,7 @@ glBeginQuery(GL_TIME_ELAPSED, queries[1]);
 
 			glUseProgram(findCollisionCellsCompShaderProgram);
 
-			glUniform2f(0, windowWidth, windowHeight);
+			glUniform2f(0, simulationAreaWidth, simulationAreaHeight);
 			glUniform1f(1, runtimeParams.particleSize);
 			glUniform1ui(2, runtimeParams.cellSize);
 			glUniform1f(3, runtimeParams.ForceScale);
@@ -446,7 +462,7 @@ glBeginQuery(GL_TIME_ELAPSED, queries[1]);
 			glUniform1f(1, runtimeParams.particleSize);
 			glUniform1ui(2, runtimeParams.cellSize);
 			glUniform1f(3, runtimeParams.ForceScale);
-			glUniform2f(4, windowWidth, windowHeight);
+			glUniform2f(4, simulationAreaWidth, simulationAreaHeight);
 
 			glDispatchCompute(workGroups, 1, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
@@ -471,7 +487,7 @@ glBeginQuery(GL_TIME_ELAPSED, queries[2]);
 			glUniform1f(1, runtimeParams.particleSize);
 			glUniform1ui(2, runtimeParams.cellSize);
 			glUniform1f(3, runtimeParams.ForceScale);
-			glUniform2f(4, windowWidth, windowHeight);
+			glUniform2f(4, simulationAreaWidth, simulationAreaHeight);
 			glUniform1ui(5, totalCollisionCells);
 
 			glDispatchCompute(workGroups, 1, 1);
@@ -495,27 +511,33 @@ glBeginQuery(GL_TIME_ELAPSED, queries[3]);
 	// =========== mouse drag handling ==================
 	glUseProgram(mouseInteractionsCompShaderProgram);
 
-	glUniform2f(0, windowWidth, windowHeight);
+	glUniform2f(0, simulationAreaWidth, simulationAreaHeight);
 	glUniform1f(1, runtimeParams.cellSize);
 	glUniform2f(2, (float)cursorPosX, (float)cursorPosY);
 	glUniform1i(3, isLeftMouseBtnPressed);
 	glUniform1ui(4, currentCellsCount);
 	glUniform1f(5, runtimeParams.particleSize);
 	glUniform1i(6, isLeftMouseBtnReleased);
-	glUniform2f(7, (float)(cursorPosX - oldCursorPosX), (float)(cursorPosY - oldCursorPosY));
+	glUniform2f(7, cursorDX, cursorDY);
+	glUniform2f(8, runtimeParams.viewPosX, runtimeParams.viewPosY);
+	glUniform1f(9, runtimeParams.viewZoom);
 
-	GLuint groupsCOunt = ceil(currentCellsCount / 1024.0);
-	glDispatchCompute(groupsCOunt, 1, 1);
+	GLuint groupsCount = ceil(currentCellsCount / 1024.0);
+	glDispatchCompute(groupsCount, 1, 1);
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	// ===================================================
+//test = readFromBuffer<GLfloat>(1024, bufferTest);
 
 	if (isDebug)
 	{
 		glUseProgram(gridShaderProgram);
 		glUniform1f(0, runtimeParams.cellSize);
 		glUniform2f(1, (float)cursorPosX, (float)cursorPosY);
-		glUniform1i(2, windowHeight);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glUniform2f(2, simulationAreaWidth, simulationAreaHeight);
+		glUniform2f(3, runtimeParams.viewPosX, runtimeParams.viewPosY);
+		glUniform1f(4, runtimeParams.viewZoom);
+		glUniform2f(5, windowWidth, windowHeight);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
 
 #ifdef PROFILE
@@ -532,10 +554,11 @@ glBeginQuery(GL_TIME_ELAPSED, queries[4]);
 	glUniform1i(3, isPaused && !isAdvanceOneFrame);
 	glUniform1f(4, runtimeParams.particleSize);
 	glUniform1ui(5, runtimeParams.cellSize);
+	glUniform2f(6, runtimeParams.viewPosX, runtimeParams.viewPosY);
+	glUniform1f(7, runtimeParams.viewZoom);
+	glUniform2f(8, simulationAreaWidth, simulationAreaHeight);
 
-	glPointSize(runtimeParams.particleSize);
 	glDrawArrays(GL_POINTS, 0, currentParticlesCount);
-//GLfloat* test = readFromBuffer<GLfloat>(1024, bufferTest);
 
 #ifdef MISC_TESTS
 GLuint* cells = readFromBuffer<GLuint>(currentCellsCount, buffer6);
@@ -655,8 +678,13 @@ if (currentlyAveragedFrames % framesToAvegare == 0)
 void Particles2dCollisionEffect::drawGUI()
 {
 	ImGui::Begin("Startup params (Collisions)");
-	ImGui::Text("Space: pause");
+	ImGui::Text("Perticle drag: left mouse button");
+	ImGui::Text("Pause: space");
 	ImGui::Text("While paused Arrow Right: advance one frame");
+	ImGui::Text("Pan: right mouse button");
+	ImGui::Text("Zoom: scroll");
+	ImGui::Text("Fast zoom: left shift + scroll");
+	ImGui::Text("Reset zoom and pan: middle mouse button");
 	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 1000, 10000);
 	ImGui::Checkbox("N-body gravity", &startupParams.IsNBodyGravity);
 	ImGui::End();
@@ -665,9 +693,9 @@ void Particles2dCollisionEffect::drawGUI()
 	ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, 0.0, 2.0);
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 5.0);
-	ImGui::SliderFloat("Particle Size", &runtimeParams.particleSize, 1.0, 500.0);
+	ImGui::SliderFloat("Particle Size", &runtimeParams.particleSize, 1.0, 50.0);
 	ImGui::SliderFloat("Cell Size", &runtimeParams.cellSize, 4.0, 500.0);
-	ImGui::SliderInt("Substeps", &runtimeParams.substeps, 1.0, 128.0);
+	ImGui::SliderInt("Substeps", &runtimeParams.substeps, 1.0, 32.0);
 	ImGui::End();
 
 	if (runtimeParams.cellSize < runtimeParams.particleSize)
@@ -757,6 +785,15 @@ void Particles2dCollisionEffect::keyCallback(int key, int scancode, int action, 
 	{
 		isDebug = !isDebug;
 	}
+
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS)
+	{
+		zoomSpeed = 1;
+	}
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_RELEASE)
+	{
+		zoomSpeed = 0.1;
+	}
 }
 
 void Particles2dCollisionEffect::mouseButtonCallback(int button, int action, int mods)
@@ -771,6 +808,48 @@ void Particles2dCollisionEffect::mouseButtonCallback(int button, int action, int
 		isLeftMouseBtnReleased = true;
 		isLeftMouseBtnDown = false;
 	}
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+	{
+		isRightMouseBtnDown = true;
+	}
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+	{
+		isRightMouseBtnDown = false;
+	}
+	if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
+	{
+		resetPanAndZoom();
+	}
+}
+
+void Particles2dCollisionEffect::scrollCallback(double xoffset, double yoffset)
+{
+	GLdouble beforeZoomCursorPosX = cursorPosX / runtimeParams.viewZoom + runtimeParams.viewPosX;
+	GLdouble beforeZoomCursorPosY = cursorPosY / runtimeParams.viewZoom + runtimeParams.viewPosY;
+
+	GLdouble multiplier = 1 + zoomSpeed;
+	if (yoffset < 0)
+	{
+		runtimeParams.viewZoom /= multiplier;
+	}
+	else
+	{
+		runtimeParams.viewZoom *= multiplier;
+	}
+
+	GLdouble afterZoomCursorPosX = cursorPosX / runtimeParams.viewZoom + runtimeParams.viewPosX;
+	GLdouble afterZoomCursorPosY = cursorPosY / runtimeParams.viewZoom + runtimeParams.viewPosY;
+
+	runtimeParams.viewPosX -= beforeZoomCursorPosX - afterZoomCursorPosX;
+	runtimeParams.viewPosY -= beforeZoomCursorPosY - afterZoomCursorPosY;
+}
+
+void Particles2dCollisionEffect::resetPanAndZoom()
+{
+	runtimeParams.viewZoom = 1.0;
+	runtimeParams.viewPosX = 0.0;
+	runtimeParams.viewPosY = 0.0;
+	glPointSize(runtimeParams.particleSize);
 }
 
 void Particles2dCollisionEffect::createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams)
@@ -837,7 +916,7 @@ void Particles2dCollisionEffect::initValidation(Particle* particles)
 
 void Particles2dCollisionEffect::validateFilledArrays(GLuint* cellsFromGPU, GLuint* objectsFromGPU)
 {
-	GLuint gridWidth = windowWidth / runtimeParams.cellSize;
+	GLuint gridWidth = simulationAreaWidth / runtimeParams.cellSize;
 
 	for (int i = 0; i < currentParticlesCount; i++)
 	{

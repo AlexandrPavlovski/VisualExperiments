@@ -35,6 +35,7 @@ public:
 
 	virtual void keyCallback(int key, int scancode, int action, int mode);
 	virtual void mouseButtonCallback(int button, int action, int mods);
+	virtual void scrollCallback(double xoffset, double yoffset);
 
 private:
 	struct StartupParams
@@ -51,6 +52,7 @@ private:
 		GLfloat particleSize;
 		GLfloat cellSize;
 		GLint substeps;
+		GLfloat viewPosX, viewPosY, viewZoom; // camera
 	};
 
 	struct ShaderParams
@@ -94,6 +96,8 @@ private:
 	RuntimeParams runtimeParams;
 
 	// core parameters for the whole simulation
+	static const GLuint simulationAreaWidth = 1280; // decoupled from screen size
+	static const GLuint simulationAreaHeight = 800;
 	static const GLuint cellIdBits = 16;
 	static const GLuint bitsPerSortPass = 8;
 	GLuint sharedCountersLength = 12032; // 12288 is maximum on my laptop's 3060, but in phase 3 need some additional shared memory for total summs counting
@@ -124,6 +128,7 @@ private:
 	GLuint buffer7 = 0;
 	GLuint buffer8 = 0;
 	GLuint bufferTest = 0;
+	GLfloat* test;
 
 	GLint currentParticlesCount = 0;
 	GLint currentCellsCount = 0;
@@ -150,11 +155,15 @@ private:
 	GLuint phase1GroupCount = 0;
 
 	// ------ mouse ------ //
+	bool isRightMouseBtnDown = false;
 	bool isLeftMouseBtnDown = false;
 	bool isLeftMouseBtnPressed = false;
 	bool isLeftMouseBtnReleased = false;
 	GLdouble cursorPosX = 0.0, cursorPosY = 0.0;
 	// ------------------- //
+
+	GLfloat zoomSpeed;
+
 
 	void initBuffers();
 	void initParticles();
@@ -164,6 +173,8 @@ private:
 	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
 	void createSsbo(GLuint* buff, GLuint index, GLsizeiptr size, const void* data, GLenum usage);
 	void cleanup();
+
+	void resetPanAndZoom();
 
 	template< typename T >
 	T* readFromBuffer(int elemCount, GLuint ssbo);
