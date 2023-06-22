@@ -4,10 +4,6 @@
 #define particlesCount 0
 #define nBody 0
 
-// screen edge behavior - bounce = 1 or stick = 0
-#define bounce 1
-
-
 
 layout(std430) buffer;
 
@@ -21,24 +17,28 @@ layout(location = 6) uniform vec2 viewPos;
 layout(location = 7) uniform float viewZoom;
 layout(location = 8) uniform vec2 simulationArea;
 
-struct Particle
-{
-	vec2 Pos;
-	vec2 PosPrev;
-	vec2 Acc;
-//	float Pressure;
-//	float Unused;
-};
 
 layout(binding = 0) buffer SSBO
 {
-	Particle particles[];
+	vec2 particlesPos[];
 };
 layout(binding = 9) buffer tetete
 {
 	float test[];
 };
-layout(binding = 13) buffer misc
+layout(binding = 13) buffer SSBOPrevPos
+{
+	vec2 particlesPrevPos[];
+};
+//layout(binding = 14) buffer SSBOAcc
+//{
+//	vec2 particlesAcc[];
+//};
+layout(binding = 15) buffer SSBOPresure
+{
+	float particlesPresure[];
+};
+layout(binding = 16) buffer misc
 {
 	uint draggedParticleIndex;
 };
@@ -59,136 +59,47 @@ vec2 getBodyToBodyAcceleration(vec2 b1, vec2 b2)
 	return dir * invDistCube;
 }
 
-void nBodyGravity(inout Particle p)
+void nBodyGravity(vec2 pos, inout vec2 pAcc)
 {
-	for (int i = 0; i < particlesCount; i += 1)
+	for (int i = 0; i < particlesCount; i += 4)
 	{
-		p.Acc += getBodyToBodyAcceleration(p.Pos, particles[i].Pos);
-//		acc += getBodyToBodyAcceleration(pos, particleData[i+1].xy);
-//		acc += getBodyToBodyAcceleration(pos, particleData[i+2].xy);
-//		acc += getBodyToBodyAcceleration(pos, particleData[i+3].xy);
+		pAcc += getBodyToBodyAcceleration(pos, particlesPos[i]);
+		pAcc += getBodyToBodyAcceleration(pos, particlesPos[i+1]);
+		pAcc += getBodyToBodyAcceleration(pos, particlesPos[i+2]);
+		pAcc += getBodyToBodyAcceleration(pos, particlesPos[i+3]);
 	}
 }
 
-vec2 springCollisionResponse(float penetrationDepth, vec2 norm, vec2 relativeVel)
-{
-	const float k = 1.0;
-	const float b = 0.05;
-
-	float acc = k * penetrationDepth - b * dot(norm, relativeVel);
-
-	return acc * norm;
-}
-
-vec2 springScreenBoundsCollision(vec2 pos, vec2 vel)
-{
-	vec2 acc = vec2(0.0);
-
-	const float halfParticleSize = particleSize / 2;
-	const float leftWall = halfParticleSize;
-	const float rightWall = simulationArea.x - halfParticleSize;
-	const float topWall = halfParticleSize;
-	const float bottomWall = simulationArea.y - halfParticleSize;
-
-	if (pos.x < leftWall)
-	{
-		acc += springCollisionResponse(leftWall - pos.x, vec2(1.0, 0.0), vel);
-	}
-	if (pos.y < topWall)
-	{
-		acc += springCollisionResponse(topWall - pos.y, vec2(0.0, 1.0), vel);
-	}
-	if (pos.x > rightWall)
-	{
-		acc += springCollisionResponse(pos.x - rightWall, vec2(-1.0, 0.0), vel);
-	}
-	if (pos.y > bottomWall)
-	{
-		acc += springCollisionResponse(pos.y - bottomWall, vec2(0.0, -1.0), vel);
-	}
-
-	return acc;
-}
-
-Particle screenBoundsCollision(Particle particle)
-{
-	const vec2 pos = particle.Pos;
-//	const vec2 posPrev = particle.PosPrev;
-
-	const float halfParticleSize = particleSize / 2;
-	const float leftWall = halfParticleSize;// + 400;
-	const float rightWall = simulationArea.x - halfParticleSize;// - 300;
-	const float topWall = halfParticleSize;
-	const float bottomWall = simulationArea.y - halfParticleSize;
-
-	if (pos.x < leftWall)
-	{
-#if (bounce == 1)
-		particle.Pos.x = leftWall + leftWall - pos.x;
-//		particle.PosPrev.x = leftWall - (posPrev.x - leftWall);
-#else
-		particle.Pos.x = particle.PosPrev.x = leftWall;
-#endif
-	}
-	if (pos.x > rightWall)
-	{
-#if (bounce == 1)
-		particle.Pos.x = rightWall - (pos.x - rightWall);
-//		particle.PosPrev.x = rightWall + rightWall - posPrev.x;
-#else
-		particle.Pos.x = particle.PosPrev.x = rightWall;
-#endif
-	}
-	if (pos.y < topWall)
-	{
-#if (bounce == 1)
-		particle.Pos.y = topWall + topWall - pos.y;
-//		particle.PosPrev.y = topWall - (posPrev.y - topWall);
-#else
-		particle.Pos.y = particle.PosPrev.y = topWall;
-#endif
-	}
-	if (pos.y > bottomWall)
-	{
-#if (bounce == 1)
-		particle.Pos.y = bottomWall - (pos.y - bottomWall);
-//		particle.PosPrev.y = bottomWall + bottomWall - posPrev.y;
-#else
-		particle.Pos.y = particle.PosPrev.y = bottomWall;
-#endif
-	}
-
-	return particle;
-}
 void updateParticle()
 {
-	Particle particle = particles[gl_VertexID];
+	vec2 pos = particlesPos[gl_VertexID];
+	vec2 prevPos = particlesPrevPos[gl_VertexID];
+	vec2 acc = vec2(0);
 
 	if (!isPaused)
 	{
 		if (draggedParticleIndex - 1 != gl_VertexID)
 		{
 #if (nBody == 1)
-			nBodyGravity(particle);
+			nBodyGravity(pos, acc);
 #else
 			const vec2 gravityAcc = vec2(0, 0.005);
-			particle.Acc += gravityAcc;
+			acc += gravityAcc;
 #endif
-			vec2 newPos = particle.Pos * 2 - particle.PosPrev + particle.Acc * deltaTime * deltaTime;
-			vec2 vel = (newPos - particle.Pos) * velocityDamping;
+			vec2 newPos = pos * 2 - prevPos + acc * deltaTime * deltaTime;
+			vec2 vel = (newPos - pos) * velocityDamping;
 			
 //			float velLenghtSquared = dot(vel, vel);
 //			if (velLenghtSquared > 15) vel *= 0.9;
 
-			particle.PosPrev = newPos - vel;
-			particle.Pos = newPos;
-
-			particle.Acc = vec2(0.0);
-//			particle.Pressure = 0.0;
+			prevPos = newPos - vel;
+			pos = newPos;
 		}
 	}
-	particle = screenBoundsCollision(particle);
-	particles[gl_VertexID] = particle;
+	
+	particlesPos[gl_VertexID] = pos;
+	particlesPrevPos[gl_VertexID] = prevPos;
+	particlesPresure[gl_VertexID] = 0.0;
 }
 
 void setParticleColor()
@@ -199,7 +110,7 @@ void setParticleColor()
 		return;
 	}
 
-	float pressure = 0.1;//particles[gl_VertexID].Pressure;
+	float pressure = particlesPresure[gl_VertexID];
 
 //pressure = float(gl_VertexID) / float(particlesCount);
 	// gradient for pressure coloring
@@ -229,6 +140,6 @@ void main()
 	setParticleColor();
 	updateParticle();
 //test[gl_VertexID]=velLenghtSquared;
-	vec2 screenPos = worldToScreen(particles[gl_VertexID].Pos);
+	vec2 screenPos = worldToScreen(particlesPos[gl_VertexID]);
 	gl_Position = vec4(screenPos, 0.0, 1.0);
 }

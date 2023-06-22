@@ -17,16 +17,16 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 1000;
+	startupParams.ParticlesCount = 100000;
 	startupParams.IsNBodyGravity = false;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
 	runtimeParams.VelocityDamping = 0.999;
 	runtimeParams.TimeScale = 1.000;
-	runtimeParams.particleSize = 20.0;
-	runtimeParams.cellSize = 20.0;//ceil(sqrt(windowWidth * windowHeight / pow(2, cellIdBits)));
-	runtimeParams.substeps = 2;
+	runtimeParams.particleSize = 2.0;
+	runtimeParams.cellSize = 4.0;//ceil(sqrt(windowWidth * windowHeight / pow(2, cellIdBits)));
+	runtimeParams.substeps = 1;
 
 	runtimeParams.viewZoom = 1.0;
 	runtimeParams.viewPosX = 0.0;
@@ -55,7 +55,10 @@ void Particles2dCollisionEffect::initialize()
 	initParticles();
 	initBuffers();
 
-	particles.clear();
+	particlesPos.clear();
+	particlesPrevPos.clear();
+	particlesAcc.clear();
+	particlesPressure.clear();
 
 	ShaderParams shaderParams = initShaderParams();
 
@@ -135,7 +138,10 @@ void Particles2dCollisionEffect::initParticles()
 {
 	srand(50);
 
-	particles = std::vector<Particle>(currentParticlesCount);
+	particlesPos = std::vector<Vec2>(currentParticlesCount);
+	particlesPrevPos = std::vector<Vec2>(currentParticlesCount);
+	particlesAcc = std::vector<Vec2>(currentParticlesCount);
+	particlesPressure = std::vector<GLfloat>(currentParticlesCount);
 
 	/*int t = 0;
 	for (int x = 0; x < 10; x++)
@@ -145,17 +151,22 @@ void Particles2dCollisionEffect::initParticles()
 		particles[t++].PosY = 501 + y * 6;
 	}*/
 
+	GLfloat halfParticle = runtimeParams.particleSize / 2;
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		particles[i].PosX = random(101.0, 1001.0);
-		particles[i].PosY = random(101.0, 702.0);
+		GLfloat x = random(halfParticle, windowWidth - halfParticle);
+		GLfloat y = random(halfParticle, windowHeight - halfParticle);
+		particlesPos[i].X = x;
+		particlesPos[i].Y = y;
+
+		//particles[i].PosX = random(101.0, 1001.0);
+		//particles[i].PosY = random(101.0, 702.0);
 
 		//particles[i].PosX += 40;
 		//particles[i].PosY += 40;
 
-
-		particles[i].PosXprev = particles[i].PosX;// +random(-10, 10);
-		particles[i].PosYprev = particles[i].PosY;// +random(-10, 10);
+		particlesPrevPos[i].X = x;// +random(-10, 10);
+		particlesPrevPos[i].Y = y;// +random(-10, 10);
 
 
 		//particles[i].VelX = random(-3.0, 3.0);
@@ -169,21 +180,26 @@ void Particles2dCollisionEffect::initBuffers()
 	glBindVertexArray(vao);
 
 	GLsizeiptr sUint = sizeof(GLuint);
+	GLsizeiptr sVec2 = sizeof(Vec2);
+	GLsizeiptr sFloat = sizeof(GLfloat);
 
-	createSsbo(&ssboParticles,      0,  currentParticlesCount * sizeof(Particle), &particles[0], GL_DYNAMIC_DRAW);
-	createSsbo(&ssboCellId,         1,  currentCellsCount * sUint,                         NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&ssboObjectId,       2,  currentCellsCount * sUint,                         NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&ssboGlobalCounters, 3,  sharedCountersLength * phase1GroupCount * sUint,   NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&buffer,             4,  radixCountersLength * sUint,                       NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&buffer5,            5,  currentCellsCount * sUint,                         NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&buffer6,            6,  currentCellsCount * sUint,                         NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&buffer7,            7,  currentCellsCount * sUint,                         NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&buffer8,            8,  currentCellsCount * sUint,                         NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&bufferTest,         9,  20000 * sizeof(GLfloat),                           NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&ssboCollisionList,  10, currentCellsCount * sUint,                         NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&ssboCellIdsLookup,  11, maxNumberOfCells * sUint,                          NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&ssboCollCellsFound, 12, workGroupsCountInFindCollisionCellsPhase * sUint,  NULL, GL_DYNAMIC_DRAW);
-	createSsbo(&ssboMisc,           13, sUint,                                             NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&ssboParticlesPos,      0,  currentParticlesCount * sVec2,        &particlesPos[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboCellId,            1,  currentCellsCount * sUint,                        NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&ssboObjectId,          2,  currentCellsCount * sUint,                        NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&ssboGlobalCounters,    3,  sharedCountersLength * phase1GroupCount * sUint,  NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&buffer,                4,  radixCountersLength * sUint,                      NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&buffer5,               5,  currentCellsCount * sUint,                        NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&buffer6,               6,  currentCellsCount * sUint,                        NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&buffer7,               7,  currentCellsCount * sUint,                        NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&buffer8,               8,  currentCellsCount * sUint,                        NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&bufferTest,            9,  20000 * sFloat,                                   NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&ssboCollisionList,     10, currentCellsCount * sUint,                        NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&ssboCellIdsLookup,     11, maxNumberOfCells * sUint,                         NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&ssboCollCellsFound,    12, workGroupsCountInFindCollisionCellsPhase * sUint, NULL, GL_DYNAMIC_DRAW);
+	createSsbo(&ssboParticlesPrevPos,  13, currentParticlesCount * sVec2,    &particlesPrevPos[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboParticlesAcc,      14, currentParticlesCount * sVec2,        &particlesAcc[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboParticlesPressure, 15, currentParticlesCount * sFloat,  &particlesPressure[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboMisc,              16, sUint,                                            NULL, GL_DYNAMIC_DRAW);
 }
 
 Particles2dCollisionEffect::ShaderParams Particles2dCollisionEffect::initShaderParams()
@@ -489,9 +505,11 @@ glBeginQuery(GL_TIME_ELAPSED, queries[2]);
 			glUniform1f(3, runtimeParams.ForceScale);
 			glUniform2f(4, simulationAreaWidth, simulationAreaHeight);
 			glUniform1ui(5, totalCollisionCells);
+			glUniform1ui(6, runtimeParams.substeps);
 
 			glDispatchCompute(workGroups, 1, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
+//test = readFromBuffer<GLfloat>(1024, bufferTest);
 //GLuint* cells = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
 //GLuint* objs = readFromBuffer<GLuint>(currentCellsCount, ssboObjectId);
 //GLuint* collis = readFromBuffer<GLuint>(currentCellsCount, ssboCollisionList);
@@ -526,7 +544,6 @@ glBeginQuery(GL_TIME_ELAPSED, queries[3]);
 	glDispatchCompute(groupsCount, 1, 1);
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	// ===================================================
-//test = readFromBuffer<GLfloat>(1024, bufferTest);
 
 	if (isDebug)
 	{
@@ -748,16 +765,22 @@ void Particles2dCollisionEffect::cleanup()
 		glDeleteProgram(RadixSortPasses[i].Phase3);
 	}
 	
-	glClearNamedBufferData(ssboParticles,      GL_R32F, GL_RED, GL_FLOAT, NULL);
-	glClearNamedBufferData(ssboObjectId,       GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-	glClearNamedBufferData(ssboCellId,         GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-	glClearNamedBufferData(ssboGlobalCounters, GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-	glClearNamedBufferData(ssboCollisionList,  GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-	glClearNamedBufferData(ssboMisc,           GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-	glClearNamedBufferData(ssboCollCellsFound, GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-	glClearNamedBufferData(ssboCellIdsLookup,  GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+	glClearNamedBufferData(ssboParticlesPos,      GL_R32F, GL_RED, GL_FLOAT, NULL);
+	glClearNamedBufferData(ssboParticlesPrevPos,  GL_R32F, GL_RED, GL_FLOAT, NULL);
+	glClearNamedBufferData(ssboParticlesAcc,      GL_R32F, GL_RED, GL_FLOAT, NULL);
+	glClearNamedBufferData(ssboParticlesPressure, GL_R32F, GL_RED, GL_FLOAT, NULL);
+	glClearNamedBufferData(ssboObjectId,          GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+	glClearNamedBufferData(ssboCellId,            GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+	glClearNamedBufferData(ssboGlobalCounters,    GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+	glClearNamedBufferData(ssboCollisionList,     GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+	glClearNamedBufferData(ssboMisc,              GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+	glClearNamedBufferData(ssboCollCellsFound,    GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+	glClearNamedBufferData(ssboCellIdsLookup,     GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
 
-	glDeleteBuffers(1, &ssboParticles);
+	glDeleteBuffers(1, &ssboParticlesPos);
+	glDeleteBuffers(1, &ssboParticlesPrevPos);
+	glDeleteBuffers(1, &ssboParticlesAcc);
+	glDeleteBuffers(1, &ssboParticlesPressure);
 	glDeleteBuffers(1, &ssboObjectId);
 	glDeleteBuffers(1, &ssboCellId);
 	glDeleteBuffers(1, &ssboGlobalCounters);
@@ -899,7 +922,7 @@ T* Particles2dCollisionEffect::readFromBuffer2(int elemCount, GLuint ssbo)
 }
 
 
-void Particles2dCollisionEffect::initValidation(Particle* particles)
+void Particles2dCollisionEffect::initValidation(Vec2* particles)
 {
 	vParticles = particles;
 
@@ -920,11 +943,11 @@ void Particles2dCollisionEffect::validateFilledArrays(GLuint* cellsFromGPU, GLui
 
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		Particle p = vParticles[i];
+		Vec2 p = vParticles[i];
 
 		double gridPosX, gridPosY;
-		modf(p.PosX / runtimeParams.cellSize, &gridPosX);
-		modf(p.PosY / runtimeParams.cellSize, &gridPosY);
+		modf(p.X / runtimeParams.cellSize, &gridPosX);
+		modf(p.Y / runtimeParams.cellSize, &gridPosY);
 
 		GLuint hCellId = gridPosX + gridPosY * gridWidth;
 

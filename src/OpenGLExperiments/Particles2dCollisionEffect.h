@@ -10,16 +10,10 @@
 #include <GLFW/glfw3.h>
 
 
-struct Particle
+struct Vec2
 {
-	GLfloat PosX;
-	GLfloat PosY;
-	GLfloat PosXprev;
-	GLfloat PosYprev;
-	GLfloat AccX;
-	GLfloat AccY;
-	//GLfloat Pressure;
-	//GLfloat Unused;
+	GLfloat X;
+	GLfloat Y;
 };
 
 class Particles2dCollisionEffect :public AbstractEffect
@@ -119,7 +113,10 @@ private:
 	GLuint threadGroupsTotal = 0;
 	GLuint phase2Iterations = 0;
 
-	std::vector<Particle> particles;
+	std::vector<Vec2> particlesPos;
+	std::vector<Vec2> particlesPrevPos;
+	std::vector<Vec2> particlesAcc;
+	std::vector<float> particlesPressure;
 
 	// temp vars
 	GLuint buffer = 0;
@@ -139,9 +136,21 @@ private:
 	GLint frameCount = 0;
 	GLint frameCount2 = 0;
 
+	GLuint
+		ssboParticlesPos = 0,
+		ssboParticlesPrevPos = 0,
+		ssboParticlesAcc = 0,
+		ssboParticlesPressure = 0;
 
-	GLuint vao = 0, ssboParticles = 0, ssboObjectId = 0, ssboCellId = 0, ssboGlobalCounters = 0,
-		ssboCollisionList = 0, ssboMisc = 0, ssboCollCellsFound = 0, ssboCellIdsLookup = 0;
+	GLuint
+		vao = 0,
+		ssboObjectId = 0,
+		ssboCellId = 0,
+		ssboGlobalCounters = 0,
+		ssboCollisionList = 0,
+		ssboMisc = 0,
+		ssboCollCellsFound = 0,
+		ssboCellIdsLookup = 0;
 	GLuint fillCellIdAndObjectIdArraysCompShaderProgram = 0,
 		findCollisionCellsCompShaderProgram = 0,
 		compactCollisionCellsCompShaderProgram = 0,
@@ -182,10 +191,10 @@ private:
 	T* readFromBuffer2(int elemCount, GLuint ssbo);
 
 	
-	Particle* particlesPrev = 0;
+	Vec2* particlesPrev = 0;
 
 	// === for validation ===
-	void initValidation(Particle* particles);
+	void initValidation(Vec2* particles);
 	void validateFilledArrays(GLuint* cellsFromGPU, GLuint* objectsFromGPU);
 	void validateSortPhase1(GLuint pass, GLuint* globalCountersFromGPU);
 	void validateSortPhase2(GLuint* globalCountersFromGPU, GLuint* totalSummsFromGPU);
@@ -195,7 +204,7 @@ private:
 
 	GLuint vGlobalCountersCount;
 
-	Particle* vParticles;
+	Vec2* vParticles;
 	std::vector<GLuint> vCellIds;
 	std::vector<GLuint> vObjectIds;
 	std::vector<GLuint> vCellIdsOutput;

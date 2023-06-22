@@ -9,18 +9,9 @@ layout(std430) buffer;
 layout(location = 0) uniform vec2 windowSize;
 layout(location = 1) uniform uint cellSize;
 
-struct Particle
-{
-	vec2 Pos;
-	vec2 PosPrev;
-	vec2 Acc;
-//	float Pressure;
-//	float Unused;
-};
-
 layout(binding = 0) buffer SSBO
 {
-	Particle particles[];
+	vec2 particlesPos[];
 };
 layout(binding = 1) buffer cells1
 {
@@ -43,7 +34,7 @@ void main()
 
 	uint gridWidth = uint(ceil(windowSize.x / cellSize));
 	vec2 gridPos; // integer part of mod operation
-	modf(particles[thid].Pos / cellSize, gridPos); // float part of mod operation
+	modf(particlesPos[thid] / cellSize, gridPos); // float part of mod operation
 
 	uint hCellId = uint(gridPos.x + gridPos.y * gridWidth); // home cell i.e cell where particle's center lands
 

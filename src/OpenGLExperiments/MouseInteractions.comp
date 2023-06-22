@@ -16,24 +16,9 @@ layout(location = 8) uniform vec2 viewPos;
 layout(location = 9) uniform float viewZoom;
 
 
-struct Particle
-{
-	vec2 Pos;
-	vec2 PosPrev;
-	vec2 Acc;
-//	float Pressure;
-//	float Unused;
-};
-struct collCell
-{
-	uint index;
-	uint phantomAndHomeCellsCountPacked;
-};
-
-
 layout(binding = 0) buffer SSBO
 {
-	Particle particles[];
+	vec2 particlesPos[];
 };
 layout(binding = 1) buffer cells1
 {
@@ -47,7 +32,11 @@ layout(binding = 9) buffer tetete
 {
 	float test[];
 };
-layout(binding = 13) buffer misc
+layout(binding = 13) buffer SSBOPrevPos
+{
+	vec2 particlesPrevPos[];
+};
+layout(binding = 16) buffer misc
 {
 	uint draggedParticleIndex;
 };
@@ -66,11 +55,11 @@ void main()
 
 	if (draggedParticleIndex != 0 && thid == 0)
 	{
-		vec2 newPos = particles[draggedParticleIndex - 1].Pos;
-		particles[draggedParticleIndex - 1].PosPrev = newPos;
+		vec2 newPos = particlesPos[draggedParticleIndex - 1];
+		particlesPrevPos[draggedParticleIndex - 1] = newPos;
 		newPos += mouseMoveDelta / viewZoom;
-		particles[draggedParticleIndex - 1].Pos = newPos;
-//		particles[draggedParticleIndex - 1].Acc = vec2(0);
+		particlesPos[draggedParticleIndex - 1] = newPos;
+//		particlesPos[draggedParticleIndex - 1].Acc = vec2(0);
 	}
 	if (isLeftMouseBtnPressed && !isLeftMouseBtnReleased && thid < currentCellsCount)
 	{
@@ -84,9 +73,9 @@ void main()
 			if (cellIds[thid] == cellUnderMouseId)
 			{
 				uint objId = objectIds[thid];
-	//			particles[objId].Pressure = 60.0;
+	//			particlesPos[objId].Pressure = 60.0;
 		
-				vec2 pos = particles[objId].Pos;
+				vec2 pos = particlesPos[objId];
 				vec2 mouseToPos = pos - mouseWorldPos;
 				if (length(mouseToPos) < particleSize / 2)
 				{

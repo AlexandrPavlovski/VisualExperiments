@@ -5,6 +5,9 @@
 
 #define threadsInWorkGroup 1024
 
+// screen edge behavior - bounce = 1 or stick = 0
+#define bounce 1
+
 layout(local_size_x = threadsInWorkGroup) in;
 layout(std430) buffer;
 
@@ -13,28 +16,14 @@ layout(location = 0) uniform uint workGroupsCountInFindCollisionCellsPhase;
 layout(location = 1) uniform float particleSize;
 layout(location = 2) uniform uint cellSize;
 layout(location = 3) uniform float forceScale;
-layout(location = 4) uniform vec2 windowSize;
+layout(location = 4) uniform vec2 simulationArea;
 layout(location = 5) uniform uint totalCollisionCells;
-
-
-struct Particle
-{
-	vec2 Pos;
-	vec2 PosPrev;
-	vec2 Acc;
-//	float Pressure;
-//	float Unused;
-};
-struct collCell
-{
-	uint index;
-	uint phantomAndHomeCellsCountPacked;
-};
+layout(location = 6) uniform uint substeps;
 
 
 layout(binding = 0) buffer SSBO
 {
-	Particle particles[];
+	vec2 particlesPos[];
 };
 layout(binding = 1) buffer cells1
 {
@@ -60,17 +49,74 @@ layout(binding = 12) buffer collCellsFound
 {
 	uint collCellsFoundPerWorkGroup[];
 };
-layout(binding = 13) buffer misc
+layout(binding = 13) buffer SSBOPrevPos
+{
+	vec2 particlesPrevPos[];
+};
+layout(binding = 15) buffer SSBOPresure
+{
+	float particlesPresure[];
+};
+layout(binding = 16) buffer misc
 {
 	uint draggedParticleIndex;
 };
 
-
-void ResolveCollsion(in vec2 particle1OriginalPos, inout vec2 particle1CumulativePos, in uint obj2, out bool isUpdated)
+void simulationAreaBoundsCollision(in vec2 originalPos, inout vec2 cumulativePos, inout vec2 prevPos, out bool isUpdated)
 {
-	Particle particle2 = particles[obj2];
+	const float halfParticleSize = particleSize / 2;
+	const float leftWall = halfParticleSize;// + 400;
+	const float rightWall = simulationArea.x - halfParticleSize;// - 300;
+	const float topWall = halfParticleSize;
+	const float bottomWall = simulationArea.y - halfParticleSize;
 
-	vec2 posDiff = particle1OriginalPos - particle2.Pos;
+	if (originalPos.x < leftWall)
+	{
+#if (bounce == 1)
+		cumulativePos.x = leftWall + leftWall - originalPos.x;
+		prevPos.x = leftWall - (prevPos.x - leftWall);
+#else
+		cumulativePos.x = prevPos.x = leftWall;
+#endif
+		isUpdated = true;
+	}
+	if (originalPos.x > rightWall)
+	{
+#if (bounce == 1)
+		cumulativePos.x = rightWall - (originalPos.x - rightWall);
+		prevPos.x = rightWall + rightWall - prevPos.x;
+#else
+		cumulativePos.x = prevPos.x = rightWall;
+#endif
+		isUpdated = true;
+	}
+	if (originalPos.y < topWall)
+	{
+#if (bounce == 1)
+		cumulativePos.y = topWall + topWall - originalPos.y;
+		prevPos.y = topWall - (prevPos.y - topWall);
+#else
+		cumulativePos.y = prevPos.y = topWall;
+#endif
+		isUpdated = true;
+	}
+	if (originalPos.y > bottomWall)
+	{
+#if (bounce == 1)
+		cumulativePos.y = bottomWall - (originalPos.y - bottomWall);
+		prevPos.y = bottomWall + bottomWall - prevPos.y;
+#else
+		cumulativePos.y = prevPos.y = bottomWall;
+#endif
+		isUpdated = true;
+	}
+}
+
+void ResolveCollsion(in vec2 particle1OriginalPos, inout vec2 particle1CumulativePos, inout float particle1Presure, in uint obj2, out bool isUpdated)
+{
+	vec2 particle2Pos = particlesPos[obj2];
+
+	vec2 posDiff = particle1OriginalPos - particle2Pos;
 	float distSquared = dot(posDiff, posDiff);
 	if (distSquared == 0) // for the case when two particles have exaclty the same posision
 	{
@@ -89,14 +135,15 @@ void ResolveCollsion(in vec2 particle1OriginalPos, inout vec2 particle1Cumulativ
 
 		vec2 move = norm * covered * 0.5 * forceScale;
 		particle1CumulativePos += move;
-		particle2.Pos -= move;
+		particle2Pos -= move;
 
-//		particleA.Pressure += covered / particleSize * 0.5; // TODO divide by substeps
-//		particleB.Pressure += covered / particleSize * 0.5;
+		float pressure = covered / particleSize / substeps * 1.0;
+		particle1Presure += pressure;
 
 		if (obj2 != draggedParticleIndex - 1)
 		{
-			particles[obj2] = particle2;
+			particlesPos[obj2] = particle2Pos;
+			particlesPresure[obj2] += pressure;
 		}
 		isUpdated = true;
 	}
@@ -122,12 +169,12 @@ ivec2 getNeighbourCollisionStartAndEnd(in ivec2 neighbourCoord, in int gridWidth
 	return ivec2(collisionCellStart, collisionCellEnd);
 }
 
-void resolveNeighbour(in ivec2 neighbour, in vec2 particle1OriginalPos, inout vec2 particle1CumulativePos, out bool isUpdated)
+void resolveNeighbour(in ivec2 neighbour, in vec2 particle1OriginalPos, inout vec2 particle1CumulativePos, inout float particle1Presure, out bool isUpdated)
 {
 	for (uint j = neighbour.x; j < neighbour.y; j++)
 	{
 		uint obj2 = objectIds[j];
-		ResolveCollsion(particle1OriginalPos, particle1CumulativePos, obj2, isUpdated);
+		ResolveCollsion(particle1OriginalPos, particle1CumulativePos, particle1Presure, obj2, isUpdated);
 	}
 }
 
@@ -146,8 +193,8 @@ void main()
 //test[thid*2]=collisionCellsStart;
 //test[thid*2+1]=collisionCellsEnd;
 
-	int gridWidth = int(ceil(windowSize.x / cellSize));
-test[thid]=gridWidth;
+	int gridWidth = int(ceil(simulationArea.x / cellSize));
+//test[thid]=gridWidth;
 
 	int cellId = int(cellIds[collisionCellsStart]);
 	int cellCoordY = cellId / gridWidth;
@@ -171,33 +218,42 @@ test[thid]=gridWidth;
 		neighbours[i] = getNeighbourCollisionStartAndEnd(neighbours[i], gridWidth);
 	}
 
-	int cellType = ((cellId % gridWidth) % 2) + ((cellId / gridWidth) % 2) * 2;
-	for (uint c = 0; c < 4; c ++) // serialyzing thread access to bordering cells to avoid two threads updating same object
+	int cellType = ((cellId % gridWidth) % 3) + ((cellId / gridWidth) % 3) * 3;
+	for (uint c = 0; c < 9; c++) // serialyzing thread access to bordering cells to avoid two threads updating same object
 	{
 		if (c == cellType)
 		{
 			for (uint i = collisionCellsStart; i < collisionCellsEnd; i++)
 			{
 				bool isUpdated = false;
+				bool isPrevPosUpdated = false;
 				uint objectId1 = objectIds[i];
-				Particle particle1 = particles[objectId1];
-				vec2 particle1OriginalPos = particle1.Pos;
-				vec2 particle1CumulativePos = particle1.Pos;
+				vec2 particle1Pos = particlesPos[objectId1];
+				vec2 particle1PrevPos = particlesPrevPos[objectId1];
+				float particle1Presure = particlesPresure[objectId1];
+
+				vec2 particle1OriginalPos = particle1Pos;
+				vec2 particle1CumulativePos = particle1Pos;
 
 				for (uint j = i + 1; j < collisionCellsEnd; j++)
 				{
 					uint objectId2 = objectIds[j];
-					ResolveCollsion(particle1OriginalPos, particle1CumulativePos, objectId2, isUpdated);
+					ResolveCollsion(particle1OriginalPos, particle1CumulativePos, particle1Presure, objectId2, isUpdated);
 				}
 				for (int i = 0; i < lel; i++)
 				{
-					resolveNeighbour(neighbours[i], particle1OriginalPos, particle1CumulativePos, isUpdated);
+					resolveNeighbour(neighbours[i], particle1OriginalPos, particle1CumulativePos, particle1Presure, isUpdated);
 				}
+
+				simulationAreaBoundsCollision(particle1OriginalPos, particle1CumulativePos, particle1PrevPos, isPrevPosUpdated);
 
 				if (isUpdated && objectId1 != draggedParticleIndex - 1)
 				{
-					particle1.Pos = particle1CumulativePos;
-					particles[objectId1] = particle1;
+					particlesPos[objectId1] = particle1CumulativePos;
+				}
+				if (isPrevPosUpdated && objectId1 != draggedParticleIndex - 1)
+				{
+					particlesPrevPos[objectId1] = particle1PrevPos;
 				}
 			}
 		}
