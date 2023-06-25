@@ -112,7 +112,6 @@ GLint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::v
 	const char* shaderFilePath;
 	switch (shaderType)
 	{
-	case GL_COMPUTE_SHADER: shaderFilePath = computeShaderFilePath; break;
 	case GL_VERTEX_SHADER: shaderFilePath = vertexShaderFilePath; break;
 	case GL_FRAGMENT_SHADER: shaderFilePath = fragmentShaderFilePath; break;
 	default:

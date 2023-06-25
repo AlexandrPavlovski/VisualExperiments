@@ -26,6 +26,7 @@ public:
 	virtual void draw(GLdouble deltaTime);
 	virtual void drawGUI();
 	virtual void restart();
+	virtual void cleanup();
 
 	virtual void keyCallback(int key, int scancode, int action, int mode);
 	virtual void mouseButtonCallback(int button, int action, int mods);
@@ -129,7 +130,7 @@ private:
 
 	GLint currentParticlesCount = 0;
 	GLint currentCellsCount = 0;
-	bool isPaused = false;
+	bool isPaused = true;
 	bool isAdvanceOneFrame = false;
 	bool isDebug = false;
 
@@ -156,6 +157,7 @@ private:
 		compactCollisionCellsCompShaderProgram = 0,
 		resolveCollisionsCompShaderProgram = 0,
 		mouseInteractionsCompShaderProgram = 0,
+		integrateCompShaderProgram = 0,
 		gridShaderProgram = 0;
 	std::vector<RadixSortPhase> RadixSortPasses = std::vector<RadixSortPhase>(totalSortPasses);
 
@@ -179,17 +181,12 @@ private:
 	ShaderParams initShaderParams();
 	void initRadixSortShaderProgramms(ShaderParams shaderParams);
 
-	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
 	void createSsbo(GLuint* buff, GLuint index, GLsizeiptr size, const void* data, GLenum usage);
-	void cleanup();
 
 	void resetPanAndZoom();
 
 	template< typename T >
 	T* readFromBuffer(int elemCount, GLuint ssbo);
-	template< typename T >
-	T* readFromBuffer2(int elemCount, GLuint ssbo);
-
 	
 	Vec2* particlesPrev = 0;
 
@@ -218,7 +215,7 @@ private:
 	// === for performance profiling ===
 	static const int framesToAvegare = 100;
 	int currentlyAveragedFrames = 0;
-	static const int queriesSize = 5;
+	static const int queriesSize = 6;
 	static const int queriesForRadixSortSize = totalSortPasses * 3;
 	double accumulatedTimeCpu = 0;
 	double accumulatedTimeGpu[queriesSize] = { 0 };

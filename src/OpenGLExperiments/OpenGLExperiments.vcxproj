@@ -225,7 +225,7 @@
     <CopyFileToFolders Include="FillCellIdAndObjectIdArrays.comp">
       <FileType>Document</FileType>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="Particles2dCollisionEffect.comp">
+    <CopyFileToFolders Include="Intgrate.comp">
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>

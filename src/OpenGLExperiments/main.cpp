@@ -29,7 +29,7 @@ const char* effectNames[effectsCount] =
 	"2D Fractals",
 	"2D Collisions"
 };
-int currentEffectIndex = 2;
+int currentEffectIndex = 3;
 
 GLFWwindow* window;
 bool isFullscreen = false;
@@ -43,6 +43,7 @@ void useSelectedEffect()
 {
 	if (effect)
 	{
+		effect->cleanup();
 		delete effect;
 	}
 
@@ -226,6 +227,9 @@ int main()
 		return -1;
 	}
 
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(ErrorMessageCallback, 0);
+
 	try
 	{
 		useSelectedEffect();
@@ -238,9 +242,6 @@ int main()
 		getchar();
 		return -1;
 	}
-
-	glEnable(GL_DEBUG_OUTPUT);
-	glDebugMessageCallback(ErrorMessageCallback, 0);
 
 
 	// ------ GUI setup ------ //

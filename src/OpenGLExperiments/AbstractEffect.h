@@ -20,6 +20,7 @@ public:
 	virtual void draw(GLdouble deltaTime) = 0;
 	virtual void drawGUI() = 0;
 	virtual void restart() = 0;
+	virtual void cleanup() = 0;
 	void hotReloadShaders();
 
 	virtual void keyCallback(int key, int scancode, int action, int mode);
@@ -37,7 +38,6 @@ protected:
 	GLFWwindow* window;
 	GLint windowWidth, windowHeight;
 
-	const char* computeShaderFilePath;
 	const char* vertexShaderFilePath;
 	const char* fragmentShaderFilePath;
 	GLuint shaderProgram;

@@ -1,10 +1,6 @@
 #version 460 core
 
-// 0 is replaced at runtime with an actual value
-#define particlesCount 0
-
 layout(location = 0) in vec3 particleColor;
-layout(location = 1) in vec3 gridCellColor;
 
 out vec4 color;
 

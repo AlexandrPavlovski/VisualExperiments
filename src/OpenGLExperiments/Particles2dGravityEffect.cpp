@@ -117,6 +117,10 @@ void Particles2dGravityEffect::restart()
 	initialize();
 }
 
+void Particles2dGravityEffect::cleanup()
+{
+
+}
 
 void Particles2dGravityEffect::keyCallback(int key, int scancode, int action, int mode)
 {

@@ -8,6 +8,7 @@ layout(std430) buffer;
 
 layout(location = 0) uniform vec2 windowSize;
 layout(location = 1) uniform uint cellSize;
+layout(location = 2) uniform bool isPaused;
 
 layout(binding = 0) buffer SSBO
 {
@@ -25,6 +26,11 @@ layout(binding = 9) buffer tetete
 {
 	float test[];
 };
+layout(binding = 15) buffer SSBOPressure
+{
+	float particlesPressure[];
+};
+
 
 void main()
 {
@@ -40,4 +46,9 @@ void main()
 
 	cellIds1[thid] = hCellId;
 	objectIds[thid] = thid;
+
+	if (!isPaused)
+	{
+		particlesPressure[thid] = 0.0;
+	}
 }

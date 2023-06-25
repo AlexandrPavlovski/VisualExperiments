@@ -1,0 +1,143 @@
+#version 460 core
+
+// 0 is replaced at runtime with an actual value
+#define particlesCount 0
+
+#define nBody 0
+#define bounce 1
+
+layout(local_size_x = 1024) in;
+layout(std430) buffer;
+
+layout(location = 0) uniform float velocityDamping;
+layout(location = 1) uniform float deltaTime;
+layout(location = 2) uniform float particleSize;
+layout(location = 3) uniform vec2 simulationArea;
+layout(location = 4) uniform bool isPaused;
+layout(location = 5) uniform uint substeps;
+
+layout(binding = 0) buffer SSBO
+{
+	vec2 particlesPos[];
+};
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+layout(binding = 13) buffer SSBOPrevPos
+{
+	vec2 particlesPrevPos[];
+};
+//layout(binding = 14) buffer SSBOAcc
+//{
+//	vec2 particlesAcc[];
+//};
+layout(binding = 16) buffer misc
+{
+	uint draggedParticleIndex;
+};
+
+
+vec2 getBodyToBodyAcceleration(vec2 b1, vec2 b2)
+{
+	vec2 dir = b2 - b1;
+	
+	float distSquared = max(dot(dir, dir), 1.0);
+	float distSixth = distSquared * distSquared * distSquared;
+	float invDistCube = 1.0f / sqrt(distSixth);
+
+	return dir * invDistCube;
+}
+
+void nBodyGravity(vec2 pos, inout vec2 pAcc)
+{
+	for (int i = 0; i < particlesCount; i += 4)
+	{
+		pAcc += getBodyToBodyAcceleration(pos, particlesPos[i]);
+		pAcc += getBodyToBodyAcceleration(pos, particlesPos[i+1]);
+		pAcc += getBodyToBodyAcceleration(pos, particlesPos[i+2]);
+		pAcc += getBodyToBodyAcceleration(pos, particlesPos[i+3]);
+	}
+}
+
+void simulationAreaBoundsCollision(inout vec2 cumulativePos, inout vec2 prevPos)
+{
+	const float halfParticleSize = particleSize / 2;
+	const float leftWall = halfParticleSize;
+	const float rightWall = simulationArea.x - halfParticleSize;
+	const float topWall = halfParticleSize;
+	const float bottomWall = simulationArea.y - halfParticleSize;
+
+	if (cumulativePos.x < leftWall)
+	{
+#if (bounce == 1)
+		cumulativePos.x = leftWall + leftWall - cumulativePos.x;
+		prevPos.x = leftWall - (prevPos.x - leftWall);
+#else
+		cumulativePos.x = prevPos.x = leftWall;
+#endif
+	}
+	if (cumulativePos.x > rightWall)
+	{
+#if (bounce == 1)
+		cumulativePos.x = rightWall - (cumulativePos.x - rightWall);
+		prevPos.x = rightWall + rightWall - prevPos.x;
+#else
+		cumulativePos.x = prevPos.x = rightWall;
+#endif
+	}
+	if (cumulativePos.y < topWall)
+	{
+#if (bounce == 1)
+		cumulativePos.y = topWall + topWall - cumulativePos.y;
+		prevPos.y = topWall - (prevPos.y - topWall);
+#else
+		cumulativePos.y = prevPos.y = topWall;
+#endif
+	}
+	if (cumulativePos.y > bottomWall)
+	{
+#if (bounce == 1)
+		cumulativePos.y = bottomWall - (cumulativePos.y - bottomWall);
+		prevPos.y = bottomWall + bottomWall - prevPos.y;
+#else
+		cumulativePos.y = prevPos.y = bottomWall;
+#endif
+	}
+}
+
+void main()
+{
+	uint thid = gl_GlobalInvocationID.x;
+
+	vec2 pos = particlesPos[thid];
+	vec2 prevPos = particlesPrevPos[thid];
+	vec2 acc = vec2(0);
+
+	if (!isPaused)
+	{
+		if (draggedParticleIndex - 1 != thid)
+		{
+#if (nBody == 1)
+			nBodyGravity(pos, acc);
+#else
+			const vec2 gravityAcc = vec2(0, 0.005);
+			acc += gravityAcc;
+#endif
+			vec2 newPos = pos * 2 - prevPos + acc * deltaTime * deltaTime;
+test[thid] = acc.y * deltaTime * deltaTime;
+			vec2 vel = (newPos - pos) * velocityDamping;
+			
+//			float velLenghtSquared = dot(vel, vel);
+//			if (velLenghtSquared > 15) vel *= 0.9;
+
+			prevPos = newPos - vel;
+			pos = newPos;
+		}
+	}
+
+	simulationAreaBoundsCollision(pos, prevPos);
+	
+	particlesPos[thid] = pos;
+	particlesPrevPos[thid] = prevPos;
+}

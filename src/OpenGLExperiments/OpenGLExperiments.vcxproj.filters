@@ -131,7 +131,7 @@
     <CopyFileToFolders Include="Particles2dCollisionEffect.frag">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="Particles2dCollisionEffect.comp">
+    <CopyFileToFolders Include="Intgrate.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="ResolveCollisions.comp">

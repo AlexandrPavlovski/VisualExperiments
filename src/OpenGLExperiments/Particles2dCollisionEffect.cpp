@@ -12,7 +12,6 @@
 Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	:AbstractEffect(window)
 {
-	computeShaderFilePath = "Particles2dCollisionEffect.comp";
 	vertexShaderFilePath = "Particles2dCollisionEffect.vert";
 	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
 
@@ -24,7 +23,7 @@ Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	runtimeParams.ForceScale = 1.0;
 	runtimeParams.VelocityDamping = 0.999;
 	runtimeParams.TimeScale = 1.000;
-	runtimeParams.particleSize = 2.0;
+	runtimeParams.particleSize = 3;
 	runtimeParams.cellSize = 4.0;//ceil(sqrt(windowWidth * windowHeight / pow(2, cellIdBits)));
 	runtimeParams.substeps = 1;
 
@@ -109,6 +108,7 @@ void Particles2dCollisionEffect::initialize()
 	createComputeShaderProgram(compactCollisionCellsCompShaderProgram, "CompactCollisionCells.comp", CompactCollisionCellsShaderParams);
 	createComputeShaderProgram(resolveCollisionsCompShaderProgram, "ResolveCollisions.comp", ResolveCollisionsShaderParams);
 	createComputeShaderProgram(mouseInteractionsCompShaderProgram, "MouseInteractions.comp", MouseInteractionsShaderParams);
+	createComputeShaderProgram(integrateCompShaderProgram, "Intgrate.comp", fragShaderParams);
 
 	initRadixSortShaderProgramms(shaderParams);
 
@@ -143,35 +143,48 @@ void Particles2dCollisionEffect::initParticles()
 	particlesAcc = std::vector<Vec2>(currentParticlesCount);
 	particlesPressure = std::vector<GLfloat>(currentParticlesCount);
 
-	/*int t = 0;
-	for (int x = 0; x < 10; x++)
-	for (int y = 0; y < 10; y++)
-	{
-		particles[t]  .PosX = 501 + x * 6;
-		particles[t++].PosY = 501 + y * 6;
-	}*/
-
 	GLfloat halfParticle = runtimeParams.particleSize / 2;
+	GLfloat sqrtOf3 = sqrt(3);
+	GLint row = 0;
+	GLfloat x = halfParticle;
+	GLfloat y = simulationAreaHeight - halfParticle;
 	for (int i = 0; i < currentParticlesCount; i++)
 	{
-		GLfloat x = random(halfParticle, windowWidth - halfParticle);
-		GLfloat y = random(halfParticle, windowHeight - halfParticle);
+		if (x > simulationAreaWidth - halfParticle)
+		{
+			row++;
+			x = row % 2 == 0 ? halfParticle : runtimeParams.particleSize;
+			y -= sqrtOf3 * halfParticle;
+		}
+
 		particlesPos[i].X = x;
 		particlesPos[i].Y = y;
+		particlesPrevPos[i].X = x;
+		particlesPrevPos[i].Y = y;
 
-		//particles[i].PosX = random(101.0, 1001.0);
-		//particles[i].PosY = random(101.0, 702.0);
-
-		//particles[i].PosX += 40;
-		//particles[i].PosY += 40;
-
-		particlesPrevPos[i].X = x;// +random(-10, 10);
-		particlesPrevPos[i].Y = y;// +random(-10, 10);
-
-
-		//particles[i].VelX = random(-3.0, 3.0);
-		//particles[i].VelY = random(-3.0, 3.0);
+		x += runtimeParams.particleSize;
 	}
+
+	//for (int i = 0; i < currentParticlesCount; i++)
+	//{
+	//	GLfloat x = random(halfParticle, windowWidth - halfParticle);
+	//	GLfloat y = random(halfParticle, windowHeight - halfParticle);
+	//	particlesPos[i].X = x;
+	//	particlesPos[i].Y = y;
+
+	//	//particles[i].PosX = random(101.0, 1001.0);
+	//	//particles[i].PosY = random(101.0, 702.0);
+
+	//	//particles[i].PosX += 40;
+	//	//particles[i].PosY += 40;
+
+	//	particlesPrevPos[i].X = x;// +random(-10, 10);
+	//	particlesPrevPos[i].Y = y;// +random(-10, 10);
+
+
+	//	//particles[i].VelX = random(-3.0, 3.0);
+	//	//particles[i].VelY = random(-3.0, 3.0);
+	//}
 }
 
 void Particles2dCollisionEffect::initBuffers()
@@ -319,7 +332,7 @@ auto tBegin = std::chrono::steady_clock::now();
 	glPointSize(runtimeParams.particleSize * runtimeParams.viewZoom);
 
 	//GLfloat dt = ((GLfloat)deltaTime) * 50 * runtimeParams.TimeScale;
-	GLfloat dt = 0.01666666 * 50 * runtimeParams.TimeScale;
+	GLfloat dt = 0.01666666 * 50 * runtimeParams.TimeScale / runtimeParams.substeps;
 
 #ifdef VLAIDATE
 Particle* prtcls = readFromBuffer<Particle>(currentParticlesCount, ssboParticles);
@@ -345,6 +358,8 @@ GLuint* totalSumms = nullptr;
 		runtimeParams.viewPosX += cursorDX / runtimeParams.viewZoom;
 		runtimeParams.viewPosY += cursorDY / runtimeParams.viewZoom;
 	}
+	
+	GLuint groupsCount = ceil(currentParticlesCount / 1024.0);
 
 	for (GLuint subSteps = 0; subSteps < runtimeParams.substeps; subSteps++)
 	{
@@ -356,10 +371,12 @@ glBeginQuery(GL_TIME_ELAPSED, queries[0]);
 		glClearNamedBufferData(ssboCellIdsLookup, GL_R32I, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
 
 		glUseProgram(fillCellIdAndObjectIdArraysCompShaderProgram);
+
 		glUniform2f(0, simulationAreaWidth, simulationAreaHeight);
 		glUniform1ui(1, runtimeParams.cellSize);
-		GLuint groupCount = ceil(currentParticlesCount / 1024.0f);
-		glDispatchCompute(groupCount, 1, 1);
+		glUniform1i(2, isPaused && !isAdvanceOneFrame);
+
+		glDispatchCompute(groupsCount, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 #ifdef VLAIDATE
 cells0 = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
@@ -373,7 +390,7 @@ validateFilledArrays(cells0, obj0);
 glEndQuery(GL_TIME_ELAPSED);
 #endif
 
-			for(int i = 0; i < totalSortPasses; i++)
+			for (int i = 0; i < totalSortPasses; i++)
 			{
 #ifdef VLAIDATE
 GLuint phase3CellsBuffer = buffer5;
@@ -505,11 +522,9 @@ glBeginQuery(GL_TIME_ELAPSED, queries[2]);
 			glUniform1f(3, runtimeParams.ForceScale);
 			glUniform2f(4, simulationAreaWidth, simulationAreaHeight);
 			glUniform1ui(5, totalCollisionCells);
-			glUniform1ui(6, runtimeParams.substeps);
 
 			glDispatchCompute(workGroups, 1, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
-//test = readFromBuffer<GLfloat>(1024, bufferTest);
 //GLuint* cells = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
 //GLuint* objs = readFromBuffer<GLuint>(currentCellsCount, ssboObjectId);
 //GLuint* collis = readFromBuffer<GLuint>(currentCellsCount, ssboCollisionList);
@@ -519,11 +534,30 @@ glBeginQuery(GL_TIME_ELAPSED, queries[2]);
 //if (frameCount2 == 42)__debugbreak();
 //glClearNamedBufferData(bufferTest, GL_R32F, GL_RED, GL_FLOAT, NULL);
 		}
-	}
 
 #ifdef PROFILE
 glEndQuery(GL_TIME_ELAPSED);
 glBeginQuery(GL_TIME_ELAPSED, queries[3]);
+#endif
+
+		glUseProgram(integrateCompShaderProgram);
+
+		glUniform1f(0, runtimeParams.VelocityDamping);
+		glUniform1f(1, dt);
+		glUniform1f(2, runtimeParams.particleSize);
+		glUniform2f(3, simulationAreaWidth, simulationAreaHeight);
+		glUniform1i(4, isPaused && !isAdvanceOneFrame);
+		glUniform1ui(5, runtimeParams.substeps);
+
+		glDispatchCompute(groupsCount, 1, 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+//test = readFromBuffer<GLfloat>(1024, bufferTest);
+//int p = 0;
+	}
+
+#ifdef PROFILE
+glEndQuery(GL_TIME_ELAPSED);
+glBeginQuery(GL_TIME_ELAPSED, queries[4]);
 #endif
 
 	// =========== mouse drag handling ==================
@@ -540,7 +574,6 @@ glBeginQuery(GL_TIME_ELAPSED, queries[3]);
 	glUniform2f(8, runtimeParams.viewPosX, runtimeParams.viewPosY);
 	glUniform1f(9, runtimeParams.viewZoom);
 
-	GLuint groupsCount = ceil(currentCellsCount / 1024.0);
 	glDispatchCompute(groupsCount, 1, 1);
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	// ===================================================
@@ -559,21 +592,15 @@ glBeginQuery(GL_TIME_ELAPSED, queries[3]);
 
 #ifdef PROFILE
 glEndQuery(GL_TIME_ELAPSED);
-glBeginQuery(GL_TIME_ELAPSED, queries[4]);
+glBeginQuery(GL_TIME_ELAPSED, queries[5]);
 #endif
 
 	glUseProgram(shaderProgram);
 
 	// vertex shader params
 	glUniform2f(0, windowWidth, windowHeight);
-	glUniform1f(1, runtimeParams.VelocityDamping);
-	glUniform1f(2, dt);
-	glUniform1i(3, isPaused && !isAdvanceOneFrame);
-	glUniform1f(4, runtimeParams.particleSize);
-	glUniform1ui(5, runtimeParams.cellSize);
-	glUniform2f(6, runtimeParams.viewPosX, runtimeParams.viewPosY);
-	glUniform1f(7, runtimeParams.viewZoom);
-	glUniform2f(8, simulationAreaWidth, simulationAreaHeight);
+	glUniform2f(1, runtimeParams.viewPosX, runtimeParams.viewPosY);
+	glUniform1f(2, runtimeParams.viewZoom);
 
 	glDrawArrays(GL_POINTS, 0, currentParticlesCount);
 
@@ -709,7 +736,7 @@ void Particles2dCollisionEffect::drawGUI()
 	ImGui::Begin("Runtime params (Collisions)");
 	ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, 0.0, 2.0);
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
-	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.0, 5.0);
+	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.1, 2.0);
 	ImGui::SliderFloat("Particle Size", &runtimeParams.particleSize, 1.0, 50.0);
 	ImGui::SliderFloat("Cell Size", &runtimeParams.cellSize, 4.0, 500.0);
 	ImGui::SliderInt("Substeps", &runtimeParams.substeps, 1.0, 32.0);
@@ -727,8 +754,9 @@ ImGui::Text(("CPU - " + std::to_string(averageFrameTimeCpu)).c_str());
 ImGui::Text(("Fill cellIds - "               + std::to_string(averageFrameTimeGpu[0])).c_str());
 ImGui::Text(("Find collision cells - "       + std::to_string(averageFrameTimeGpu[1])).c_str());
 ImGui::Text(("Resolve collisions - "         + std::to_string(averageFrameTimeGpu[2])).c_str());
-ImGui::Text(("Handle mouse and draw grid - " + std::to_string(averageFrameTimeGpu[3])).c_str());
-ImGui::Text(("Integration - "                + std::to_string(averageFrameTimeGpu[4])).c_str());
+ImGui::Text(("Integration - "                + std::to_string(averageFrameTimeGpu[3])).c_str());
+ImGui::Text(("Handle mouse and draw grid - " + std::to_string(averageFrameTimeGpu[4])).c_str());
+ImGui::Text(("Draw - "                       + std::to_string(averageFrameTimeGpu[5])).c_str());
 float totalSort = 0;
 for (int i = 0; i < totalSortPasses; i++)
 {
@@ -757,6 +785,7 @@ void Particles2dCollisionEffect::cleanup()
 	glDeleteProgram(compactCollisionCellsCompShaderProgram);
 	glDeleteProgram(resolveCollisionsCompShaderProgram);
 	glDeleteProgram(mouseInteractionsCompShaderProgram);
+	glDeleteProgram(integrateCompShaderProgram);
 	glDeleteProgram(gridShaderProgram);
 	for (int i = 0; i < totalSortPasses; i++)
 	{
@@ -875,22 +904,6 @@ void Particles2dCollisionEffect::resetPanAndZoom()
 	glPointSize(runtimeParams.particleSize);
 }
 
-void Particles2dCollisionEffect::createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams)
-{
-	GLint newShaderProgram = glCreateProgram();
-	if (createShader(shaderFilePath, newShaderProgram, GL_COMPUTE_SHADER, shaderParams) == -1)
-	{
-		throw "Compute shader compilation failed";
-	}
-	glLinkProgram(newShaderProgram);
-	if (checkShaderPrgramLinkErrors(newShaderProgram) == -1)
-	{
-		glDeleteProgram(newShaderProgram);
-		throw "Compute shader program linking failed";
-	}
-	compShaderProgram = newShaderProgram;
-}
-
 void Particles2dCollisionEffect::createSsbo(GLuint* buff, GLuint index, GLsizeiptr size, const void* data, GLenum usage)
 {
 	glGenBuffers(1, buff);
@@ -907,17 +920,6 @@ T* Particles2dCollisionEffect::readFromBuffer(int elemCount, GLuint ssbo)
 	memcpy(buf, p, elemCount * sizeof(T));
 	bool b = glUnmapNamedBuffer(ssbo);
 	if(!b)__debugbreak();
-	return buf;
-}
-template< typename T >
-T* Particles2dCollisionEffect::readFromBuffer2(int elemCount, GLuint ssbo)
-{
-	T* buf = new T[elemCount];
-	T* p = (T*)glMapNamedBufferRange(ssbo, 0, elemCount * sizeof(T), GL_MAP_READ_BIT);
-	memcpy(buf, p, elemCount * sizeof(T));
-	bool b = glUnmapNamedBuffer(ssbo);
-	if (!b)__debugbreak();
-
 	return buf;
 }
 

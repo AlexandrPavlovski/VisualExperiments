@@ -18,6 +18,7 @@ public:
 	virtual void draw(GLdouble deltaTime);
 	virtual void drawGUI();
 	virtual void restart();
+	virtual void cleanup();
 
 	virtual void keyCallback(int key, int scancode, int action, int mode);
 
