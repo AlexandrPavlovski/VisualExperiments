@@ -2,8 +2,8 @@
 
 // 0 is replaced at runtime with an actual value
 #define particlesCount 0
-
 #define nBody 0
+
 #define bounce 1
 
 layout(local_size_x = 1024) in;

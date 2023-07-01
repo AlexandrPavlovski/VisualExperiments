@@ -15,6 +15,7 @@ layout(location = 2) uniform uint cellSize;
 layout(location = 3) uniform float forceScale;
 layout(location = 4) uniform vec2 simulationArea;
 layout(location = 5) uniform uint totalCollisionCells;
+layout(location = 6) uniform uint offset;
 
 
 layout(binding = 0) buffer SSBO
@@ -113,7 +114,7 @@ void ResolveCollsion(in vec2 particle1OriginalPos, inout vec2 particle1Cumulativ
 		particle1CumulativePos += move;
 		particle2Pos -= move;
 
-		float pressure = covered / particleSize * 20.0;
+		float pressure = covered / particleSize * 10.0;
 		particle1Pressure += pressure;
 
 		if (obj2 != draggedParticleIndex - 1)
@@ -156,7 +157,7 @@ void resolveNeighbour(in ivec2 neighbour, in vec2 particle1OriginalPos, inout ve
 
 void main()
 {
-	uint thid = gl_GlobalInvocationID.x;
+	uint thid = gl_GlobalInvocationID.x + offset;
 	if (thid >= totalCollisionCells)
 	{
 		return;

@@ -3,8 +3,8 @@
 Fractal2dEffect::Fractal2dEffect(GLFWwindow* window)
 	:AbstractEffect(window)
 {
-	vertexShaderFilePath = "Fractal2dEffect.vert";
-	fragmentShaderFilePath = fragmentShaderFilePathSingle;
+	vertexShaderFileName = "Fractal2dEffect.vert";
+	fragmentShaderFileName = fragmentShaderFilePathSingle;
 
 	startupParams = {};
 	startupParams.Iterations = 1;
@@ -41,7 +41,7 @@ void Fractal2dEffect::initialize()
 		iterationsShaderParam,
 		antiAliasingShaderParam
 	};
-	fragmentShaderFilePath = fragmentShaderFilePathSingle;
+	fragmentShaderFileName = fragmentShaderFilePathSingle;
 	GLint newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParam>(), fragShaderParams);
 	if (newShaderProgram == -1)
 	{
@@ -49,7 +49,7 @@ void Fractal2dEffect::initialize()
 	}
 	shaderProgram = newShaderProgram;
 
-	fragmentShaderFilePath = fragmentShaderFilePathDouble;
+	fragmentShaderFileName = fragmentShaderFilePathDouble;
 	newShaderProgram = createShaderProgramFromFiles(std::vector<ShaderParam>(), fragShaderParams);
 	if (newShaderProgram == -1)
 	{

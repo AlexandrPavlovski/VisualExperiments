@@ -270,7 +270,7 @@ int main()
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		if (!isGUI)
+		if (isGUI)
 		{
 			drawGUI();
 		}
@@ -284,6 +284,10 @@ int main()
 			{
 				std::stringstream ss;
 				ss << windowTitle << " | " << io.Framerate << " FPS (" << io.DeltaTime * 1000 << " ms)";
+				if (effect->isPaused)
+				{
+					ss << " | PAUSED";
+				}
 				glfwSetWindowTitle(window, ss.str().c_str());
 
 				timeFromPrevFpsUpdate -= 1.0;

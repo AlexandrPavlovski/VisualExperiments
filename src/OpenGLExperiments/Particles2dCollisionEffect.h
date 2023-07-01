@@ -130,8 +130,6 @@ private:
 
 	GLint currentParticlesCount = 0;
 	GLint currentCellsCount = 0;
-	bool isPaused = true;
-	bool isAdvanceOneFrame = false;
 	bool isDebug = false;
 
 	GLint frameCount = 0;

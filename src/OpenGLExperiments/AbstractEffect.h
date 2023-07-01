@@ -28,6 +28,11 @@ public:
 	virtual void scrollCallback(double xoffset, double yoffset);
 	virtual void windowSizeCallback(int width, int height);
 
+	bool isPaused = false;
+	bool isAdvanceOneFrame = false;
+
+	std::string shadersFolder = "shaders";
+
 protected:
 	struct ShaderParam
 	{
@@ -38,8 +43,8 @@ protected:
 	GLFWwindow* window;
 	GLint windowWidth, windowHeight;
 
-	const char* vertexShaderFilePath;
-	const char* fragmentShaderFilePath;
+	const char* vertexShaderFileName;
+	const char* fragmentShaderFileName;
 	GLuint shaderProgram;
 
 	GLfloat random(GLfloat low, GLfloat high);
@@ -48,19 +53,19 @@ protected:
 		std::vector<ShaderParam> vertShaderParams = std::vector<ShaderParam>(),
 		std::vector<ShaderParam> fragShaderParams = std::vector<ShaderParam>());
 	GLint createShaderProgramFromFiles(
-		const char* customVertexShaderFilePath,
-		const char* customFragmentShaderFilePath,
+		const char* customVertexShaderFileName,
+		const char* customFragmentShaderFileName,
 		std::vector<ShaderParam> vertShaderParams = std::vector<ShaderParam>(),
 		std::vector<ShaderParam> fragShaderParams = std::vector<ShaderParam>());
 
 	GLint createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
-	GLint createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
-	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams);
-	GLint checkShaderPrgramLinkErrors(GLuint shaderProgram);
+	GLint createShader(const char* shaderFileName, GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
+	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFileName, std::vector<ShaderParam> shaderParams);
+	GLint checkShaderPrgramLinkErrors(GLuint shaderProgram, const char* shaderFileName);
 
 
 private:
 	GLint checkShaderCompileErrors(GLuint shader);
 
-	std::string readShaderFromFile(const char* shaderFilePath);
+	std::string readShaderFromFile(const char* shaderFileName);
 };

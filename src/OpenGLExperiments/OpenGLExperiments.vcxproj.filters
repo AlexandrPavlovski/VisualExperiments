@@ -167,10 +167,8 @@
     <CopyFileToFolders Include="MouseInteractions.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="CompactCollisionCells.comp">
+    <CopyFileToFolders Include="CompactCollisionCells.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
-    </None>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

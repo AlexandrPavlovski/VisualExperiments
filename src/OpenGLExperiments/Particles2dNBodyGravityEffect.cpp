@@ -5,8 +5,8 @@
 Particles2dNBodyGravityEffect::Particles2dNBodyGravityEffect(GLFWwindow* window)
 	:AbstractEffect(window)
 {
-	vertexShaderFilePath = "Particles2dNBodyGravityEffect.vert";
-	fragmentShaderFilePath = "Particles2dNBodyGravityEffect.frag";
+	vertexShaderFileName = "Particles2dNBodyGravityEffect.vert";
+	fragmentShaderFileName = "Particles2dNBodyGravityEffect.frag";
 
 	startupParams = {};
 	startupParams.ParticlesCount = 20000;

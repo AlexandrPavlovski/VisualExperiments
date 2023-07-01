@@ -12,26 +12,27 @@
 Particles2dCollisionEffect::Particles2dCollisionEffect(GLFWwindow* window)
 	:AbstractEffect(window)
 {
-	vertexShaderFilePath = "Particles2dCollisionEffect.vert";
-	fragmentShaderFilePath = "Particles2dCollisionEffect.frag";
+	vertexShaderFileName = "Particles2dCollisionEffect.vert";
+	fragmentShaderFileName = "Particles2dCollisionEffect.frag";
 
 	startupParams = {};
-	startupParams.ParticlesCount = 100000;
+	startupParams.ParticlesCount = 50000;
 	startupParams.IsNBodyGravity = false;
 
 	runtimeParams = {};
 	runtimeParams.ForceScale = 1.0;
 	runtimeParams.VelocityDamping = 0.999;
 	runtimeParams.TimeScale = 1.000;
-	runtimeParams.particleSize = 3;
-	runtimeParams.cellSize = 4.0;//ceil(sqrt(windowWidth * windowHeight / pow(2, cellIdBits)));
-	runtimeParams.substeps = 1;
+	runtimeParams.particleSize = 4.0;
+	runtimeParams.cellSize = 8.0;//ceil(sqrt(windowWidth * windowHeight / pow(2, cellIdBits)));
+	runtimeParams.substeps = 8;
 
 	runtimeParams.viewZoom = 1.0;
 	runtimeParams.viewPosX = 0.0;
 	runtimeParams.viewPosY = 0.0;
 
 	zoomSpeed = 0.1;
+	isPaused = true;
 }
 
 Particles2dCollisionEffect::~Particles2dCollisionEffect()
@@ -49,7 +50,6 @@ void Particles2dCollisionEffect::initialize()
 	threadGroupsTotal = ceil(currentCellsCount / (double)elementsPerGroup);
 	phase2Iterations = ceil(threadGroupsTotal / maxThreadsInWorkGroup / 2);
 	workGroupsCountInFindCollisionCellsPhase = ceil(currentCellsCount / ((float)maxThreadsInWorkGroup * cellsPerThread));
-	//workGroupsCountInFindCollisionCellsPhase = 5;
 
 	initParticles();
 	initBuffers();
@@ -64,7 +64,6 @@ void Particles2dCollisionEffect::initialize()
 	std::vector<ShaderParam> vertShaderParams
 	{
 		shaderParams.particlesCount,
-		shaderParams.nBody
 	};
 	std::vector<ShaderParam> fragShaderParams
 	{
@@ -102,13 +101,18 @@ void Particles2dCollisionEffect::initialize()
 	std::vector<ShaderParam> MouseInteractionsShaderParams
 	{
 	};
+	std::vector<ShaderParam> IntegrateShaderParams
+	{
+		shaderParams.particlesCount,
+		shaderParams.nBody
+	};
 
 	createComputeShaderProgram(fillCellIdAndObjectIdArraysCompShaderProgram, "FillCellIdAndObjectIdArrays.comp", fragShaderParams);
 	createComputeShaderProgram(findCollisionCellsCompShaderProgram, "FindCollisionCells.comp", findCollisionCellsShaderParams);
 	createComputeShaderProgram(compactCollisionCellsCompShaderProgram, "CompactCollisionCells.comp", CompactCollisionCellsShaderParams);
 	createComputeShaderProgram(resolveCollisionsCompShaderProgram, "ResolveCollisions.comp", ResolveCollisionsShaderParams);
 	createComputeShaderProgram(mouseInteractionsCompShaderProgram, "MouseInteractions.comp", MouseInteractionsShaderParams);
-	createComputeShaderProgram(integrateCompShaderProgram, "Intgrate.comp", fragShaderParams);
+	createComputeShaderProgram(integrateCompShaderProgram, "Intgrate.comp", IntegrateShaderParams);
 
 	initRadixSortShaderProgramms(shaderParams);
 
@@ -144,47 +148,43 @@ void Particles2dCollisionEffect::initParticles()
 	particlesPressure = std::vector<GLfloat>(currentParticlesCount);
 
 	GLfloat halfParticle = runtimeParams.particleSize / 2;
-	GLfloat sqrtOf3 = sqrt(3);
-	GLint row = 0;
-	GLfloat x = halfParticle;
-	GLfloat y = simulationAreaHeight - halfParticle;
-	for (int i = 0; i < currentParticlesCount; i++)
+
+	if (startupParams.IsNBodyGravity)
 	{
-		if (x > simulationAreaWidth - halfParticle)
+		for (int i = 0; i < currentParticlesCount; i++)
 		{
-			row++;
-			x = row % 2 == 0 ? halfParticle : runtimeParams.particleSize;
-			y -= sqrtOf3 * halfParticle;
+			GLfloat x = random(halfParticle, windowWidth - halfParticle);
+			GLfloat y = random(halfParticle, windowHeight - halfParticle);
+
+			particlesPos[i].X = x;
+			particlesPos[i].Y = y;
+			particlesPrevPos[i].X = x;
+			particlesPrevPos[i].Y = y;
 		}
-
-		particlesPos[i].X = x;
-		particlesPos[i].Y = y;
-		particlesPrevPos[i].X = x;
-		particlesPrevPos[i].Y = y;
-
-		x += runtimeParams.particleSize;
 	}
+	else
+	{
+		GLfloat sqrtOf3 = sqrt(3);
+		GLint row = 0;
+		GLfloat x = halfParticle;
+		GLfloat y = simulationAreaHeight - halfParticle;
+		for (int i = 0; i < currentParticlesCount; i++)
+		{
+			if (x > simulationAreaWidth - halfParticle)
+			{
+				row++;
+				x = row % 2 == 0 ? halfParticle : runtimeParams.particleSize;
+				y -= sqrtOf3 * halfParticle;
+			}
 
-	//for (int i = 0; i < currentParticlesCount; i++)
-	//{
-	//	GLfloat x = random(halfParticle, windowWidth - halfParticle);
-	//	GLfloat y = random(halfParticle, windowHeight - halfParticle);
-	//	particlesPos[i].X = x;
-	//	particlesPos[i].Y = y;
+			particlesPos[i].X = x;
+			particlesPos[i].Y = y;
+			particlesPrevPos[i].X = x;
+			particlesPrevPos[i].Y = y;
 
-	//	//particles[i].PosX = random(101.0, 1001.0);
-	//	//particles[i].PosY = random(101.0, 702.0);
-
-	//	//particles[i].PosX += 40;
-	//	//particles[i].PosY += 40;
-
-	//	particlesPrevPos[i].X = x;// +random(-10, 10);
-	//	particlesPrevPos[i].Y = y;// +random(-10, 10);
-
-
-	//	//particles[i].VelX = random(-3.0, 3.0);
-	//	//particles[i].VelY = random(-3.0, 3.0);
-	//}
+			x += runtimeParams.particleSize;
+		}
+	}
 }
 
 void Particles2dCollisionEffect::initBuffers()
@@ -332,7 +332,7 @@ auto tBegin = std::chrono::steady_clock::now();
 	glPointSize(runtimeParams.particleSize * runtimeParams.viewZoom);
 
 	//GLfloat dt = ((GLfloat)deltaTime) * 50 * runtimeParams.TimeScale;
-	GLfloat dt = 0.01666666 * 50 * runtimeParams.TimeScale / runtimeParams.substeps;
+	GLfloat dt = 0.01666666 * 50 * runtimeParams.TimeScale;// / runtimeParams.substeps;
 
 #ifdef VLAIDATE
 Particle* prtcls = readFromBuffer<Particle>(currentParticlesCount, ssboParticles);
@@ -523,8 +523,19 @@ glBeginQuery(GL_TIME_ELAPSED, queries[2]);
 			glUniform2f(4, simulationAreaWidth, simulationAreaHeight);
 			glUniform1ui(5, totalCollisionCells);
 
-			glDispatchCompute(workGroups, 1, 1);
-			glMemoryBarrier(GL_ALL_BARRIER_BITS);
+			// split calculations to avoid GPU stalling when the collision list is to big
+			int iterations = ceil(totalCollisionCells / 32000.0);
+			int collisionCellsPerIteration = totalCollisionCells / iterations;
+			int workGroupsPerIteration = ceil(collisionCellsPerIteration / maxThreadsInWorkGroup);
+			int offset = 0;
+			for (int i = 0; i < iterations; i++)
+			{
+				glUniform1ui(6, offset);
+				glDispatchCompute(workGroupsPerIteration, 1, 1);
+				glMemoryBarrier(GL_ALL_BARRIER_BITS);
+				offset += collisionCellsPerIteration;
+			}
+
 //GLuint* cells = readFromBuffer<GLuint>(currentCellsCount, ssboCellId);
 //GLuint* objs = readFromBuffer<GLuint>(currentCellsCount, ssboObjectId);
 //GLuint* collis = readFromBuffer<GLuint>(currentCellsCount, ssboCollisionList);
@@ -539,6 +550,7 @@ glBeginQuery(GL_TIME_ELAPSED, queries[2]);
 glEndQuery(GL_TIME_ELAPSED);
 glBeginQuery(GL_TIME_ELAPSED, queries[3]);
 #endif
+	}
 
 		glUseProgram(integrateCompShaderProgram);
 
@@ -553,7 +565,6 @@ glBeginQuery(GL_TIME_ELAPSED, queries[3]);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 //test = readFromBuffer<GLfloat>(1024, bufferTest);
 //int p = 0;
-	}
 
 #ifdef PROFILE
 glEndQuery(GL_TIME_ELAPSED);
@@ -776,6 +787,7 @@ void Particles2dCollisionEffect::restart()
 {
 	cleanup();
 	initialize();
+	isPaused = true;
 }
 
 void Particles2dCollisionEffect::cleanup()
@@ -823,15 +835,7 @@ void Particles2dCollisionEffect::cleanup()
 
 void Particles2dCollisionEffect::keyCallback(int key, int scancode, int action, int mode)
 {
-	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-	{
-		isPaused = !isPaused;
-	}
-
-	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS && isPaused)
-	{
-		isAdvanceOneFrame = true;
-	}
+	AbstractEffect::keyCallback(key, scancode, action, mode);
 
 	if (key == GLFW_KEY_D && action == GLFW_PRESS)
 	{

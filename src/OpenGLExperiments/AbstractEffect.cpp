@@ -6,14 +6,15 @@
 #include <fstream>
 #include <sstream>
 #include <regex>
+#include <cstring>
 
 AbstractEffect::AbstractEffect(GLFWwindow* window)
 {
 	this->window = window;
 	glfwGetFramebufferSize(window, &windowWidth, &windowHeight);
 	shaderProgram = 0;
-	vertexShaderFilePath = NULL;
-	fragmentShaderFilePath = NULL;
+	vertexShaderFileName = NULL;
+	fragmentShaderFileName = NULL;
 }
 
 AbstractEffect::~AbstractEffect() {}
@@ -26,7 +27,15 @@ GLfloat AbstractEffect::random(GLfloat low, GLfloat high)
 
 void AbstractEffect::keyCallback(int key, int scancode, int action, int mode)
 {
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+	{
+		isPaused = !isPaused;
+	}
 
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS && isPaused)
+	{
+		isAdvanceOneFrame = true;
+	}
 }
 
 void AbstractEffect::mouseButtonCallback(int button, int action, int mods)
@@ -57,21 +66,21 @@ void AbstractEffect::hotReloadShaders()
 }
 
 GLint AbstractEffect::createShaderProgramFromFiles(
-	const char* customVertexShaderFilePath,
-	const char* customFragmentShaderFilePath,
+	const char* customVertexShaderFileName,
+	const char* customFragmentShaderFileName,
 	std::vector<ShaderParam> vertShaderParams,
 	std::vector<ShaderParam> fragShaderParams)
 {
-	const char* tempVertexShaderFilePath = vertexShaderFilePath;
-	const char* tempFragmentShaderFilePath = fragmentShaderFilePath;
+	const char* tempVertexShaderFileName = vertexShaderFileName;
+	const char* tempFragmentShaderFileName = fragmentShaderFileName;
 
-	vertexShaderFilePath = customVertexShaderFilePath;
-	fragmentShaderFilePath = customFragmentShaderFilePath;
+	vertexShaderFileName = customVertexShaderFileName;
+	fragmentShaderFileName = customFragmentShaderFileName;
 
 	GLint newShaderProgram = createShaderProgramFromFiles(vertShaderParams, fragShaderParams);
 
-	vertexShaderFilePath = tempVertexShaderFilePath;
-	fragmentShaderFilePath = tempFragmentShaderFilePath;
+	vertexShaderFileName = tempVertexShaderFileName;
+	fragmentShaderFileName = tempFragmentShaderFileName;
 
 	return newShaderProgram;
 }
@@ -80,14 +89,14 @@ GLint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParam> vert
 {
 	GLint newShaderProgram = glCreateProgram();
 
-	if (vertexShaderFilePath)
+	if (vertexShaderFileName)
 	{
 		if (createShader(newShaderProgram, GL_VERTEX_SHADER, vertShaderParams) == -1)
 		{
 			return -1;
 		}
 	}
-	if (fragmentShaderFilePath)
+	if (fragmentShaderFileName)
 	{
 		if (createShader(newShaderProgram, GL_FRAGMENT_SHADER, fragShaderParams) == -1)
 		{
@@ -97,7 +106,7 @@ GLint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParam> vert
 
 	glLinkProgram(newShaderProgram);
 
-	if (checkShaderPrgramLinkErrors(newShaderProgram) == -1)
+	if (checkShaderPrgramLinkErrors(newShaderProgram, vertexShaderFileName) == -1)
 	{
 		glDeleteProgram(newShaderProgram);
 		return -1;
@@ -109,21 +118,21 @@ GLint AbstractEffect::createShaderProgramFromFiles(std::vector<ShaderParam> vert
 
 GLint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams)
 {
-	const char* shaderFilePath;
+	const char* shaderFileName;
 	switch (shaderType)
 	{
-	case GL_VERTEX_SHADER: shaderFilePath = vertexShaderFilePath; break;
-	case GL_FRAGMENT_SHADER: shaderFilePath = fragmentShaderFilePath; break;
+	case GL_VERTEX_SHADER: shaderFileName = (shadersFolder + vertexShaderFileName).c_str(); break;
+	case GL_FRAGMENT_SHADER: shaderFileName = (shadersFolder + fragmentShaderFileName).c_str(); break;
 	default:
 		throw "Shader type is not supported";
 	}
 
-	return createShader(shaderFilePath, shaderProgram, shaderType, shaderParams);
+	return createShader(shaderFileName, shaderProgram, shaderType, shaderParams);
 }
 
-GLint AbstractEffect::createShader(const char* shaderFilePath, GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams)
+GLint AbstractEffect::createShader(const char* shaderFileName, GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams)
 {
-	std::string shaderStr = readShaderFromFile(shaderFilePath);
+	std::string shaderStr = readShaderFromFile(shaderFileName);
 	for (auto p : shaderParams)
 	{
 		shaderStr = std::regex_replace(shaderStr, std::regex(p.Placeholder), p.Value);
@@ -148,15 +157,15 @@ GLint AbstractEffect::createShader(const char* shaderFilePath, GLint shaderProgr
 	return 1;
 }
 
-void AbstractEffect::createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFilePath, std::vector<ShaderParam> shaderParams)
+void AbstractEffect::createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFileName, std::vector<ShaderParam> shaderParams)
 {
 	GLint newShaderProgram = glCreateProgram();
-	if (createShader(shaderFilePath, newShaderProgram, GL_COMPUTE_SHADER, shaderParams) == -1)
+	if (createShader(shaderFileName, newShaderProgram, GL_COMPUTE_SHADER, shaderParams) == -1)
 	{
 		throw "Compute shader compilation failed";
 	}
 	glLinkProgram(newShaderProgram);
-	if (checkShaderPrgramLinkErrors(newShaderProgram) == -1)
+	if (checkShaderPrgramLinkErrors(newShaderProgram, shaderFileName) == -1)
 	{
 		glDeleteProgram(newShaderProgram);
 		throw "Compute shader program linking failed";
@@ -189,7 +198,7 @@ GLint AbstractEffect::checkShaderCompileErrors(GLuint shader)
 	return 0;
 }
 
-GLint AbstractEffect::checkShaderPrgramLinkErrors(GLuint shaderProgram)
+GLint AbstractEffect::checkShaderPrgramLinkErrors(GLuint shaderProgram, const char* shaderFileName)
 {
 	GLint isLinked = 0;
 	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &isLinked);
@@ -201,7 +210,7 @@ GLint AbstractEffect::checkShaderPrgramLinkErrors(GLuint shaderProgram)
 		std::vector<GLchar> errorLog(maxLength);
 		glGetProgramInfoLog(shaderProgram, maxLength, &maxLength, &errorLog[0]);
 
-		std::cout << "SHADER PROGRAM LINKING FAILED" << std::endl;
+		std::cout << "SHADER PROGRAM LINKING FAILED | " << shaderFileName << std::endl;
 		for (auto i : errorLog)
 		{
 			std::cout << i;
@@ -214,9 +223,9 @@ GLint AbstractEffect::checkShaderPrgramLinkErrors(GLuint shaderProgram)
 	return 0;
 }
 
-std::string AbstractEffect::readShaderFromFile(const char* shaderFilePath)
+std::string AbstractEffect::readShaderFromFile(const char* shaderFileName)
 {
-	std::ifstream ifs(shaderFilePath);
+	std::ifstream ifs(shadersFolder + shaderFileName);
 	std::stringstream buffer;
 	buffer << ifs.rdbuf();
 	return buffer.str();
