@@ -31,7 +31,11 @@ public:
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
 
-	std::string shadersFolder = "shaders";
+#ifdef _DEBUG
+	const char* shadersFolder = "";
+#else
+	const char* shadersFolder = "shaders/";
+#endif
 
 protected:
 	struct ShaderParam
@@ -66,6 +70,6 @@ protected:
 
 private:
 	GLint checkShaderCompileErrors(GLuint shader);
-
 	std::string readShaderFromFile(const char* shaderFileName);
+	char* concat(const char* s1, const char* s2);
 };

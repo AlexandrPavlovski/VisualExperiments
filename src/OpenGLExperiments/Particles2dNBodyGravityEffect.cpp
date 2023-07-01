@@ -24,22 +24,22 @@ Particles2dNBodyGravityEffect::Particles2dNBodyGravityEffect(GLFWwindow* window)
 
 Particles2dNBodyGravityEffect::~Particles2dNBodyGravityEffect()
 {
-	glDeleteProgram(shaderProgram);
-	glDeleteBuffers(1, &ssbo);
-	glDeleteVertexArrays(1, &vao);
+	cleanup();
 }
 
 
 void Particles2dNBodyGravityEffect::initialize()
 {
-	for (int i = 0; i < startupParams.ParticlesCount; i++)
+	particlesData = std::vector<GLfloat>(startupParams.ParticlesCount * 4);
+	int i = 0;
+	while (i < startupParams.ParticlesCount * 4)
 	{
 		// positions
-		particlesData.push_back(random(0.0, windowWidth));
-		particlesData.push_back(random(0.0, windowHeight));
+		particlesData[i++] = random(0.0, windowWidth);
+		particlesData[i++] = random(0.0, windowHeight);
 		// velocities
-		particlesData.push_back(0.0);
-		particlesData.push_back(0.0);
+		particlesData[i++] = 0.0;
+		particlesData[i++] = 0.0;
 	}
 
 	glGenVertexArrays(1, &vao);
@@ -92,7 +92,9 @@ void Particles2dNBodyGravityEffect::draw(GLdouble deltaTime)
 void Particles2dNBodyGravityEffect::drawGUI()
 {
 	ImGui::Begin("Startup params (N-body)");
+	ImGui::PushItemWidth(120);
 	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 1000, 10000);
+	ImGui::PopItemWidth();
 	ImGui::End();
 
 	ImGui::Begin("Runtime params (N-body)");
@@ -106,16 +108,15 @@ void Particles2dNBodyGravityEffect::drawGUI()
 
 void Particles2dNBodyGravityEffect::restart()
 {
-	glDeleteProgram(shaderProgram);
-	glDeleteBuffers(1, &ssbo);
-	glDeleteVertexArrays(1, &vao);
-
+	cleanup();
 	initialize();
 }
 
 void Particles2dNBodyGravityEffect::cleanup()
 {
-
+	glDeleteProgram(shaderProgram);
+	glDeleteBuffers(1, &ssbo);
+	glDeleteVertexArrays(1, &vao);
 }
 
 void Particles2dNBodyGravityEffect::keyCallback(int key, int scancode, int action, int mode)

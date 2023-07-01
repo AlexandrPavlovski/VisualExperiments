@@ -33,14 +33,16 @@ Particles2dGravityEffect::~Particles2dGravityEffect()
 
 void Particles2dGravityEffect::initialize()
 {
-	for (int i = 0; i < startupParams.ParticlesCount; i++)
+	particlesData = std::vector<GLfloat>(startupParams.ParticlesCount * 4);
+	int i = 0;
+	while (i < startupParams.ParticlesCount * 4)
 	{
 		// positions
-		particlesData.push_back(random(0.0, windowWidth));
-		particlesData.push_back(random(0.0, windowHeight));
+		particlesData[i++] = random(0.0, windowWidth);
+		particlesData[i++] = random(0.0, windowHeight);
 		// velocities
-		particlesData.push_back(0.0);
-		particlesData.push_back(0.0);
+		particlesData[i++] = 0.0;
+		particlesData[i++] = 0.0;
 	}
 
 	glGenVertexArrays(1, &vao);
@@ -96,7 +98,9 @@ void Particles2dGravityEffect::drawGUI()
 {
 	ImGui::Begin("Startup params (One attractor)");
 	ImGui::Text("Move attractor: A");
+	ImGui::PushItemWidth(120);
 	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 100000, 1000000);
+	ImGui::PopItemWidth();
 	ImGui::End();
 
 	ImGui::Begin("Runtime params (One attractor)");

@@ -124,8 +124,10 @@ void Fractal2dEffect::drawGUI()
 	ImGui::Text("Pan: left mouse button");
 	ImGui::Text("Zoom: scroll");
 	ImGui::Text("Fast zoom: left shift + scroll");
+	ImGui::PushItemWidth(120);
 	ImGui::InputInt("Iterations per frame", &startupParams.Iterations, 1, 100);
 	ImGui::InputInt("Anti aliasing", &startupParams.AntiAliasing, 1, 1);
+	ImGui::PopItemWidth();
 	ImGui::End();
 }
 
@@ -254,9 +256,12 @@ void Fractal2dEffect::resetViewBuffer()
 
 void Fractal2dEffect::cleanup()
 {
+	glBindVertexArray(0);
+
 	glDeleteProgram(shaderProgram);
 	glDeleteProgram(shaderProgramDouble);
 	glDeleteProgram(computeShaderProgramSingle);
 	glDeleteProgram(computeShaderProgramDouble);
 	glDeleteBuffers(1, &ssboCompute);
+	glDeleteVertexArrays(1, &vao);
 }

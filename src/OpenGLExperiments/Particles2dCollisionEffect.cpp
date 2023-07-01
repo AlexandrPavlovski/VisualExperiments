@@ -735,22 +735,26 @@ void Particles2dCollisionEffect::drawGUI()
 	ImGui::Begin("Startup params (Collisions)");
 	ImGui::Text("Perticle drag: left mouse button");
 	ImGui::Text("Pause: space");
-	ImGui::Text("While paused Arrow Right: advance one frame");
+	ImGui::Text("While paused advance one frame: arrow right");
 	ImGui::Text("Pan: right mouse button");
 	ImGui::Text("Zoom: scroll");
 	ImGui::Text("Fast zoom: left shift + scroll");
 	ImGui::Text("Reset zoom and pan: middle mouse button");
+	ImGui::PushItemWidth(150);
 	ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 1000, 10000);
+	ImGui::PopItemWidth();
 	ImGui::Checkbox("N-body gravity", &startupParams.IsNBodyGravity);
 	ImGui::End();
 
 	ImGui::Begin("Runtime params (Collisions)");
+	ImGui::PushItemWidth(200);
 	ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, 0.0, 2.0);
 	ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	ImGui::SliderFloat("Time scale", &runtimeParams.TimeScale, 0.1, 2.0);
 	ImGui::SliderFloat("Particle Size", &runtimeParams.particleSize, 1.0, 50.0);
 	ImGui::SliderFloat("Cell Size", &runtimeParams.cellSize, 4.0, 500.0);
 	ImGui::SliderInt("Substeps", &runtimeParams.substeps, 1.0, 32.0);
+	ImGui::PopItemWidth();
 	ImGui::End();
 
 	if (runtimeParams.cellSize < runtimeParams.particleSize)

@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "AbstractEffect.h"
 
 #include <string>
@@ -121,8 +123,8 @@ GLint AbstractEffect::createShader(GLint shaderProgram, GLint shaderType, std::v
 	const char* shaderFileName;
 	switch (shaderType)
 	{
-	case GL_VERTEX_SHADER: shaderFileName = (shadersFolder + vertexShaderFileName).c_str(); break;
-	case GL_FRAGMENT_SHADER: shaderFileName = (shadersFolder + fragmentShaderFileName).c_str(); break;
+	case GL_VERTEX_SHADER: shaderFileName = vertexShaderFileName; break;
+	case GL_FRAGMENT_SHADER: shaderFileName = fragmentShaderFileName; break;
 	default:
 		throw "Shader type is not supported";
 	}
@@ -225,8 +227,16 @@ GLint AbstractEffect::checkShaderPrgramLinkErrors(GLuint shaderProgram, const ch
 
 std::string AbstractEffect::readShaderFromFile(const char* shaderFileName)
 {
-	std::ifstream ifs(shadersFolder + shaderFileName);
+	std::ifstream ifs(concat(shadersFolder, shaderFileName));
 	std::stringstream buffer;
 	buffer << ifs.rdbuf();
 	return buffer.str();
+}
+
+char* AbstractEffect::concat(const char* s1, const char* s2)
+{
+	char* s = new char[strlen(s1) + strlen(s2) + 1];
+	strcpy(s, s1);
+	strcat(s, s2);
+	return s;
 }
