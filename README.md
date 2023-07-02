@@ -3,8 +3,6 @@ Implementation of various algorithms that produce visually pleasing imagery
 
 [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) is required to run the app
 
-To build the project [GLFW](https://www.glfw.org/download.html) is required
-
 ## 1. Gravitational attraction to one point
 Brute force, calculated in OpenGL vertex shader
 
