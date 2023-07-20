@@ -912,14 +912,6 @@ void Particles2dCollisionEffect::resetPanAndZoom()
 	glPointSize(runtimeParams.particleSize);
 }
 
-void Particles2dCollisionEffect::createSsbo(GLuint* buff, GLuint index, GLsizeiptr size, const void* data, GLenum usage)
-{
-	glGenBuffers(1, buff);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, *buff);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, usage);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-}
-
 template< typename T >
 T* Particles2dCollisionEffect::readFromBuffer(int elemCount, GLuint ssbo)
 {

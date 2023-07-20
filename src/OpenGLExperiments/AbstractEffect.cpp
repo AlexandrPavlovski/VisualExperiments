@@ -240,3 +240,11 @@ char* AbstractEffect::concat(const char* s1, const char* s2)
 	strcat(s, s2);
 	return s;
 }
+
+void AbstractEffect::createSsbo(GLuint* buff, GLuint index, GLsizeiptr size, const void* data, GLenum usage)
+{
+	glGenBuffers(1, buff);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, *buff);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, usage);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}

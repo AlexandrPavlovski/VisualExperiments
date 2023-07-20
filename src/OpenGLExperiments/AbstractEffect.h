@@ -66,6 +66,7 @@ protected:
 	GLint createShader(const char* shaderFileName, GLint shaderProgram, GLint shaderType, std::vector<ShaderParam> shaderParams = std::vector<ShaderParam>());
 	void createComputeShaderProgram(GLuint& compShaderProgram, const char* shaderFileName, std::vector<ShaderParam> shaderParams);
 	GLint checkShaderPrgramLinkErrors(GLuint shaderProgram, const char* shaderFileName);
+	void createSsbo(GLuint* buff, GLuint index, GLsizeiptr size, const void* data, GLenum usage);
 
 
 private:
