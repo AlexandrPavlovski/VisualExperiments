@@ -67,7 +67,7 @@
     <ClCompile Include="AbstractEffect.cpp">
       <Filter>Effects\AbstractEffect</Filter>
     </ClCompile>
-    <ClCompile Include="EulerianFluidEffect.hpp">
+    <ClCompile Include="EulerianFluidEffect.cpp">
       <Filter>Effects\EulerianFluidEffect</Filter>
     </ClCompile>
   </ItemGroup>
@@ -111,7 +111,13 @@
     <ClInclude Include="Particles2dCollisionEffect.h">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
     </ClInclude>
-    <ClInclude Include="EmptyEffect.hpp">
+    <ClInclude Include="EmptyEffect.cpp">
+      <Filter>Effects\EmptyEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="EulerianFluidEffect.h">
+      <Filter>Effects\EulerianFluidEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="EmptyEffect.h">
       <Filter>Effects\EmptyEffect</Filter>
     </ClInclude>
   </ItemGroup>
@@ -193,6 +199,9 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="EmptyEffect.vert">
       <Filter>Effects\EmptyEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="SolveIncompressibility.comp">
+      <Filter>Effects\EulerianFluidEffect</Filter>
     </CopyFileToFolders>
   </ItemGroup>
 </Project>

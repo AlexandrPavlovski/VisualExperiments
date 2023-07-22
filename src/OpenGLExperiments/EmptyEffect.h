@@ -7,21 +7,21 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-class EulerianFluidEffect : public AbstractEffect
+class EmptyEffect : public AbstractEffect
 {
 public:
-	EulerianFluidEffect(GLFWwindow* window)
+	EmptyEffect(GLFWwindow* window)
 		:AbstractEffect(window)
 	{
-		vertexShaderFileName = "EulerianFluidEffect.vert";
-		fragmentShaderFileName = "EulerianFluidEffect.frag";
+		vertexShaderFileName = "EmptyEffect.vert";
+		fragmentShaderFileName = "EmptyEffect.frag";
 
 		startupParams = {};
 
 		runtimeParams = {};
 	}
 
-	virtual ~EulerianFluidEffect()
+	virtual ~EmptyEffect()
 	{
 		cleanup();
 	}
@@ -31,9 +31,11 @@ public:
 		glGenVertexArrays(1, &vao);
 		glBindVertexArray(vao);
 
-		createSsbo(&ssboU, 0, cellsCount, NULL, GL_DYNAMIC_DRAW);
-		createSsbo(&ssboV, 0, cellsCount, NULL, GL_DYNAMIC_DRAW);
-
+		glGenBuffers(1, &ssbo);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, 100 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 		GLint newShaderProgram = createShaderProgramFromFiles();
 		if (newShaderProgram == -1)
@@ -52,14 +54,14 @@ public:
 
 	virtual void drawGUI()
 	{
-		ImGui::Begin("Startup params (Eulerian Fluid)");
+		ImGui::Begin("Startup params (Empty Effect)");
 		ImGui::Text("Move attractor: A");
 		ImGui::PushItemWidth(120);
 		//ImGui::InputInt("Particles count", &startupParams.ParticlesCount, 100000, 1000000);
 		ImGui::PopItemWidth();
 		ImGui::End();
 
-		ImGui::Begin("Runtime params (Eulerian Fluid)");
+		ImGui::Begin("Runtime params (Empty Effect)");
 		//ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, -1.0, 10.0);
 		//ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 		//ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.0, 1000.0);
@@ -93,10 +95,6 @@ private:
 	StartupParams startupParams;
 	RuntimeParams runtimeParams;
 
-	GLuint vao = 0, ssboU = 0, ssboV;
-
-	static const GLuint simulationAreaWidth = 1280; // decoupled from screen size
-	static const GLuint simulationAreaHeight = 800;
-	static const GLuint cellsCount = simulationAreaWidth * simulationAreaHeight;
-
+	GLuint vao = 0, ssbo = 0;
 };
+#pragma once

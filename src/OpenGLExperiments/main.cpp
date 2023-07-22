@@ -16,7 +16,7 @@
 #include "Particles2dNBodyGravityEffect.h"
 #include "Fractal2dEffect.h"
 #include "Particles2dCollisionEffect.h"
-#include "EulerianFluidEffect.hpp"
+#include "EulerianFluidEffect.h"
 
 
 bool isVsyncEnabled = true;

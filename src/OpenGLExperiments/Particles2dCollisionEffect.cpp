@@ -327,7 +327,7 @@ glGenQueries(queriesForRadixSortSize, queriesForRadixSort);
 auto tBegin = std::chrono::steady_clock::now();
 #endif
 
-	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearColor(0.0, 0.0, 0.0, 1.0);//asdasdasasdasdsdfsd
 	glClear(GL_COLOR_BUFFER_BIT);
 	glPointSize(runtimeParams.particleSize * runtimeParams.viewZoom);
 

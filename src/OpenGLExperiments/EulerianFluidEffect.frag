@@ -15,9 +15,16 @@ layout(pixel_center_integer) in vec4 gl_FragCoord;
 //	float sampleIterations[];
 //};
 
+layout(location = 0) uniform sampler2D texUnit;
+
+
+layout(r32f, binding = 0) uniform image2D U_field;
+
 
 out vec4 color;
 
 void main() {
-	color = vec4(0.7, 0.3, 0.4, 1.0);
+	float r = texture(texUnit, vec2(gl_FragCoord / 100)).x;
+//	float r = imageLoad(U_field, ivec2(gl_FragCoord / 100)).x;
+	color = vec4(r, r, r, 1.0);
 }
