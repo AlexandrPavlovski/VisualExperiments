@@ -1,15 +1,80 @@
 #version 460 core
 
+#define U_fieldInputBunding 0
+#define V_fieldInputBunding 1
+
+#define overRelaxation 1.9
+
 layout(local_size_x = 32, local_size_y = 32) in;
-//layout(local_size_x = 1) in;
 layout(std430) buffer;
 
-layout(r32f, binding = 0) uniform image2D U_field;
+
+layout(location = 0) uniform ivec2 simulationArea;
+layout(location = 1) uniform ivec2 workGroupOffset;
+
+
+layout(binding = U_fieldInputBunding, r32f) uniform image2D U_field;
+layout(binding = V_fieldInputBunding, r32f) uniform image2D V_field;
+layout(binding = 4) buffer cellTypeData
+{
+	uint cellType[];
+};
 
 
 void main()
 {
-	imageStore(U_field, ivec2(gl_GlobalInvocationID), vec4(1));
+	uvec2 w = (gl_WorkGroupID.xy + workGroupOffset) * 64;
+	// skip edges and moving each thread away of neighbouring threads to avoid concurrent writes
+	ivec2 firstCellCoord = ivec2(gl_GlobalInvocationID.xy * 2 + 2 + w);
+	if (firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1)
+	{
+		return;
+	}
+
+	for (int i = -1; i <= 0; i++)
+	for (int j = -1; j <= 0; j++)
+	{
+		ivec2 cellCoord = firstCellCoord + ivec2(i, j);
+		uint cellIndex = cellCoord.x + cellCoord.y * simulationArea.x;
+
+		if (cellType[cellIndex] == 0)
+		{
+			return;
+		}
+
+		uint sx0 = cellType[cellIndex - 1];
+		uint sx1 = cellType[cellIndex + 1];
+		uint sy0 = cellType[cellIndex - simulationArea.x];
+		uint sy1 = cellType[cellIndex + simulationArea.x];
+		uint s = sx0 + sx1 + sy0 + sy1;
+		if (s == 0)
+		{
+			return;
+		}
+
+		ivec2 rightCellCoord = ivec2(cellCoord.x + 1, cellCoord.y);
+		ivec2 upCellCoord = ivec2(cellCoord.x, cellCoord.y + 1);
+
+		float u0 = imageLoad(U_field, cellCoord).x;
+		float u1 = imageLoad(U_field, rightCellCoord).x;
+		float v0 = imageLoad(V_field, cellCoord).x;
+		float v1 = imageLoad(V_field, upCellCoord).x;
+		float divergence = u1 - u0 + v1 - v0;
+
+		float p = -divergence / s * overRelaxation;
+		// TODO add pressure field
+
+		imageStore(U_field, cellCoord,      vec4(u0 - sx0 * p));
+		imageStore(U_field, rightCellCoord, vec4(u1 + sx1 * p));
+		imageStore(V_field, cellCoord,      vec4(v0 - sy0 * p));
+		imageStore(V_field, upCellCoord,    vec4(v1 + sy1 * p));
+
+//imageStore(U_field, cellCoord, vec4(1.0));
+//imageStore(V_field, cellCoord, vec4(0.0));
+		barrier();
+	}
+//	vec4 t = imageLoad(U_field, ivec2(gl_GlobalInvocationID));
+//	imageStore(U_field, ivec2(gl_GlobalInvocationID), t+1);
 
 //	imageStore(U_field, ivec2(0, 0), vec4(0));
 //	imageStore(U_field, ivec2(1, 0), vec4(1));

@@ -1,0 +1,111 @@
+#version 460 core
+
+#define U_fieldInputBunding 0
+#define V_fieldInputBunding 1
+#define U_fieldOutputBunding 2
+#define V_fieldOutputBunding 3
+
+
+layout(local_size_x = 32, local_size_y = 32) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform ivec2 simulationArea;
+layout(location = 1) uniform sampler2D U_fieldSampler;
+layout(location = 2) uniform sampler2D V_fieldSampler;
+
+layout(binding = U_fieldInputBunding, r32f) uniform image2D U_fieldInput;
+layout(binding = V_fieldInputBunding, r32f) uniform image2D V_fieldInput;
+layout(binding = U_fieldOutputBunding, r32f) uniform image2D U_fieldOutput;
+layout(binding = V_fieldOutputBunding, r32f) uniform image2D V_fieldOutput;
+layout(binding = 4) buffer cellTypeData
+{
+	uint cellType[];
+};
+
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+
+float averageU(ivec2 cellCoord)
+{
+	ivec2 leftCellCoord =   ivec2(cellCoord.x - 1, cellCoord.y);
+	ivec2 upCellCoord =     ivec2(cellCoord.x,     cellCoord.y + 1);
+	ivec2 upLeftCellCoord = ivec2(cellCoord.x - 1, cellCoord.y + 1);
+
+	return (imageLoad(U_fieldInput, cellCoord).x
+		  + imageLoad(U_fieldInput, leftCellCoord).x
+		  + imageLoad(U_fieldInput, upCellCoord).x
+		  + imageLoad(U_fieldInput, upLeftCellCoord).x) * 0.25;
+}
+
+float averageV(ivec2 cellCoord)
+{
+	ivec2 righCellCoord =      ivec2(cellCoord.x + 1, cellCoord.y);
+	ivec2 downCellCoord =      ivec2(cellCoord.x,     cellCoord.y - 1);
+	ivec2 downRightCellCoord = ivec2(cellCoord.x + 1, cellCoord.y - 1);
+
+	return (imageLoad(V_fieldInput, cellCoord).x
+		  + imageLoad(V_fieldInput, righCellCoord).x
+		  + imageLoad(V_fieldInput, downCellCoord).x
+		  + imageLoad(V_fieldInput, downRightCellCoord).x) * 0.25;
+}
+
+void main()
+{
+if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0)
+test[0] = texture(U_fieldSampler, vec2(3, 2)).x;
+//test[0] = imageLoad(U_fieldInput, ivec2(3, 2)).x;
+
+	ivec2 firstCellCoord = ivec2(gl_GlobalInvocationID.xy * 2 + 2);
+	if (firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1)
+	{
+		return;
+	}
+
+	for (int i = -1; i <= 0; i++)
+	for (int j = -1; j <= 0; j++)
+	{
+		ivec2 cellCoord = firstCellCoord + ivec2(i, j);
+		uint cellIndex = cellCoord.x + cellCoord.y * simulationArea.x;
+
+//		uint currCellType = cellType[cellIndex];
+//		if (currCellType != 0 && cellType[cellIndex - 1] != 0)
+//		{
+//			vec2 totalVelocity = vec2(imageLoad(U_fieldInput, cellCoord).x, averageV(cellCoord));
+//			vec2 sampleCoord = cellCoord - totalVelocity;
+//			sampleCoord.y += 0.5;
+//
+//			float newU = texture(U_fieldSampler, sampleCoord).x; // bilinear interpolation of U field
+////float newU = averageU(ivec2(sampleCoord));
+//			imageStore(U_fieldOutput, cellCoord, vec4(newU));
+//		}
+//
+//		if (currCellType != 0 && cellType[cellIndex - simulationArea.x] != 0)
+//		{
+//			vec2 totalVelocity = vec2(averageU(cellCoord), imageLoad(V_fieldInput, cellCoord).x);
+//			vec2 sampleCoord = cellCoord - totalVelocity;
+//			sampleCoord.x += 0.5;
+//
+//			float newV = texture(V_fieldSampler, sampleCoord).x; // bilinear interpolation of V field
+////float newV = averageV(ivec2(sampleCoord));
+//			imageStore(V_fieldOutput, cellCoord, vec4(newV));
+//		}
+//vec2 totalVelocity1 = vec2(imageLoad(U_fieldInput, cellCoord).x, averageV(cellCoord));
+//vec2 totalVelocity2 = vec2(averageU(cellCoord), imageLoad(V_fieldInput, cellCoord).x);
+//imageStore(U_fieldOutput, cellCoord, vec4(imageLoad(U_fieldInput, cellCoord).x));
+//imageStore(V_fieldOutput, cellCoord, vec4(imageLoad(V_fieldInput, cellCoord).x));
+
+//if (cellIndex > 2780 && cellIndex < 2790)
+//{
+////	float t = imageLoad(V_fieldInput, cellCoord).x;
+	imageStore(U_fieldOutput, cellCoord, vec4(100.0));
+//}
+	}
+
+//	imageStore(U_fieldInput, ivec2(gl_GlobalInvocationID), vec4(1));
+//	imageStore(V_fieldInput, ivec2(gl_GlobalInvocationID), vec4(1));
+//	imageStore(U_fieldOutput, ivec2(gl_GlobalInvocationID), vec4(1));
+//	imageStore(V_fieldOutput, ivec2(gl_GlobalInvocationID), vec4(1));
+}

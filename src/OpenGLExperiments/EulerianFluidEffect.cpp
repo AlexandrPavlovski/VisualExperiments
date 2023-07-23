@@ -10,6 +10,9 @@ EulerianFluidEffect::EulerianFluidEffect(GLFWwindow* window)
 	startupParams = {};
 
 	runtimeParams = {};
+	runtimeParams.substeps = 1;
+
+	isPaused = true;
 }
 
 EulerianFluidEffect::~EulerianFluidEffect()
@@ -23,43 +26,104 @@ void EulerianFluidEffect::initialize()
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	glGenTextures(1, &textureU);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, textureU);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, simulationAreaWidth, simulationAreaHeight, 0, GL_RED, GL_FLOAT, NULL);
-	//std::vector<float> data{ 1.0, 0.0, 1.0, 0.0 };
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 2, 2, 0, GL_RED, GL_FLOAT, &data[0]);
-	glBindImageTexture(0, textureU, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
+	std::vector<float> velocityFieldsData(cellsCount + simulationAreaWidth + simulationAreaHeight + 1, 10.0);
+	//velocityFieldsData[2565] = 1000.0;
+
+	CreateTextureField(&textureU0, GL_TEXTURE0, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 0);
+	//CreateTextureField(&textureV0, GL_TEXTURE1, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 1);
+	//CreateTextureField(&textureU1, GL_TEXTURE2, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 2);
+	//CreateTextureField(&textureV1, GL_TEXTURE3, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 3);
+
+	int w = simulationAreaWidth;
+	int h = simulationAreaHeight;
+	std::vector<GLuint> cellTypeData(cellsCount, 1); // 1 -> fluid
+	for (int i = 0;              i < w;          i++)    cellTypeData[i] = 0; // 0 -> solid
+	for (int i = cellsCount - w; i < cellsCount; i++)    cellTypeData[i] = 0;
+	for (int i = w;              i < cellsCount; i += w) cellTypeData[i] = 0;
+	for (int i = w - 1;          i < cellsCount; i += w) cellTypeData[i] = 0;
+
+	createSsbo(&ssboCellType, 4, cellsCount * sizeof(GLuint), &cellTypeData[0], GL_DYNAMIC_DRAW);
+	createSsbo(&bufferTest, 9, 20000 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+
 
 	GLint newShaderProgram = createShaderProgramFromFiles();
 	if (newShaderProgram == -1)
 	{
 		throw "Initialize failed";
 	}
-
 	shaderProgram = newShaderProgram;
 
-	std::vector<ShaderParam> computeShaderParams
+	std::vector<ShaderParam> emptyShaderParams
 	{
 	};
-	createComputeShaderProgram(solveIncompressibilityCompShaderProgram, "SolveIncompressibility.comp", computeShaderParams);
+	createComputeShaderProgram(solveIncompressibilityOddCompShaderProgram, "SolveIncompressibility.comp", emptyShaderParams);
+	createComputeShaderProgram(advectVelocitiesOddCompShaderProgram, "AdvectVelocities.comp", emptyShaderParams);
+	std::vector<ShaderParam> evenShaderParams
+	{
+		// swapping inputs and outputs
+		{ "#define U_fieldInputBunding 0",  "#define U_fieldInputBunding 2" },
+		{ "#define V_fieldInputBunding 1",  "#define V_fieldInputBunding 3" },
+		{ "#define U_fieldOutputBunding 2", "#define U_fieldOutputBunding 0" },
+		{ "#define V_fieldOutputBunding 3", "#define V_fieldOutputBunding 1" },
+	};
+	createComputeShaderProgram(solveIncompressibilityEvenCompShaderProgram, "SolveIncompressibility.comp", evenShaderParams);
+	createComputeShaderProgram(advectVelocitiesEvenCompShaderProgram, "AdvectVelocities.comp", evenShaderParams);
+
+	oddShaderProgram = createShaderProgramFromFiles(emptyShaderParams, evenShaderParams);
+
+	isOddFrame = true;
+
+	glGenSamplers(1, &sampler);
+	glBindSampler(0, sampler);
 }
 
 void EulerianFluidEffect::draw(GLdouble deltaTime)
 {
-	glUseProgram(solveIncompressibilityCompShaderProgram);
-	glDispatchCompute(1, 1, 1);
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+	if (!isPaused || isAdvanceOneFrame)
+	{
+		glClearColor(0.0, 0.0, 0.0, 1.0);
+		glClear(GL_COLOR_BUFFER_BIT);
 
-	//std::vector<float> compute_data(cellsCount);
-	//glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, compute_data.data());
+		//for (int subSteps = 0; subSteps < runtimeParams.substeps; subSteps++)
+		//{
+		//	glUseProgram(isOddFrame ? solveIncompressibilityOddCompShaderProgram : solveIncompressibilityEvenCompShaderProgram);
+		//	glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
+		//	
+		//	int wgn = 4;
+		//	// separating work groups to avoid simultaneous writes on endges of groups working area
+		//	glUniform2i(1, 0, 0);
+		//	glDispatchCompute(wgn, wgn, 1);
+		//	glUniform2i(1, 1, 1);
+		//	glDispatchCompute(wgn, wgn, 1);
+		//	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		//	// TODO make it checker like pattern
+		//	glUniform2i(1, 0, 1);
+		//	glDispatchCompute(wgn, wgn, 1);
+		//	glUniform2i(1, 1, 0);
+		//	glDispatchCompute(wgn, wgn, 1);
+		//	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		//}
 
-	glUseProgram(shaderProgram);
-	glUniform1i(0, 0);
+		glUseProgram(false ? advectVelocitiesOddCompShaderProgram : advectVelocitiesEvenCompShaderProgram);
+		glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
+		glUniform1i(1, isOddFrame ? 0 : 2);
+		glUniform1i(2, isOddFrame ? 1 : 3);
+		glDispatchCompute(10, 10, 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+//GLfloat* test = readFromBuffer<GLfloat>(1, bufferTest);
+//		std::vector<float> compute_data(cellsCount*2);
+//		glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, &compute_data[0]);
+
+		isOddFrame = !isOddFrame;
+	}
+
+	glUseProgram(false ? oddShaderProgram : shaderProgram);
+	//glActiveTexture(GL_TEXTURE0);
+	//glBindTextureUnit(0, textureU0);
+	//glBindSampler(0, sampler);
+	//glBindImageTexture(0, textureU0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
+	GLint po = glGetUniformLocation(shaderProgram, "U_fieldSampler");
+	glUniform1i(po, 0);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
@@ -73,6 +137,7 @@ void EulerianFluidEffect::drawGUI()
 	ImGui::End();
 
 	ImGui::Begin("Runtime params (Eulerian Fluid)");
+	ImGui::SliderInt("Substeps", &runtimeParams.substeps, 1.0, 128.0);
 	//ImGui::SliderFloat("Force scale", &runtimeParams.ForceScale, -1.0, 10.0);
 	//ImGui::SliderFloat("Velocity damping", &runtimeParams.VelocityDamping, 0.9, 1.0);
 	//ImGui::SliderFloat("Min distance", &runtimeParams.MinDistanceToAttractor, 0.0, 1000.0);
@@ -90,10 +155,35 @@ void EulerianFluidEffect::restart()
 void EulerianFluidEffect::cleanup()
 {
 	glDeleteProgram(shaderProgram);
-	glDeleteBuffers(1, &ssboU);
+	glDeleteProgram(solveIncompressibilityOddCompShaderProgram);
+	glDeleteTextures(1, &textureU0);
+	glDeleteTextures(1, &textureV0);
+	glDeleteTextures(1, &textureU1);
+	glDeleteTextures(1, &textureV1);
+	glDeleteBuffers(1, &ssboCellType);
 	glDeleteVertexArrays(1, &vao);
 }
 
-void TEMP() {
-	int i = 0;
+void EulerianFluidEffect::CreateTextureField(GLuint *texture, GLenum textureEnum, GLsizei width, GLsizei height, const void *data, GLuint unit)
+{
+	glGenTextures(1, texture);
+	glActiveTexture(textureEnum);
+	glBindTexture(GL_TEXTURE_2D, *texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data);
+	glBindImageTexture(unit, *texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
+}
+
+template< typename T >
+T* EulerianFluidEffect::readFromBuffer(int elemCount, GLuint ssbo)
+{
+	T* buf = new T[elemCount];
+	T* p = (T*)glMapNamedBufferRange(ssbo, 0, elemCount * sizeof(T), GL_MAP_READ_BIT);
+	memcpy(buf, p, elemCount * sizeof(T));
+	bool b = glUnmapNamedBuffer(ssbo);
+	if (!b)__debugbreak();
+	return buf;
 }

@@ -271,6 +271,7 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		effect->draw(io.DeltaTime);
+		effect->isAdvanceOneFrame = false;
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
