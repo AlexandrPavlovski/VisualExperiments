@@ -11,8 +11,6 @@ layout(std430) buffer;
 
 
 layout(location = 0) uniform ivec2 simulationArea;
-layout(location = 1) uniform sampler2D U_fieldSampler;
-layout(location = 2) uniform sampler2D V_fieldSampler;
 
 layout(binding = U_fieldInputBunding, r32f) uniform image2D U_fieldInput;
 layout(binding = V_fieldInputBunding, r32f) uniform image2D V_fieldInput;
@@ -52,12 +50,32 @@ float averageV(ivec2 cellCoord)
 		  + imageLoad(V_fieldInput, downRightCellCoord).x) * 0.25;
 }
 
+float sampleField(bool isUField, vec2 sampleCoord) // bilinear interpolation
+{
+	ivec2 fieldCoord0 = ivec2(min(sampleCoord, simulationArea));
+	ivec2 fieldCoord1 = ivec2(min(fieldCoord0 + 1, simulationArea));
+
+	vec2 weights0 = fract(sampleCoord);
+	vec2 weights1 = 1.0 - weights0;
+
+	if (isUField)
+	{
+		return weights1.x * weights1.y * imageLoad(U_fieldInput, fieldCoord0).x
+			 + weights0.x * weights1.y * imageLoad(U_fieldInput, ivec2(fieldCoord1.x, fieldCoord0.y)).x
+			 + weights0.x * weights0.y * imageLoad(U_fieldInput, fieldCoord1).x
+			 + weights1.x * weights0.y * imageLoad(U_fieldInput, ivec2(fieldCoord0.x, fieldCoord1.y)).x;
+	}
+	else
+	{
+		return weights1.x * weights1.y * imageLoad(V_fieldInput, fieldCoord0).x
+			 + weights0.x * weights1.y * imageLoad(V_fieldInput, ivec2(fieldCoord1.x, fieldCoord0.y)).x
+			 + weights0.x * weights0.y * imageLoad(V_fieldInput, fieldCoord1).x
+			 + weights1.x * weights0.y * imageLoad(V_fieldInput, ivec2(fieldCoord0.x, fieldCoord1.y)).x;
+	}
+}
+
 void main()
 {
-if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0)
-test[0] = texture(U_fieldSampler, vec2(3, 2)).x;
-//test[0] = imageLoad(U_fieldInput, ivec2(3, 2)).x;
-
 	ivec2 firstCellCoord = ivec2(gl_GlobalInvocationID.xy * 2 + 2);
 	if (firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1)
 	{
@@ -70,41 +88,30 @@ test[0] = texture(U_fieldSampler, vec2(3, 2)).x;
 		ivec2 cellCoord = firstCellCoord + ivec2(i, j);
 		uint cellIndex = cellCoord.x + cellCoord.y * simulationArea.x;
 
-//		uint currCellType = cellType[cellIndex];
-//		if (currCellType != 0 && cellType[cellIndex - 1] != 0)
-//		{
-//			vec2 totalVelocity = vec2(imageLoad(U_fieldInput, cellCoord).x, averageV(cellCoord));
-//			vec2 sampleCoord = cellCoord - totalVelocity;
-//			sampleCoord.y += 0.5;
-//
-//			float newU = texture(U_fieldSampler, sampleCoord).x; // bilinear interpolation of U field
-////float newU = averageU(ivec2(sampleCoord));
-//			imageStore(U_fieldOutput, cellCoord, vec4(newU));
-//		}
-//
-//		if (currCellType != 0 && cellType[cellIndex - simulationArea.x] != 0)
-//		{
-//			vec2 totalVelocity = vec2(averageU(cellCoord), imageLoad(V_fieldInput, cellCoord).x);
-//			vec2 sampleCoord = cellCoord - totalVelocity;
-//			sampleCoord.x += 0.5;
-//
-//			float newV = texture(V_fieldSampler, sampleCoord).x; // bilinear interpolation of V field
-////float newV = averageV(ivec2(sampleCoord));
-//			imageStore(V_fieldOutput, cellCoord, vec4(newV));
-//		}
-//vec2 totalVelocity1 = vec2(imageLoad(U_fieldInput, cellCoord).x, averageV(cellCoord));
-//vec2 totalVelocity2 = vec2(averageU(cellCoord), imageLoad(V_fieldInput, cellCoord).x);
-//imageStore(U_fieldOutput, cellCoord, vec4(imageLoad(U_fieldInput, cellCoord).x));
-//imageStore(V_fieldOutput, cellCoord, vec4(imageLoad(V_fieldInput, cellCoord).x));
+		uint currCellType = cellType[cellIndex];
+		if (currCellType != 0 && cellType[cellIndex - 1] != 0)
+		{
+			vec2 totalVelocity = vec2(imageLoad(U_fieldInput, cellCoord).x, averageV(cellCoord));
+			vec2 sampleCoord = cellCoord - totalVelocity;
+			sampleCoord.y += 0.5;
 
-//if (cellIndex > 2780 && cellIndex < 2790)
-//{
-////	float t = imageLoad(V_fieldInput, cellCoord).x;
-	imageStore(U_fieldOutput, cellCoord, vec4(100.0));
-//}
+			float newU = sampleField(true, sampleCoord);
+			imageStore(U_fieldOutput, cellCoord, vec4(newU));
+		}
+
+		if (currCellType != 0 && cellType[cellIndex - simulationArea.x] != 0)
+		{
+			vec2 totalVelocity = vec2(averageU(cellCoord), imageLoad(V_fieldInput, cellCoord).x);
+			vec2 sampleCoord = cellCoord - totalVelocity;
+			sampleCoord.x += 0.5;
+
+			float newV = sampleField(false, sampleCoord);
+			imageStore(V_fieldOutput, cellCoord, vec4(newV));
+		}
 	}
 
-//	imageStore(U_fieldInput, ivec2(gl_GlobalInvocationID), vec4(1));
+if (firstCellCoord.y == 40 && firstCellCoord.x == 400)
+	imageStore(U_fieldOutput, ivec2(firstCellCoord), vec4(-5000.0));
 //	imageStore(V_fieldInput, ivec2(gl_GlobalInvocationID), vec4(1));
 //	imageStore(U_fieldOutput, ivec2(gl_GlobalInvocationID), vec4(1));
 //	imageStore(V_fieldOutput, ivec2(gl_GlobalInvocationID), vec4(1));

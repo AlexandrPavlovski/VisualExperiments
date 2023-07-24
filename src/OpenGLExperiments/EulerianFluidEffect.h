@@ -43,6 +43,9 @@ private:
 	static const GLuint simulationAreaWidth = 1280; // decoupled from screen size
 	static const GLuint simulationAreaHeight = 800;
 	static const GLuint cellsCount = simulationAreaWidth * simulationAreaHeight;
+	GLfloat cellsPerWorkGroup = 64;
+	GLuint workGroupsCountX = ceil(simulationAreaWidth / cellsPerWorkGroup);
+	GLuint workGroupsCountY = ceil(simulationAreaHeight / cellsPerWorkGroup);
 
 	bool isOddFrame = true;
 

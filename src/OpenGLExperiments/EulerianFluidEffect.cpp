@@ -26,13 +26,13 @@ void EulerianFluidEffect::initialize()
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	std::vector<float> velocityFieldsData(cellsCount + simulationAreaWidth + simulationAreaHeight + 1, 10.0);
-	//velocityFieldsData[2565] = 1000.0;
+	std::vector<float> velocityFieldsData(cellsCount + simulationAreaWidth + simulationAreaHeight + 1);
+	//velocityFieldsData[25650] = 10000.0;
 
 	CreateTextureField(&textureU0, GL_TEXTURE0, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 0);
-	//CreateTextureField(&textureV0, GL_TEXTURE1, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 1);
-	//CreateTextureField(&textureU1, GL_TEXTURE2, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 2);
-	//CreateTextureField(&textureV1, GL_TEXTURE3, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 3);
+	CreateTextureField(&textureV0, GL_TEXTURE1, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 1);
+	CreateTextureField(&textureU1, GL_TEXTURE2, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 2);
+	CreateTextureField(&textureV1, GL_TEXTURE3, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 3);
 
 	int w = simulationAreaWidth;
 	int h = simulationAreaHeight;
@@ -72,9 +72,6 @@ void EulerianFluidEffect::initialize()
 	oddShaderProgram = createShaderProgramFromFiles(emptyShaderParams, evenShaderParams);
 
 	isOddFrame = true;
-
-	glGenSamplers(1, &sampler);
-	glBindSampler(0, sampler);
 }
 
 void EulerianFluidEffect::draw(GLdouble deltaTime)
@@ -84,46 +81,40 @@ void EulerianFluidEffect::draw(GLdouble deltaTime)
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//for (int subSteps = 0; subSteps < runtimeParams.substeps; subSteps++)
-		//{
-		//	glUseProgram(isOddFrame ? solveIncompressibilityOddCompShaderProgram : solveIncompressibilityEvenCompShaderProgram);
-		//	glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
-		//	
-		//	int wgn = 4;
-		//	// separating work groups to avoid simultaneous writes on endges of groups working area
-		//	glUniform2i(1, 0, 0);
-		//	glDispatchCompute(wgn, wgn, 1);
-		//	glUniform2i(1, 1, 1);
-		//	glDispatchCompute(wgn, wgn, 1);
-		//	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-		//	// TODO make it checker like pattern
-		//	glUniform2i(1, 0, 1);
-		//	glDispatchCompute(wgn, wgn, 1);
-		//	glUniform2i(1, 1, 0);
-		//	glDispatchCompute(wgn, wgn, 1);
-		//	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-		//}
+		for (int subSteps = 0; subSteps < runtimeParams.substeps; subSteps++)
+		{
+			glUseProgram(isOddFrame ? solveIncompressibilityOddCompShaderProgram : solveIncompressibilityEvenCompShaderProgram);
+			glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
 
-		glUseProgram(false ? advectVelocitiesOddCompShaderProgram : advectVelocitiesEvenCompShaderProgram);
+			int wgnx = ceil(workGroupsCountX / 2.0);
+			int wgny = ceil(workGroupsCountY / 2.0);
+			// separating work groups to avoid simultaneous writes on edges of groups working area
+			glUniform2i(1, 0, 0);
+			glDispatchCompute(wgnx, wgny, 1);
+			glUniform2i(1, 1, 1);
+			glDispatchCompute(wgnx, wgny, 1);
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
+			// TODO make it checker like pattern
+			glUniform2i(1, 0, 1);
+			glDispatchCompute(wgnx, wgny, 1);
+			glUniform2i(1, 1, 0);
+			glDispatchCompute(wgnx, wgny, 1);
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		}
+
+		glUseProgram(isOddFrame ? advectVelocitiesOddCompShaderProgram : advectVelocitiesEvenCompShaderProgram);
 		glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
-		glUniform1i(1, isOddFrame ? 0 : 2);
-		glUniform1i(2, isOddFrame ? 1 : 3);
-		glDispatchCompute(10, 10, 1);
+		glDispatchCompute(workGroupsCountX, workGroupsCountY, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 //GLfloat* test = readFromBuffer<GLfloat>(1, bufferTest);
-//		std::vector<float> compute_data(cellsCount*2);
-//		glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, &compute_data[0]);
+//std::vector<float> compute_data(cellsCount*2);
+//glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, &compute_data[0]);
 
 		isOddFrame = !isOddFrame;
 	}
 
-	glUseProgram(false ? oddShaderProgram : shaderProgram);
-	//glActiveTexture(GL_TEXTURE0);
-	//glBindTextureUnit(0, textureU0);
-	//glBindSampler(0, sampler);
-	//glBindImageTexture(0, textureU0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
-	GLint po = glGetUniformLocation(shaderProgram, "U_fieldSampler");
-	glUniform1i(po, 0);
+	glUseProgram(isOddFrame ? oddShaderProgram : shaderProgram);
+	glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
