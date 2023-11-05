@@ -4,13 +4,15 @@
 #define V_fieldInputBunding 1
 
 #define overRelaxation 1.9
+#define sharedUFieldSize 65 * 32
+#define sharedVFieldSize 64 * 33
 
 layout(local_size_x = 32, local_size_y = 32) in;
 layout(std430) buffer;
 
 
 layout(location = 0) uniform ivec2 simulationArea;
-layout(location = 1) uniform ivec2 workGroupOffset;
+layout(location = 1) uniform int checkerOffset;
 
 
 layout(binding = U_fieldInputBunding, r32f) uniform image2D U_field;
@@ -20,62 +22,193 @@ layout(binding = 4) buffer cellTypeData
 	uint cellType[];
 };
 
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+
+shared float sharedUField[sharedUFieldSize];
+shared float sharedVField[sharedVFieldSize];
+
 
 void main()
 {
-	uvec2 w = (gl_WorkGroupID.xy + workGroupOffset) * 64;
-	// skip edges and moving each thread away of neighbouring threads to avoid concurrent writes
-	ivec2 firstCellCoord = ivec2(gl_GlobalInvocationID.xy * 2 + 2 + w);
-	if (firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1)
+	uint lthid = gl_LocalInvocationID.y * gl_WorkGroupSize.x + gl_LocalInvocationID.x;
+	float m = mod(gl_WorkGroupID.y + checkerOffset, 2) * 2;
+	ivec2 globalOffset = ivec2((gl_WorkGroupID.x * 4 + m) * gl_WorkGroupSize.x, gl_WorkGroupID.y * gl_WorkGroupSize.y);
+
+	uint threadsInWorkGroup = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+	for (uint i = lthid; i < sharedUFieldSize; i += threadsInWorkGroup)
 	{
-		return;
+		ivec2 globalCoord = ivec2(mod(i, 65), i / 65) + globalOffset;
+		sharedUField[i] = imageLoad(U_field, globalCoord).x;
+	}
+	for (uint i = lthid; i < sharedVFieldSize; i += threadsInWorkGroup)
+	{
+		ivec2 globalCoord = ivec2(mod(i, 64), i / 64) + globalOffset;
+		sharedVField[i] = imageLoad(V_field, globalCoord).x;
 	}
 
-	for (int i = -1; i <= 0; i++)
-	for (int j = -1; j <= 0; j++)
+	barrier();
+
+	for (int localCheckerOffset = 0; localCheckerOffset < 2; localCheckerOffset++)
 	{
-		ivec2 cellCoord = firstCellCoord + ivec2(i, j);
-		uint cellIndex = cellCoord.x + cellCoord.y * simulationArea.x;
+		// skipping edges and arraging threads diagonally to avoid concurrent writes
+		vec2 firstCellCoord = vec2(gl_LocalInvocationID.xy);
+		firstCellCoord.x *= 2;
+		firstCellCoord.x += mod(firstCellCoord.y + localCheckerOffset, 2);
 
-		if (cellType[cellIndex] == 0)
-		{
-			return;
-		}
+		ivec2 cellCoord = ivec2(firstCellCoord);
+		uint cellIndexU = cellCoord.x + cellCoord.y * 65;
+		uint cellIndexV = cellCoord.x + cellCoord.y * 64;
 
-		uint sx0 = cellType[cellIndex - 1];
-		uint sx1 = cellType[cellIndex + 1];
-		uint sy0 = cellType[cellIndex - simulationArea.x];
-		uint sy1 = cellType[cellIndex + simulationArea.x];
-		uint s = sx0 + sx1 + sy0 + sy1;
-		if (s == 0)
-		{
-			return;
-		}
+//		sharedUField[cellIndexU] += 0.5;
+//		sharedVField[cellIndexV] += 0.5;
 
-		ivec2 rightCellCoord = ivec2(cellCoord.x + 1, cellCoord.y);
-		ivec2 upCellCoord = ivec2(cellCoord.x, cellCoord.y + 1);
+uint s = 4;
+uint sx0 = 1;
+uint sx1 = 1;
+uint sy0 = 1;
+uint sy1 = 1;
 
-		float u0 = imageLoad(U_field, cellCoord).x;
-		float u1 = imageLoad(U_field, rightCellCoord).x;
-		float v0 = imageLoad(V_field, cellCoord).x;
-		float v1 = imageLoad(V_field, upCellCoord).x;
+		uint rightCellIndex = cellIndexU + 1;
+		uint upCellIndex = cellIndexV + 64;
+
+		float u0 = sharedUField[cellIndexU];
+		float u1 = sharedUField[rightCellIndex];
+		float v0 = sharedVField[cellIndexV];
+		float v1 = sharedVField[upCellIndex];
 		float divergence = u1 - u0 + v1 - v0;
 
 		float p = -divergence / s * overRelaxation;
-		// TODO add pressure field
 
-		imageStore(U_field, cellCoord,      vec4(u0 - sx0 * p));
-		imageStore(U_field, rightCellCoord, vec4(u1 + sx1 * p));
-		imageStore(V_field, cellCoord,      vec4(v0 - sy0 * p));
-		imageStore(V_field, upCellCoord,    vec4(v1 + sy1 * p));
+		sharedUField[cellIndexU] =     u0 - sx0 * p;
+		sharedUField[rightCellIndex] = u1 + sx1 * p;
+		sharedVField[cellIndexV] =     v0 - sy0 * p;
+		sharedVField[upCellIndex] =    v1 + sy1 * p;
 
-//imageStore(U_field, cellCoord, vec4(1.0));
-//imageStore(V_field, cellCoord, vec4(0.0));
 		barrier();
 	}
-//	vec4 t = imageLoad(U_field, ivec2(gl_GlobalInvocationID));
-//	imageStore(U_field, ivec2(gl_GlobalInvocationID), t+1);
 
-//	imageStore(U_field, ivec2(0, 0), vec4(0));
-//	imageStore(U_field, ivec2(1, 0), vec4(1));
+	for (uint i = lthid; i < sharedUFieldSize; i += threadsInWorkGroup)
+	{
+		ivec2 globalCoord = ivec2(mod(i, 65), i / 65) + globalOffset;
+		imageStore(U_field, globalCoord, vec4(sharedUField[i]));
+	}
+	for (uint i = lthid; i < sharedVFieldSize; i += threadsInWorkGroup)
+	{
+		ivec2 globalCoord = ivec2(mod(i, 64), i / 64) + globalOffset;
+		imageStore(V_field, globalCoord, vec4(sharedVField[i]));
+	}
+
+
+
+
+////	ivec2 globalCoord1 = ivec2(gl_WorkGroupID.x * 64 + gl_LocalInvocationID.x, gl_WorkGroupID.y * 32 + gl_LocalInvocationID.y);
+////	uint cellIndex1 = gl_LocalInvocationID.y * 64 + gl_LocalInvocationID.x;
+////	sharedUField[cellIndex1] = imageLoad(U_field, globalCoord1).x;
+////	sharedVField[cellIndex1] = imageLoad(V_field, globalCoord1).x;
+////
+////	ivec2 globalCoord2 = ivec2(globalCoord1.x + 32, globalCoord1.y);
+////	uint cellIndex2 = cellIndex1 + 32;
+////	sharedUField[cellIndex2] = imageLoad(U_field, globalCoord2).x;
+////	sharedVField[cellIndex2] = imageLoad(V_field, globalCoord2).x;
+////	barrier();
+//
+//	// skipping edges and arraging threads diagonally to avoid concurrent writes
+//	vec2 firstCellCoord = vec2(gl_LocalInvocationID.xy);
+//	firstCellCoord.x *= 2;
+//	firstCellCoord.x += mod(firstCellCoord.y + checkerOffset, 2);
+//	bool skip = false;//firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1;
+////	if (firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1)
+////	{
+////		return;
+////	}
+//
+//	{
+//		ivec2 cellCoord = ivec2(firstCellCoord);
+//		uint cellIndex = cellCoord.x + cellCoord.y * 64;
+//
+////		skip = skip || cellType[cellIndex] == 0;
+////		if (cellType[cellIndex] == 0)
+////		{
+////			return;
+////		}
+//
+////		uint sx0 = cellType[cellIndex - 1];
+////		uint sx1 = cellType[cellIndex + 1];
+////		uint sy0 = cellType[cellIndex - simulationArea.x];
+////		uint sy1 = cellType[cellIndex + simulationArea.x];
+////		uint s = sx0 + sx1 + sy0 + sy1;
+////		skip = skip || s == 0;
+////		if (s == 0)
+////		{
+////			return;
+////		}
+//uint s = 4;
+//uint sx0 = 1;
+//uint sx1 = 1;
+//uint sy0 = 1;
+//uint sy1 = 1;
+//
+//		uint rightCellIndex = cellIndex + 1;
+//		uint upCellIndex = cellIndex + 64;
+//
+//		float u0 = sharedUField[cellIndex];
+//		float u1 = sharedUField[rightCellIndex];
+//		float v0 = sharedVField[cellIndex];
+//		float v1 = sharedVField[upCellIndex];
+//		float divergence = u1 - u0 + v1 - v0;
+//
+//		float p = -divergence / s * overRelaxation;
+//
+////if (!skip) {
+//		sharedUField[cellIndex] =      u0 - sx0 * p;
+//		sharedUField[rightCellIndex] = u1 + sx1 * p;
+//		sharedVField[cellIndex] =      v0 - sy0 * p;
+//		sharedVField[upCellIndex] =    v1 + sy1 * p;
+////}
+//barrier();
+////if (gl_WorkGroupID.x == 0 && gl_WorkGroupID.y == 0){
+////test[globalCoord1.x + globalCoord1.y * 1280] = sharedVField[cellIndex1];
+////test[globalCoord2.x + globalCoord2.y * 1280] = sharedVField[cellIndex2];
+////}
+////if (!skip) {
+//		imageStore(U_field, globalCoord1, vec4(sharedUField[cellIndex1]));
+//		imageStore(V_field, globalCoord1, vec4(sharedVField[cellIndex1]));
+//		imageStore(U_field, globalCoord2, vec4(sharedUField[cellIndex2]));
+//		imageStore(V_field, globalCoord2, vec4(sharedVField[cellIndex2]));
+////}
+////		ivec2 rightCellCoord = ivec2(cellCoord.x + 1, cellCoord.y);
+////		ivec2 upCellCoord = ivec2(cellCoord.x, cellCoord.y + 1);
+////
+////		float u0 = imageLoad(U_field, cellCoord).x;
+////		float u1 = imageLoad(U_field, rightCellCoord).x;
+////		float v0 = imageLoad(V_field, cellCoord).x;
+////		float v1 = imageLoad(V_field, upCellCoord).x;
+////		float divergence = u1 - u0 + v1 - v0;
+////
+////		float p = -divergence / s * overRelaxation;
+////		// TODO add pressure field
+//////if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y ==0){
+////		imageStore(U_field, cellCoord,      vec4(u0 - sx0 * p));
+////		imageStore(U_field, rightCellCoord, vec4(u1 + sx1 * p));
+////		imageStore(V_field, cellCoord,      vec4(v0 - sy0 * p));
+////		imageStore(V_field, upCellCoord,    vec4(v1 + sy1 * p));
+////}
+////else{
+////imageStore(U_field, cellCoord,      vec4( 0.0));
+////imageStore(U_field, rightCellCoord, vec4( 0.0));
+////imageStore(V_field, cellCoord,      vec4(1.0));
+////imageStore(V_field, upCellCoord,    vec4( 0.0));
+////}
+////imageStore(U_field, cellCoord, vec4(1.0));
+////imageStore(V_field, cellCoord, vec4(gl_GlobalInvocationID.x + gl_GlobalInvocationID.y));
+////		barrier();
+//	}
+////	vec4 t = imageLoad(U_field, ivec2(gl_GlobalInvocationID));
+////	imageStore(U_field, ivec2(gl_GlobalInvocationID), t+1);
+//
+////	imageStore(U_field, ivec2(0, 0), vec4(0));
+////	imageStore(U_field, ivec2(1, 0), vec4(1));
 }

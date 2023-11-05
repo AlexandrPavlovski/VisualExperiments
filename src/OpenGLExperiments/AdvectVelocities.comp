@@ -77,10 +77,10 @@ float sampleField(bool isUField, vec2 sampleCoord) // bilinear interpolation
 void main()
 {
 	ivec2 firstCellCoord = ivec2(gl_GlobalInvocationID.xy * 2 + 2);
-	if (firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1)
-	{
-		return;
-	}
+//	if (firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1)
+//	{
+//		return;
+//	}
 
 	for (int i = -1; i <= 0; i++)
 	for (int j = -1; j <= 0; j++)
@@ -108,11 +108,13 @@ void main()
 			float newV = sampleField(false, sampleCoord);
 			imageStore(V_fieldOutput, cellCoord, vec4(newV));
 		}
+//float u = imageLoad(U_fieldInput, ivec2(cellCoord)).x;
+//float v = imageLoad(V_fieldInput, ivec2(cellCoord)).x;
+//imageStore(U_fieldOutput, ivec2(cellCoord), vec4(u));
+//imageStore(V_fieldOutput, ivec2(cellCoord), vec4(v));
 	}
-
-if (firstCellCoord.y == 40 && firstCellCoord.x == 400)
-	imageStore(U_fieldOutput, ivec2(firstCellCoord), vec4(-5000.0));
-//	imageStore(V_fieldInput, ivec2(gl_GlobalInvocationID), vec4(1));
-//	imageStore(U_fieldOutput, ivec2(gl_GlobalInvocationID), vec4(1));
-//	imageStore(V_fieldOutput, ivec2(gl_GlobalInvocationID), vec4(1));
+if (firstCellCoord.y == 170 && firstCellCoord.x == 170){
+	imageStore(V_fieldOutput, ivec2(firstCellCoord), vec4(1000.0));
+//	imageStore(U_fieldOutput, ivec2(firstCellCoord), vec4(100.0));
+}
 }
