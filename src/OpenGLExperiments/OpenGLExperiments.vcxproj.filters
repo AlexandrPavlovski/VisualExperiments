@@ -206,5 +206,8 @@
     <CopyFileToFolders Include="AdvectVelocities.comp">
       <Filter>Effects\EulerianFluidEffect</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="AdvectSmoke.comp">
+      <Filter>Effects\EulerianFluidEffect</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -31,12 +31,12 @@ void EulerianFluidEffect::initialize()
 	glBindVertexArray(vao);
 
 	std::vector<float> velocityFieldsData(cellsCount + simulationAreaWidth + simulationAreaHeight + 1);
-	CreateTextureField(&textureU1, GL_TEXTURE2, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 2);
-	CreateTextureField(&textureV1, GL_TEXTURE3, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 3);
-	CreateTextureField(&textureU0, GL_TEXTURE0, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 0);
-	//velocityFieldsData[1 * simulationAreaWidth + 1] = 1000.0;
-	//for (int i = 0; i < velocityFieldsData.size(); i++) velocityFieldsData[i] = i * 0.00001;
-	CreateTextureField(&textureV0, GL_TEXTURE1, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 1);
+	//CreateTextureField(&textureU1, GL_TEXTURE2, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 2);
+	//CreateTextureField(&textureV1, GL_TEXTURE3, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 3);
+	//CreateTextureField(&textureU0, GL_TEXTURE0, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 0);
+	//velocityFieldsData[100 * simulationAreaWidth + 100] = 100.0;
+	//for (int i = 0; i < velocityFieldsData.size(); i++) velocityFieldsData[i] = 1;
+	//CreateTextureField(&textureV0, GL_TEXTURE1, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 1);
 
 	int w = simulationAreaWidth;
 	int h = simulationAreaHeight;
@@ -46,7 +46,16 @@ void EulerianFluidEffect::initialize()
 	for (int i = w;              i < cellsCount; i += w) cellTypeData[i] = 0;
 	for (int i = w - 1;          i < cellsCount; i += w) cellTypeData[i] = 0;
 
-	createSsbo(&ssboCellType, 4, cellsCount * sizeof(GLuint), &cellTypeData[0], GL_DYNAMIC_DRAW);
+
+	createSsbo(&ssboU0, 0, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboV0, 1, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboU1, 2, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboV1, 3, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboSmoke0, 4, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboSmoke1, 5, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
+
+	createSsbo(&ssboCellType, 6, cellsCount * sizeof(GLuint), &cellTypeData[0], GL_DYNAMIC_DRAW);
+
 	createSsbo(&bufferTest, 9, 20000 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 
 
@@ -62,22 +71,51 @@ void EulerianFluidEffect::initialize()
 	};
 	createComputeShaderProgram(solveIncompressibilityOddCompShaderProgram, "SolveIncompressibility.comp", emptyShaderParams);
 	createComputeShaderProgram(advectVelocitiesOddCompShaderProgram, "AdvectVelocities.comp", emptyShaderParams);
+	createComputeShaderProgram(advectSmokeOddCompShaderProgram, "AdvectSmoke.comp", emptyShaderParams);
 	std::vector<ShaderParam> evenShaderParams
 	{
 		// swapping inputs and outputs
-		{ "#define U_fieldInputBunding 0",  "#define U_fieldInputBunding 2" },
-		{ "#define V_fieldInputBunding 1",  "#define V_fieldInputBunding 3" },
-		{ "#define U_fieldOutputBunding 2", "#define U_fieldOutputBunding 0" },
-		{ "#define V_fieldOutputBunding 3", "#define V_fieldOutputBunding 1" },
+		{ "#define U_fieldInputBinding 0",  "#define U_fieldInputBinding 2" },
+		{ "#define V_fieldInputBinding 1",  "#define V_fieldInputBinding 3" },
+		{ "#define U_fieldOutputBinding 2", "#define U_fieldOutputBinding 0" },
+		{ "#define V_fieldOutputBinding 3", "#define V_fieldOutputBinding 1" },
+
+		{ "#define U_fieldBufferI UI", "#define U_fieldBufferI UO" },
+		{ "#define V_fieldBufferI VI", "#define V_fieldBufferI VO" },
+		{ "#define U_fieldBufferO UO", "#define U_fieldBufferO UI" },
+		{ "#define V_fieldBufferO VO", "#define V_fieldBufferO VI" },
 	};
 	createComputeShaderProgram(solveIncompressibilityEvenCompShaderProgram, "SolveIncompressibility.comp", evenShaderParams);
 	createComputeShaderProgram(advectVelocitiesEvenCompShaderProgram, "AdvectVelocities.comp", evenShaderParams);
 
+	std::vector<ShaderParam> evenSmokeShaderParams
+	{
+		// swapping inputs and outputs
+		{ "#define smoke_fieldInputBinding 4",  "#define smoke_fieldInputBinding 5" },
+		{ "#define smoke_fieldOutputBinding 5",  "#define smoke_fieldOutputBinding 4" },
+
+		{ "#define smoke_fieldBufferI SI", "#define smoke_fieldBufferI SO" },
+		{ "#define smoke_fieldBufferO SO", "#define smoke_fieldBufferO SI" },
+
+		{ "#define U_fieldInputBinding 2",  "#define U_fieldInputBinding 0" },
+		{ "#define V_fieldInputBinding 3",  "#define V_fieldInputBinding 1" },
+
+		{ "#define U_fieldBufferI UO", "#define U_fieldBufferI UI" },
+		{ "#define V_fieldBufferI VO", "#define V_fieldBufferI VI" },
+	};
+	createComputeShaderProgram(advectSmokeEvenCompShaderProgram, "AdvectSmoke.comp", evenSmokeShaderParams);
+
 	std::vector<ShaderParam> evenShaderParams2
 	{
 		// swapping inputs and outputs
-		{ "#define U_fieldInputBunding 2",  "#define U_fieldInputBunding 0" },
-		{ "#define V_fieldInputBunding 3",  "#define V_fieldInputBunding 1" },
+		{ "#define U_fieldInputBinding 2",  "#define U_fieldInputBinding 0" },
+		{ "#define V_fieldInputBinding 3",  "#define V_fieldInputBinding 1" },
+
+		{ "#define U_fieldBufferI UO", "#define U_fieldBufferI UI" },
+		{ "#define V_fieldBufferI VO", "#define V_fieldBufferI VI" },
+
+		{ "#define smoke_fieldInputBinding 5",  "#define smoke_fieldInputBinding 4" },
+		{ "#define smoke_fieldBufferI SO", "#define smoke_fieldBufferI SI" },
 	};
 	evenShaderProgram = createShaderProgramFromFiles(emptyShaderParams, evenShaderParams2);
 
@@ -113,6 +151,7 @@ glBeginQuery(GL_TIME_ELAPSED, queries[0]);
 			glDispatchCompute(workGroupsCountX, workGroupsCountY, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 //GLfloat* test = readFromBuffer<GLfloat>(20000, bufferTest);
+//int i = 0;
 			glUniform1i(1, 1);
 			glDispatchCompute(workGroupsCountX, workGroupsCountY, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
@@ -125,10 +164,15 @@ glBeginQuery(GL_TIME_ELAPSED, queries[1]);
 
 		glUseProgram(isOddFrame ? advectVelocitiesOddCompShaderProgram : advectVelocitiesEvenCompShaderProgram);
 		glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
-		glDispatchCompute(workGroupsCountX, workGroupsCountY, 1);
+		glDispatchCompute(workGroupsCountX, workGroupsCountY / 2, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
-//std::vector<float> compute_data(cellsCount*2);
-//glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, &compute_data[0]);
+
+		glUseProgram(isOddFrame ? advectSmokeOddCompShaderProgram : advectSmokeEvenCompShaderProgram);
+		glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
+		glDispatchCompute(workGroupsCountX * 2, workGroupsCountY, 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+//GLfloat* test = readFromBuffer<GLfloat>(20000, bufferTest);
+//int i = 0;
 
 #ifdef PROFILE
 glEndQuery(GL_TIME_ELAPSED);
@@ -142,7 +186,8 @@ glBeginQuery(GL_TIME_ELAPSED, queries[2]);
 #endif
 
 	glUseProgram(isOddFrame ? evenShaderProgram : shaderProgram);
-	glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
+	glUniform2f(0, simulationAreaWidth, simulationAreaHeight);
+	glUniform2f(1, windowWidth, windowHeight);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 #ifdef PROFILE
@@ -206,7 +251,7 @@ ImGui::Begin("Average frame time, ms");
 ImGui::Text(("CPU - " + std::to_string(averageFrameTimeCpu)).c_str());
 
 ImGui::Text(("Incompressibility - " + std::to_string(averageFrameTimeGpu[0])).c_str());
-ImGui::Text(("Advect Velocities - " + std::to_string(averageFrameTimeGpu[1])).c_str());
+ImGui::Text(("Advections - " + std::to_string(averageFrameTimeGpu[1])).c_str());
 ImGui::Text(("Draw - "              + std::to_string(averageFrameTimeGpu[2])).c_str());
 ImGui::End();
 #endif

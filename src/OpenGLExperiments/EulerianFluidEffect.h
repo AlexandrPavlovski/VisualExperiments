@@ -32,19 +32,22 @@ private:
 	StartupParams startupParams;
 	RuntimeParams runtimeParams;
 
-	GLuint vao = 0, ssboCellType = 0, textureU0 = 0, textureV0 = 0, textureU1 = 0, textureV1 = 0, sampler = 0;
+	GLuint vao = 0, ssboCellType = 0, ssboU0 = 0, ssboV0, ssboU1 = 0, ssboV1 = 0, ssboSmoke0 = 0, ssboSmoke1 = 0;
+	GLuint textureU0 = 0, textureV0 = 0, textureU1 = 0, textureV1 = 0, sampler = 0;
 	GLuint evenShaderProgram = 0,
 		solveIncompressibilityOddCompShaderProgram = 0,
 		solveIncompressibilityEvenCompShaderProgram = 0,
 		advectVelocitiesOddCompShaderProgram = 0,
-		advectVelocitiesEvenCompShaderProgram = 0;
+		advectVelocitiesEvenCompShaderProgram = 0,
+		advectSmokeOddCompShaderProgram = 0,
+		advectSmokeEvenCompShaderProgram = 0;
 	GLuint bufferTest = 0;
 
-	static const GLuint simulationAreaWidth = 1280 / 1; // decoupled from screen size
-	static const GLuint simulationAreaHeight = 800 / 1;
+	static const GLuint simulationAreaWidth = 1280 / 2;
+	static const GLuint simulationAreaHeight = 800 / 2;
 	static const GLuint cellsCount = simulationAreaWidth * simulationAreaHeight;
 	//GLfloat cellsPerWorkGroup = 32 * 2;
-	GLuint workGroupsCountX = ceil(simulationAreaWidth / 32.0);
+	GLuint workGroupsCountX = ceil(simulationAreaWidth / 64.0);
 	GLuint workGroupsCountY = ceil(simulationAreaHeight / 32.0);
 
 	bool isOddFrame = true;

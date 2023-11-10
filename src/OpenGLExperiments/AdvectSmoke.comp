@@ -1,0 +1,76 @@
+#version 460 core
+
+#define U_fieldInputBinding 2
+#define V_fieldInputBinding 3
+#define smoke_fieldInputBinding 4
+#define smoke_fieldOutputBinding 5
+
+#define U_fieldBufferI UO
+#define V_fieldBufferI VO
+#define smoke_fieldBufferI SI
+#define smoke_fieldBufferO SO
+
+
+layout(local_size_x = 32, local_size_y = 32) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform ivec2 simulationArea;
+
+layout(binding = U_fieldInputBinding) buffer U_fieldBufferI { float U_field[]; };
+layout(binding = V_fieldInputBinding) buffer V_fieldBufferI { float V_field[]; };
+layout(binding = smoke_fieldInputBinding) buffer smoke_fieldBufferI { float smoke_fieldInput[]; };
+layout(binding = smoke_fieldOutputBinding) buffer smoke_fieldBufferO { float smoke_fieldOutput[]; };
+
+layout(binding = 6) buffer cellTypeData
+{
+	uint cellType[];
+};
+
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+
+
+float sampleField(vec2 sampleCoord) // bilinear interpolation
+{
+	ivec2 fieldCoord0 = ivec2(min(sampleCoord, simulationArea));
+	ivec2 fieldCoord1 = ivec2(min(fieldCoord0 + 1, simulationArea));
+
+	vec2 weights0 = fract(sampleCoord);
+	vec2 weights1 = 1.0 - weights0;
+
+	return weights1.x * weights1.y * smoke_fieldInput[fieldCoord0.x + fieldCoord0.y * simulationArea.x]
+		 + weights0.x * weights1.y * smoke_fieldInput[fieldCoord1.x + fieldCoord0.y * simulationArea.x]
+		 + weights0.x * weights0.y * smoke_fieldInput[fieldCoord1.x + fieldCoord1.y * simulationArea.x]
+		 + weights1.x * weights0.y * smoke_fieldInput[fieldCoord0.x + fieldCoord1.y * simulationArea.x];
+}
+
+void main()
+{
+	ivec2 cellCoord = ivec2(gl_GlobalInvocationID.xy + 1);
+	if (cellCoord.x >= simulationArea.x - 1 || cellCoord.y >= simulationArea.y - 1)
+	{
+		return;
+	}
+
+	uint cellIndex = cellCoord.x + cellCoord.y * simulationArea.x;
+
+	uint currCellType = cellType[cellIndex];
+	if (currCellType != 0)
+	{
+		float U_velocity = (U_field[cellIndex] + U_field[cellIndex + 1]) * 0.5;
+		float V_velocity = (V_field[cellIndex] + V_field[cellIndex + simulationArea.x]) * 0.5;
+		vec2 sampleCoord = cellCoord - vec2(U_velocity, V_velocity);
+		sampleCoord.y += 0.5;
+
+		float newSmoke = sampleField(sampleCoord);
+		smoke_fieldOutput[cellIndex] = newSmoke;
+		test[cellIndex] = 777;
+	}
+
+if (cellCoord.y >= 100 && cellCoord.y <= 150 && cellCoord.x == 120){
+	smoke_fieldOutput[cellIndex] = 1.0;
+}
+}
