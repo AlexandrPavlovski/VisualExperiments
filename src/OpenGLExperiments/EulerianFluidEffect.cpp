@@ -1,4 +1,4 @@
-#define PROFILE
+//#define PROFILE
 
 
 #include <chrono>
@@ -34,7 +34,6 @@ void EulerianFluidEffect::initialize()
 	//CreateTextureField(&textureU1, GL_TEXTURE2, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 2);
 	//CreateTextureField(&textureV1, GL_TEXTURE3, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 3);
 	//CreateTextureField(&textureU0, GL_TEXTURE0, simulationAreaWidth + 1, simulationAreaHeight, &velocityFieldsData[0], 0);
-	//velocityFieldsData[100 * simulationAreaWidth + 100] = 100.0;
 	//for (int i = 0; i < velocityFieldsData.size(); i++) velocityFieldsData[i] = 1;
 	//CreateTextureField(&textureV0, GL_TEXTURE1, simulationAreaWidth, simulationAreaHeight + 1, &velocityFieldsData[0], 1);
 
@@ -46,13 +45,13 @@ void EulerianFluidEffect::initialize()
 	for (int i = w;              i < cellsCount; i += w) cellTypeData[i] = 0;
 	for (int i = w - 1;          i < cellsCount; i += w) cellTypeData[i] = 0;
 
-
-	createSsbo(&ssboU0, 0, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
 	createSsbo(&ssboV0, 1, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
 	createSsbo(&ssboU1, 2, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
 	createSsbo(&ssboV1, 3, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
-	createSsbo(&ssboSmoke0, 4, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
 	createSsbo(&ssboSmoke1, 5, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
+	velocityFieldsData[300 * simulationAreaWidth + 300] = 10000.0;
+	createSsbo(&ssboU0, 0, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
+	createSsbo(&ssboSmoke0, 4, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
 
 	createSsbo(&ssboCellType, 6, cellsCount * sizeof(GLuint), &cellTypeData[0], GL_DYNAMIC_DRAW);
 
@@ -141,10 +140,11 @@ auto tBegin = std::chrono::steady_clock::now();
 glBeginQuery(GL_TIME_ELAPSED, queries[0]);
 #endif
 
-		for (int subSteps = 0; subSteps < runtimeParams.substeps; subSteps++)
+		for (int substep = 0; substep < runtimeParams.substeps; substep++)
 		{
 			glUseProgram(isOddFrame ? solveIncompressibilityOddCompShaderProgram : solveIncompressibilityEvenCompShaderProgram);
 			glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
+			glUniform1i(2, substep == runtimeParams.substeps - 1); // isLastSubstep
 
 			// separating work groups to avoid simultaneous writes on edges of groups working area
 			glUniform1i(1, 0);
@@ -164,7 +164,7 @@ glBeginQuery(GL_TIME_ELAPSED, queries[1]);
 
 		glUseProgram(isOddFrame ? advectVelocitiesOddCompShaderProgram : advectVelocitiesEvenCompShaderProgram);
 		glUniform2i(0, simulationAreaWidth, simulationAreaHeight);
-		glDispatchCompute(workGroupsCountX, workGroupsCountY / 2, 1);
+		glDispatchCompute(workGroupsCountX * 2, workGroupsCountY, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 		glUseProgram(isOddFrame ? advectSmokeOddCompShaderProgram : advectSmokeEvenCompShaderProgram);

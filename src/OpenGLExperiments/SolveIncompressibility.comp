@@ -14,6 +14,7 @@ layout(std430) buffer;
 
 layout(location = 0) uniform ivec2 simulationArea;
 layout(location = 1) uniform int checkerOffset;
+layout(location = 2) uniform bool isLastSubstep;
 
 
 layout(binding = U_fieldInputBinding) buffer U_fieldBufferI { float U_field[]; };
@@ -74,4 +75,24 @@ void main()
 	U_field[rightCellIndex] = u1 + sx1 * p;
 	V_field[globalIndex] =    v0 - sy0 * p;
 	V_field[upCellIndex] =    v1 + sy1 * p;
+
+	if (isLastSubstep)
+	{
+		if (globalCoord.x == 1)
+		{
+			U_field[globalIndex - 1] = u0 - sx0 * p;
+		}
+		if (globalCoord.x == simulationArea.x - 2)
+		{
+			U_field[globalIndex + 2] = u1 + sx1 * p;
+		}
+		if (globalCoord.y == 1)
+		{
+			V_field[globalIndex - simulationArea.x] = v0 - sy0 * p;
+		}
+		if (globalCoord.y == simulationArea.y - 2)
+		{
+			U_field[globalIndex + 2 * simulationArea.x] = v1 + sy1 * p;
+		}
+	}
 }

@@ -23,7 +23,7 @@ void main() {
 	{
 		pos.x /= rr;
 	}
-	else
+	else if (sr > wr)
 	{
 		pos.y *= rr;
 	}

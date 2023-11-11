@@ -56,7 +56,7 @@ float averageV(uint cellIndex)
 		  + V_fieldInput[downRightCellCoord]) * 0.25;
 }
 
-float sampleField(bool isUField, vec2 sampleCoord) // bilinear interpolation
+float sampleField(bool isUField, in vec2 sampleCoord) // bilinear interpolation
 {
 	ivec2 fieldCoord0 = ivec2(min(sampleCoord, simulationArea));
 	ivec2 fieldCoord1 = ivec2(min(fieldCoord0 + 1, simulationArea));
@@ -92,40 +92,33 @@ void main()
 //	}
 
 
-	ivec2 firstCellCoord = ivec2(gl_GlobalInvocationID.xy * 2 + 2);
-	if (firstCellCoord.x >= simulationArea.x - 1 || firstCellCoord.y >= simulationArea.y - 1)
+	ivec2 cellCoord = ivec2(gl_GlobalInvocationID.xy + 1);
+	if (cellCoord.x >= simulationArea.x - 1 || cellCoord.y >= simulationArea.y - 1)
 	{
 		return;
 	}
 
-	for (int i = -1; i <= 0; i++)
-	for (int j = -1; j <= 0; j++)
+	uint cellIndex = cellCoord.x + cellCoord.y * simulationArea.x;
+
+	uint currCellType = cellType[cellIndex];
+	if (currCellType != 0 && cellType[cellIndex - 1] != 0)
 	{
-		ivec2 cellCoord = firstCellCoord + ivec2(i, j);
-		uint cellIndex = cellCoord.x + cellCoord.y * simulationArea.x;
+		vec2 totalVelocity = vec2(U_fieldInput[cellIndex], averageV(cellIndex));
+		vec2 sampleCoord = cellCoord - totalVelocity;
 
-		uint currCellType = cellType[cellIndex];
-		if (currCellType != 0 && cellType[cellIndex - 1] != 0)
-		{
-			vec2 totalVelocity = vec2(U_fieldInput[cellIndex], averageV(cellIndex));
-			vec2 sampleCoord = cellCoord - totalVelocity;
-			sampleCoord.y += 0.5;
-
-			float newU = sampleField(true, sampleCoord);
-			U_fieldOutput[cellIndex] = newU;
-		}
-
-		if (currCellType != 0 && cellType[cellIndex - simulationArea.x] != 0)
-		{
-			vec2 totalVelocity = vec2(averageU(cellIndex), V_fieldInput[cellIndex]);
-			vec2 sampleCoord = cellCoord - totalVelocity;
-			sampleCoord.x += 0.5;
-
-			float newV = sampleField(false, sampleCoord);
-			V_fieldOutput[cellIndex] = newV;
-		}
-if (cellCoord.y == 100 && cellCoord.x == 100){
-	U_fieldOutput[cellIndex] = 100.0;
-}
+		float newU = sampleField(true, sampleCoord);
+		U_fieldOutput[cellIndex] = newU;
 	}
+
+	if (currCellType != 0 && cellType[cellIndex - simulationArea.x] != 0)
+	{
+		vec2 totalVelocity = vec2(averageU(cellIndex), V_fieldInput[cellIndex]);
+		vec2 sampleCoord = cellCoord - totalVelocity;
+
+		float newV = sampleField(false, sampleCoord);
+		V_fieldOutput[cellIndex] = newV;
+	}
+if (cellCoord.y == 350 && cellCoord.x == 500){
+	U_fieldOutput[cellIndex] = 10000.0;
+}
 }

@@ -46,11 +46,15 @@ void main() {
 		fc *= simulationArea / windowSize;
 		fc.x *= rr;
 	}
-	else
+	else if (sr > wr)
 	{
 		fc.y -= (windowSize.y - windowSize.y * rr) / 2;
 		fc *= simulationArea / windowSize;
 		fc.y /= rr;
+	}
+	else
+	{
+		fc *= simulationArea / windowSize;
 	}
 
 	fc = floor(fc);
@@ -67,6 +71,7 @@ void main() {
 
 	float s = smoke_fieldInput[cellId];
 
+//	color = vec4(u, v, s, 1.0);
 	color = vec4(s, s, s, 1.0);
 //if (fc.y == 0) color = vec4(1);
 }

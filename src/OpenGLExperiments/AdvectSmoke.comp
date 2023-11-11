@@ -63,14 +63,14 @@ void main()
 		float U_velocity = (U_field[cellIndex] + U_field[cellIndex + 1]) * 0.5;
 		float V_velocity = (V_field[cellIndex] + V_field[cellIndex + simulationArea.x]) * 0.5;
 		vec2 sampleCoord = cellCoord - vec2(U_velocity, V_velocity);
-		sampleCoord.y += 0.5;
+//		sampleCoord.y += 0.5;
 
 		float newSmoke = sampleField(sampleCoord);
 		smoke_fieldOutput[cellIndex] = newSmoke;
 		test[cellIndex] = 777;
 	}
 
-if (cellCoord.y >= 100 && cellCoord.y <= 150 && cellCoord.x == 120){
-	smoke_fieldOutput[cellIndex] = 1.0;
-}
+//if (cellCoord.y == 300 && cellCoord.x >= 350 && cellCoord.x <= 420){
+//	smoke_fieldOutput[cellIndex] = 1.0;
+//}
 }
