@@ -27,3 +27,8 @@ https://github.com/AlexandrPavlovski/VisualExperiments/assets/36845873/2209b610-
 Calculated in OpenGL compute shaders. Implementation of this article (https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-32-broad-phase-collision-detection-cuda) using simple Verlet integration.
 
 https://github.com/AlexandrPavlovski/VisualExperiments/assets/36845873/bd2f3bad-5e5e-4c42-99d5-dda05ff991b2
+
+## 5. Eulerian fluid simulation
+Implementation of this article (https://matthias-research.github.io/pages/tenMinutePhysics/17-fluidSim.pdf)
+
+![image](https://github.com/AlexandrPavlovski/VisualExperiments/assets/36845873/244beaa7-22da-4dc2-b2d8-820201ec5e51)
