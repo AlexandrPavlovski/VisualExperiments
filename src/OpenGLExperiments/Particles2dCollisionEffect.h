@@ -179,8 +179,6 @@ private:
 	ShaderParams initShaderParams();
 	void initRadixSortShaderProgramms(ShaderParams shaderParams);
 
-	void createSsbo(GLuint* buff, GLuint index, GLsizeiptr size, const void* data, GLenum usage);
-
 	void resetPanAndZoom();
 
 	template< typename T >

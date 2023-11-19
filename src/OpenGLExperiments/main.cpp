@@ -16,20 +16,22 @@
 #include "Particles2dNBodyGravityEffect.h"
 #include "Fractal2dEffect.h"
 #include "Particles2dCollisionEffect.h"
+#include "EulerianFluidEffect.h"
 
 
 bool isVsyncEnabled = true;
 
-const int effectsCount = 4;
+const int effectsCount = 5;
 AbstractEffect* effect;
 const char* effectNames[effectsCount] =
 {
 	"2D One Attractor Gravity",
 	"2D N-Body Gravity",
 	"2D Fractals",
-	"2D Collisions"
+	"2D Collisions",
+	"2D Eulerian Fluid"
 };
-int currentEffectIndex = 3;
+int currentEffectIndex = 4;
 
 GLFWwindow* window;
 bool isFullscreen = false;
@@ -60,6 +62,9 @@ void useSelectedEffect()
 		break;
 	case 3:
 		effect = new Particles2dCollisionEffect(window);
+		break;
+	case 4:
+		effect = new EulerianFluidEffect(window);
 		break;
 	default:
 		throw "Effect is not implemented";
@@ -266,6 +271,7 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		effect->draw(io.DeltaTime);
+		effect->isAdvanceOneFrame = false;
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();

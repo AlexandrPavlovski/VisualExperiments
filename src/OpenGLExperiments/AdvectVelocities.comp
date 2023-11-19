@@ -1,0 +1,124 @@
+#version 460 core
+
+#define U_fieldInputBinding 0
+#define V_fieldInputBinding 1
+#define U_fieldOutputBinding 2
+#define V_fieldOutputBinding 3
+
+#define U_fieldBufferI UI
+#define V_fieldBufferI VI
+#define U_fieldBufferO UO
+#define V_fieldBufferO VO
+
+
+layout(local_size_x = 32, local_size_y = 32) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform ivec2 simulationArea;
+
+layout(binding = U_fieldInputBinding) buffer U_fieldBufferI { float U_fieldInput[]; };
+layout(binding = V_fieldInputBinding) buffer V_fieldBufferI { float V_fieldInput[]; };
+layout(binding = U_fieldOutputBinding) buffer U_fieldBufferO { float U_fieldOutput[]; };
+layout(binding = V_fieldOutputBinding) buffer V_fieldBufferO { float V_fieldOutput[]; };
+
+layout(binding = 6) buffer cellTypeData
+{
+	uint cellType[];
+};
+
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+
+float averageU(uint cellIndex)
+{
+	uint leftCellIndex =   cellIndex - 1;
+	uint upCellIndex =     cellIndex + simulationArea.x;
+	uint upLeftCellIndex = upCellIndex - 1;
+
+	return (U_fieldInput[cellIndex]
+		  + U_fieldInput[leftCellIndex]
+		  + U_fieldInput[upCellIndex]
+		  + U_fieldInput[upLeftCellIndex]) * 0.25;
+}
+
+float averageV(uint cellIndex)
+{
+	uint righCellCoord =      cellIndex + 1;
+	uint downCellCoord =      cellIndex - simulationArea.x;
+	uint downRightCellCoord = downCellCoord + 1;
+
+	return (V_fieldInput[cellIndex]
+		  + V_fieldInput[righCellCoord]
+		  + V_fieldInput[downCellCoord]
+		  + V_fieldInput[downRightCellCoord]) * 0.25;
+}
+
+float sampleField(bool isUField, in vec2 sampleCoord) // bilinear interpolation
+{
+	ivec2 fieldCoord0 = ivec2(min(sampleCoord, simulationArea));
+	ivec2 fieldCoord1 = ivec2(min(fieldCoord0 + 1, simulationArea));
+
+	vec2 weights0 = fract(sampleCoord);
+	vec2 weights1 = 1.0 - weights0;
+
+	if (isUField)
+	{
+		return weights1.x * weights1.y * U_fieldInput[fieldCoord0.x + fieldCoord0.y * simulationArea.x]
+			 + weights0.x * weights1.y * U_fieldInput[fieldCoord1.x + fieldCoord0.y * simulationArea.x]
+			 + weights0.x * weights0.y * U_fieldInput[fieldCoord1.x + fieldCoord1.y * simulationArea.x]
+			 + weights1.x * weights0.y * U_fieldInput[fieldCoord0.x + fieldCoord1.y * simulationArea.x];
+	}
+	else
+	{
+		return weights1.x * weights1.y * V_fieldInput[fieldCoord0.x + fieldCoord0.y * simulationArea.x]
+			 + weights0.x * weights1.y * V_fieldInput[fieldCoord1.x + fieldCoord0.y * simulationArea.x]
+			 + weights0.x * weights0.y * V_fieldInput[fieldCoord1.x + fieldCoord1.y * simulationArea.x]
+			 + weights1.x * weights0.y * V_fieldInput[fieldCoord0.x + fieldCoord1.y * simulationArea.x];
+	}
+}
+
+void main()
+{
+//	uint thid = gl_GlobalInvocationID.x * 2 + gl_GlobalInvocationID.y * simulationArea.x;
+//	U_fieldOutput[thid] = U_fieldInput[thid];
+//	V_fieldOutput[thid] = V_fieldInput[thid];
+//	U_fieldOutput[thid+1] = U_fieldInput[thid+1];
+//	V_fieldOutput[thid+1] = V_fieldInput[thid+1];
+//	if (gl_GlobalInvocationID.y == 170 && gl_GlobalInvocationID.x == 170){
+//		U_fieldOutput[thid] = 1000.0;
+//	}
+
+
+	ivec2 cellCoord = ivec2(gl_GlobalInvocationID.xy + 1);
+	if (cellCoord.x >= simulationArea.x - 1 || cellCoord.y >= simulationArea.y - 1)
+	{
+		return;
+	}
+
+	uint cellIndex = cellCoord.x + cellCoord.y * simulationArea.x;
+
+	uint currCellType = cellType[cellIndex];
+	if (currCellType != 0 && cellType[cellIndex - 1] != 0)
+	{
+		vec2 totalVelocity = vec2(U_fieldInput[cellIndex], averageV(cellIndex));
+		vec2 sampleCoord = cellCoord - totalVelocity;
+
+		float newU = sampleField(true, sampleCoord);
+		U_fieldOutput[cellIndex] = newU;
+	}
+
+	if (currCellType != 0 && cellType[cellIndex - simulationArea.x] != 0)
+	{
+		vec2 totalVelocity = vec2(averageU(cellIndex), V_fieldInput[cellIndex]);
+		vec2 sampleCoord = cellCoord - totalVelocity;
+
+		float newV = sampleField(false, sampleCoord);
+		V_fieldOutput[cellIndex] = newV;
+	}
+if (cellCoord.y == 350 && cellCoord.x == 500){
+	U_fieldOutput[cellIndex] = 10000.0;
+}
+}

@@ -25,6 +25,12 @@
     <Filter Include="Effects\Particles2dCollisionEffect\RadixSort">
       <UniqueIdentifier>{b4b0fc13-7385-4bd8-aff5-2c32a612b4c4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Effects\EulerianFluidEffect">
+      <UniqueIdentifier>{d65ea61a-6464-483e-9c86-fed2fa17a486}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\EmptyEffect">
+      <UniqueIdentifier>{f22577b3-45fe-4be6-9a92-ef9881e24753}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Particles2dGravityEffect.cpp">
@@ -60,6 +66,9 @@
     </ClCompile>
     <ClCompile Include="AbstractEffect.cpp">
       <Filter>Effects\AbstractEffect</Filter>
+    </ClCompile>
+    <ClCompile Include="EulerianFluidEffect.cpp">
+      <Filter>Effects\EulerianFluidEffect</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -101,6 +110,15 @@
     </ClInclude>
     <ClInclude Include="Particles2dCollisionEffect.h">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="EmptyEffect.cpp">
+      <Filter>Effects\EmptyEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="EulerianFluidEffect.h">
+      <Filter>Effects\EulerianFluidEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="EmptyEffect.h">
+      <Filter>Effects\EmptyEffect</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -169,6 +187,27 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="CompactCollisionCells.comp">
       <Filter>Effects\Particles2dCollisionEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="EulerianFluidEffect.frag">
+      <Filter>Effects\EulerianFluidEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="EulerianFluidEffect.vert">
+      <Filter>Effects\EulerianFluidEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="EmptyEffect.frag">
+      <Filter>Effects\EmptyEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="EmptyEffect.vert">
+      <Filter>Effects\EmptyEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="SolveIncompressibility.comp">
+      <Filter>Effects\EulerianFluidEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="AdvectVelocities.comp">
+      <Filter>Effects\EulerianFluidEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="AdvectSmoke.comp">
+      <Filter>Effects\EulerianFluidEffect</Filter>
     </CopyFileToFolders>
   </ItemGroup>
 </Project>

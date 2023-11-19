@@ -1,0 +1,98 @@
+#version 460 core
+
+#define U_fieldInputBinding 0
+#define V_fieldInputBinding 1
+
+#define U_fieldBufferI UI
+#define V_fieldBufferI VI
+
+#define overRelaxation 1.9
+
+layout(local_size_x = 32, local_size_y = 32) in;
+layout(std430) buffer;
+
+
+layout(location = 0) uniform ivec2 simulationArea;
+layout(location = 1) uniform int checkerOffset;
+layout(location = 2) uniform bool isLastSubstep;
+
+
+layout(binding = U_fieldInputBinding) buffer U_fieldBufferI { float U_field[]; };
+layout(binding = V_fieldInputBinding) buffer V_fieldBufferI { float V_field[]; };
+
+layout(binding = 6) buffer cellTypeData
+{
+	uint cellType[];
+};
+
+layout(binding = 9) buffer tetete
+{
+	float test[];
+};
+
+
+void main()
+{
+	uvec2 globalCoord = uvec2(gl_GlobalInvocationID.x * 2 + 1, gl_GlobalInvocationID.y + 1);
+	if (globalCoord.x >= simulationArea.x - 1 || globalCoord.y >= simulationArea.y - 1)
+	{
+		return;
+	}
+
+	globalCoord.x += uint(mod(globalCoord.y + checkerOffset, 2));
+
+	uint globalIndex = globalCoord.x + globalCoord.y * simulationArea.x;
+//	V_field[globalIndex] = 1;
+//	V_field[globalIndex+1] = 1;
+
+	if (cellType[globalIndex] == 0)
+	{
+		return;
+	}
+
+	uint sx0 = cellType[globalIndex - 1];
+	uint sx1 = cellType[globalIndex + 1];
+	uint sy0 = cellType[globalIndex - simulationArea.x];
+	uint sy1 = cellType[globalIndex + simulationArea.x];
+	uint s = sx0 + sx1 + sy0 + sy1;
+	if (s == 0)
+	{
+		return;
+	}
+
+	uint rightCellIndex = globalIndex + 1;
+	uint upCellIndex = globalIndex + simulationArea.x;
+
+	float u0 = U_field[globalIndex];
+	float u1 = U_field[rightCellIndex];
+	float v0 = V_field[globalIndex];
+	float v1 = V_field[upCellIndex];
+	float divergence = u1 - u0 + v1 - v0;
+
+	float p = -divergence / s * overRelaxation;
+
+	U_field[globalIndex] =    u0 - sx0 * p;
+	U_field[rightCellIndex] = u1 + sx1 * p;
+	V_field[globalIndex] =    v0 - sy0 * p;
+	V_field[upCellIndex] =    v1 + sy1 * p;
+
+	if (isLastSubstep)
+	{
+		if (globalCoord.x == 1)
+		{
+			U_field[globalIndex - 1] = u0 - sx0 * p;
+		}
+		if (globalCoord.x == simulationArea.x - 2)
+		{
+			U_field[globalIndex + 2] = u1 + sx1 * p;
+		}
+		if (globalCoord.y == 1)
+		{
+			V_field[globalIndex - simulationArea.x] = v0 - sy0 * p;
+		}
+		if (globalCoord.y == simulationArea.y - 2)
+		{
+			U_field[globalIndex + 2 * simulationArea.x] = v1 + sy1 * p;
+		}
+	}
+}
