@@ -45,6 +45,10 @@ void EulerianFluidEffect::initialize()
 	for (int i = w;              i < cellsCount; i += w) cellTypeData[i] = 0;
 	for (int i = w - 1;          i < cellsCount; i += w) cellTypeData[i] = 0;
 
+	for (int x = 100; x < 110; x += 1)
+		for (int y = 100; y < 110; y += 1)
+			cellTypeData[x + y * w] = 0;
+
 	createSsbo(&ssboV0, 1, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
 	createSsbo(&ssboU1, 2, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
 	createSsbo(&ssboV1, 3, cellsCount * sizeof(GLfloat), &velocityFieldsData[0], GL_DYNAMIC_DRAW);
