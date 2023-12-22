@@ -17,11 +17,12 @@
 #include "Fractal2dEffect.h"
 #include "Particles2dCollisionEffect.h"
 #include "EulerianFluidEffect.h"
+#include "Raytracer2D.h"
 
 
 bool isVsyncEnabled = true;
 
-const int effectsCount = 5;
+const int effectsCount = 6;
 AbstractEffect* effect;
 const char* effectNames[effectsCount] =
 {
@@ -29,9 +30,10 @@ const char* effectNames[effectsCount] =
 	"2D N-Body Gravity",
 	"2D Fractals",
 	"2D Collisions",
-	"2D Eulerian Fluid"
+	"2D Eulerian Fluid",
+	"2D Raytracer"
 };
-int currentEffectIndex = 4;
+int currentEffectIndex = 5;
 
 GLFWwindow* window;
 bool isFullscreen = false;
@@ -65,6 +67,9 @@ void useSelectedEffect()
 		break;
 	case 4:
 		effect = new EulerianFluidEffect(window);
+		break;
+	case 5:
+		effect = new Raytracer2D(window);
 		break;
 	default:
 		throw "Effect is not implemented";

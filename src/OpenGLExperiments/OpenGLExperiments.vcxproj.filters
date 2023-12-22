@@ -31,6 +31,9 @@
     <Filter Include="Effects\EmptyEffect">
       <UniqueIdentifier>{f22577b3-45fe-4be6-9a92-ef9881e24753}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Effects\Raytracer2D">
+      <UniqueIdentifier>{988c6da3-f6d7-43fb-8362-115ab14e3ec1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Particles2dGravityEffect.cpp">
@@ -69,6 +72,9 @@
     </ClCompile>
     <ClCompile Include="EulerianFluidEffect.cpp">
       <Filter>Effects\EulerianFluidEffect</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracer2D.cpp">
+      <Filter>Effects\Raytracer2D</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -119,6 +125,9 @@
     </ClInclude>
     <ClInclude Include="EmptyEffect.h">
       <Filter>Effects\EmptyEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracer2D.h">
+      <Filter>Effects\Raytracer2D</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -208,6 +217,18 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="AdvectSmoke.comp">
       <Filter>Effects\EulerianFluidEffect</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Raytracer2D.frag">
+      <Filter>Effects\Raytracer2D</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Raytracer2D.vert">
+      <Filter>Effects\Raytracer2D</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Raytracer2D_RenderToFloatTexture.frag">
+      <Filter>Effects\Raytracer2D</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Raytracer2D_RenderToFloatTexture.vert">
+      <Filter>Effects\Raytracer2D</Filter>
     </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -153,6 +153,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Raytracer2D.cpp" />
     <ClCompile Include="AbstractEffect.cpp" />
     <ClCompile Include="EulerianFluidEffect.cpp" />
     <ClCompile Include="Fractal2dEffect.cpp" />
@@ -173,6 +174,7 @@
     <ClCompile Include="Particles2dNBodyGravityEffect.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Raytracer2D.h" />
     <ClInclude Include="AbstractEffect.h" />
     <ClInclude Include="EmptyEffect.cpp" />
     <ClInclude Include="EmptyEffect.h" />
@@ -360,7 +362,31 @@
   <ItemGroup>
     <CopyFileToFolders Include="AdvectSmoke.comp">
       <FileType>Document</FileType>
-	  <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)/shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)/shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)/shaders</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="Raytracer2D.frag">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)/shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)/shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Raytracer2D.vert">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)/shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)/shaders</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="Raytracer2D_RenderToFloatTexture.frag">
+      <FileType>Document</FileType>
+	        <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)/shaders</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)/shaders</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Raytracer2D_RenderToFloatTexture.vert">
+      <FileType>Document</FileType>
+	        <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)/shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)/shaders</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>

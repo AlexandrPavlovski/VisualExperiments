@@ -7,12 +7,12 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-class EmptyEffect : public AbstractEffect
+class Raytracer2D : public AbstractEffect
 {
 public:
-	EmptyEffect(GLFWwindow* window);
+	Raytracer2D(GLFWwindow* window);
 
-	virtual ~EmptyEffect();
+	virtual ~Raytracer2D();
 	virtual void initialize();
 	virtual void draw(GLdouble deltaTime);
 	virtual void drawGUI();
@@ -22,6 +22,8 @@ public:
 private:
 	struct StartupParams
 	{
+		GLint simulationAreaWidth;
+		GLint simulationAreaHeight;
 	};
 
 	struct RuntimeParams
@@ -32,4 +34,14 @@ private:
 	RuntimeParams runtimeParams;
 
 	GLuint vao = 0, ssbo = 0;
+
+	GLuint floatTextureShaderProgram = 0;
+	GLuint floatTexture = 0, texture1 = 0;
+
+	GLuint floatFramebuffer = 0;
+
+	static const GLuint linesPerFrameCount = 50000;
+	GLfloat linesForFrame[linesPerFrameCount * 4];
+
+	GLuint frameCount = 0;
 };
