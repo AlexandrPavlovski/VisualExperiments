@@ -1,5 +1,7 @@
 #version 460 core
 
+#define sqrt2 1.4142135623730950488
+
 layout(location = 0) uniform ivec2 simulationArea;
 
 
@@ -8,17 +10,19 @@ layout(binding = 0) buffer SSBO
 	vec2 linePoint[];
 };
 
-vec2 trianglesCoords[4] = vec2[4]
-(
-	vec2(-1.0, 1.0),
-	vec2(1.0, 1.0),
-	vec2(-1.0, -1.0),
-	vec2(1.0, -1.0)
-);
 
+out float biasCorrection;
+out vec4 pointColor;
 
 void main() {
-	gl_Position = vec4(linePoint[gl_VertexID] / simulationArea, 0.0, 1.0);
-//	vec2 pos = trianglesCoords[gl_VertexID];
-//	gl_Position = vec4(pos / 1.1, 0.0, 1.0);
+	int endindex = gl_VertexID % 2 == 0 ? gl_VertexID + 1 : gl_VertexID - 1;
+
+	vec2 pStart = linePoint[gl_VertexID];
+	vec2 pEnd = linePoint[endindex];
+
+	vec2 dir = pEnd - pStart;
+	float slope = min(abs(dir.x), abs(dir.y)) / max(abs(dir.x), abs(dir.y));
+	biasCorrection = clamp(sqrt(slope * slope + 1), 1.0, sqrt2);
+	
+	gl_Position = vec4(pStart / (simulationArea * 0.5), 0.0, 1.0);
 }

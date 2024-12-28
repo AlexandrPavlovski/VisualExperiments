@@ -10,11 +10,7 @@
 #include <GLFW/glfw3.h>
 
 
-struct Vec2
-{
-	GLfloat X;
-	GLfloat Y;
-};
+
 
 class Particles2dCollisionEffect :public AbstractEffect
 {
@@ -85,6 +81,12 @@ private:
 		GLuint Phase1;
 		GLuint Phase2;
 		GLuint Phase3;
+	};
+
+	struct Vec2
+	{
+		GLfloat X;
+		GLfloat Y;
 	};
 
 	StartupParams startupParams;

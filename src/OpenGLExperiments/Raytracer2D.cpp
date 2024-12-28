@@ -1,6 +1,10 @@
-#include "Raytracer2D.h"
+// attempt to recreate this beauty
+// https://benedikt-bitterli.me/tantalum/tantalum.html
 
-# define PI 3.14159265358979323846
+#include "Raytracer2D.h"
+#include "Scene.h"
+
+using namespace Raytracer2Dns;
 
 Raytracer2D::Raytracer2D(GLFWwindow* window)
 	:AbstractEffect(window)
@@ -13,12 +17,10 @@ Raytracer2D::Raytracer2D(GLFWwindow* window)
 	startupParams.simulationAreaHeight = 800;
 
 	runtimeParams = {};
+	runtimeParams.maxPathLength = 1;
 }
 
-Raytracer2D::~Raytracer2D()
-{
-	cleanup();
-}
+Raytracer2D::~Raytracer2D() { }
 
 void Raytracer2D::initialize()
 {
@@ -26,6 +28,7 @@ void Raytracer2D::initialize()
 	glBindVertexArray(vao);
 
 	glGenBuffers(1, &ssbo);
+	glGenBuffers(1, &ssboDebug);
 
 	// The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
 	glGenFramebuffers(1, &floatFramebuffer);
@@ -46,32 +49,9 @@ void Raytracer2D::initialize()
 	// Always check that our framebuffer is ok
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
-		return;
+		throw "framebuffer is not ok";
 	}
-
-	//glGenTextures(1, &texture1);
-	//glBindTexture(GL_TEXTURE_2D, texture1);
-	//// set the texture wrapping parameters
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);//GL_CLAMP_TO_BORDER
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	//// set texture filtering parameters
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	//GLfloat data[100 * 100 * 3];// = { 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f };
-	////std::fill_n(data, 100 * 100 * 3, 1.0f);
-	////data[0] = 1.0f;
-	////data[1] = 0.0f;
-	////data[2] = 0.0f;
-	//for (int i = 0; i < 100; i++)
-	//for (int j = 0; j < 100; j++)
-	//{
-	//	int t = j + i * 100;
-	//	data[t * 3 + 0] = j / 100.0f;
-	//	data[t * 3 + 1] = j / 100.0f;
-	//	data[t * 3 + 2] = j / 100.0f;
-	//}
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 100, 100, 0, GL_RGB, GL_FLOAT, data);
-
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	GLint newShaderProgram = createShaderProgramFromFiles();
 	if (newShaderProgram == -1)
@@ -92,50 +72,115 @@ void Raytracer2D::initialize()
 	}
 	floatTextureShaderProgram = newShaderProgram;
 
-	glEnable(GL_BLEND);
+	newShaderProgram = createShaderProgramFromFiles(
+		"Raytracer2D_DebugDraw.vert",
+		"Raytracer2D_DebugDraw.frag",
+		std::vector<ShaderParam>(),
+		std::vector<ShaderParam>());
+	if (newShaderProgram == -1)
+	{
+		throw "Initialize failed";
+	}
+	debugDrawShaderProgram = newShaderProgram;
+
+	scene = new Scene(runtimeParams.maxPathLength);
+	tracedLines = new Line[runtimeParams.maxPathLength];
+
+	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	isPaused = true;
+	isDebug = true;
 }
 
 void Raytracer2D::draw(GLdouble deltaTime)
 {
-	if (isPaused && !isAdvanceOneFrame)
-		return;
+	handleInput();
 
-	frameCount++;
-
-	glClearColor(0.0, 0.0, 0.0, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	for (int i = 0; i < linesPerFrameCount; i++)
+	if (!isPaused || isAdvanceOneFrame)
 	{
-		linesForFrame[i * 4] = 0.0;
-		linesForFrame[i * 4 + 1] = 0.0;
-		GLfloat theta = (rand() / (GLfloat)RAND_MAX) * 2 * PI;
-		linesForFrame[i * 4 + 2] = 1000 * cos(theta);
-		linesForFrame[i * 4 + 3] = 1000 * sin(theta);
+//for (int i = 0; i < maxLinesToDrawPerFrame; i += 4)
+//{
+//	currentFrameLinesToDraw[i + 0] = -600.0 + i / 1000;
+//	currentFrameLinesToDraw[i + 1] = -200.0;
+//	currentFrameLinesToDraw[i + 2] = -601.0 + i / 1000;
+//	currentFrameLinesToDraw[i + 3] = 200.0;
+//}
+//raysTracedLastFrame = maxLinesToDrawPerFrame;
+//GLint linesToDraw = maxLinesToDrawPerFrame;
+		raysTracedLastFrame = 0;
+		GLint linesToDraw = 0;
+		Ray ray;
+		while (linesToDraw <= maxLinesToDrawPerFrame - runtimeParams.maxPathLength)
+		{
+			scene->lightSource->getRay(ray);
+			GLint tracedCount = scene->trace(ray, tracedLines, runtimeParams.maxPathLength);
+
+			for (GLint i = 0; i < tracedCount; i++)
+			{
+				currentFrameLinesToDraw[(linesToDraw + i) * 4 + 0] = tracedLines[i].start.x;
+				currentFrameLinesToDraw[(linesToDraw + i) * 4 + 1] = tracedLines[i].start.y;
+				currentFrameLinesToDraw[(linesToDraw + i) * 4 + 2] = tracedLines[i].end.x;
+				currentFrameLinesToDraw[(linesToDraw + i) * 4 + 3] = tracedLines[i].end.y;
+			}
+
+			raysTracedLastFrame++;
+			linesToDraw += tracedCount;
+		}
+
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, linesToDraw * 4 * sizeof(GLfloat), &currentFrameLinesToDraw[0], GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, floatFramebuffer);
+		glUseProgram(floatTextureShaderProgram);
+		glUniform2i(0, startupParams.simulationAreaWidth, startupParams.simulationAreaHeight);
+		glEnable(GL_BLEND);
+		glDrawArrays(GL_LINES, 0, linesToDraw * 2);
+		glDisable(GL_BLEND);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		raysTracedTotal += raysTracedLastFrame;
+		frameCount++;
 	}
-
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, linesPerFrameCount * 4 * sizeof(GLfloat), &linesForFrame[0], GL_DYNAMIC_DRAW);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, floatFramebuffer);
-	glUseProgram(floatTextureShaderProgram);
-	glUniform2i(0, startupParams.simulationAreaWidth, startupParams.simulationAreaHeight);
-	glDrawArrays(GL_LINES, 0, linesPerFrameCount * 4);
 
 	//glActiveTexture(GL_TEXTURE0);
 	//GLfloat pixel[100 * 4];
 	//glReadPixels(300, 300, 10, 10, GL_RGBA, GL_FLOAT, &pixel[0]);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
 	glUseProgram(shaderProgram);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, floatTexture);
 	glUniform1i(0, 0);
-	glUniform1ui(1, frameCount);
+	glUniform1f(1, 300.00f / raysTracedTotal); // exposure
+	glUniform2i(2, startupParams.simulationAreaWidth, startupParams.simulationAreaHeight);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	if (isDebug)
+	{
+		glUseProgram(debugDrawShaderProgram);
+		glUniform2i(0, startupParams.simulationAreaWidth, startupParams.simulationAreaHeight);
+
+		// obstacles
+		glUniform4f(1, 1.0f, 0.0f, 0.0f, 1.0f);
+		size_t drawPointsCount = scene->obstaclesDrawPoints.size();
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboDebug);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, drawPointsCount * sizeof(Vec2), &scene->obstaclesDrawPoints[0], GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+		glDrawArrays(GL_LINES, 0, drawPointsCount);
+
+		// bvh
+		glUniform4f(1, 1.0f, 1.0f, 1.0f, 1.0f);
+		drawPointsCount = scene->bvhDrawPoints.size();
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboDebug);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, drawPointsCount * sizeof(Vec2), &scene->bvhDrawPoints[0], GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+		glDrawArrays(GL_LINES, 0, drawPointsCount);
+	}
+
+	isLeftMouseBtnPressed = false;
+	isLeftMouseBtnReleased = false;
 }
 
 void Raytracer2D::drawGUI()
@@ -158,13 +203,67 @@ void Raytracer2D::drawGUI()
 
 void Raytracer2D::restart()
 {
+	frameCount = 1;
+	raysTracedTotal = 0;
+
 	cleanup();
 	initialize();
 }
 
 void Raytracer2D::cleanup()
 {
+	glDeleteTextures(1, &floatTexture);
+	glDeleteProgram(floatTextureShaderProgram);
 	glDeleteProgram(shaderProgram);
 	glDeleteBuffers(1, &ssbo);
 	glDeleteVertexArrays(1, &vao);
+	glDeleteFramebuffers(1, &floatFramebuffer);
+
+	delete[] tracedLines;
+	delete scene;
 }
+
+
+void Raytracer2D::handleInput()
+{
+	//if (isLeftMouseBtnPressed)
+	//{
+	//	GLdouble cursorPosX = 0.0, cursorPosY = 0.0;
+	//	glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
+	//	drawStartPos.x = cursorPosX;
+	//	drawStartPos.y = cursorPosY;
+	//}
+
+	//if (isLeftMouseBtnReleased)
+	//{
+	//	GLdouble cursorPosX = 0.0, cursorPosY = 0.0;
+	//	glfwGetCursorPos(window, &cursorPosX, &cursorPosY);
+	//	scene->addObstacle(new LineObstacle(drawStartPos, Vec2(cursorPosX, cursorPosY)));
+	//}
+}
+
+
+void Raytracer2D::keyCallback(int key, int scancode, int action, int mode)
+{
+	AbstractEffect::keyCallback(key, scancode, action, mode);
+
+	if (key == GLFW_KEY_D && action == GLFW_PRESS)
+	{
+		isDebug = !isDebug;
+	}
+}
+
+void Raytracer2D::mouseButtonCallback(int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	{
+		isLeftMouseBtnPressed = true;
+		isLeftMouseBtnDown = true;
+	}
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	{
+		isLeftMouseBtnReleased = true;
+		isLeftMouseBtnDown = false;
+	}
+}
+

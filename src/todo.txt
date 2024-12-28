@@ -1,0 +1,5 @@
+fix empty obstacles crash
+
+move common mouse/keyboard handlers to AbstractEffect
+move Vec2 to separate file in separate "folder"
+move random() to common utils

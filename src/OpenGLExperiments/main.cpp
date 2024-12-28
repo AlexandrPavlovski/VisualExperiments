@@ -1,5 +1,7 @@
 #define GLEW_STATIC
 
+#include <windows.h>
+#include <string>
 #include <vector>
 #include <iostream>
 #include <sstream>
@@ -18,6 +20,7 @@
 #include "Particles2dCollisionEffect.h"
 #include "EulerianFluidEffect.h"
 #include "Raytracer2D.h"
+
 
 
 bool isVsyncEnabled = true;
@@ -199,6 +202,11 @@ void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint id, GLen
 
 int main()
 {
+	TCHAR buffer[MAX_PATH] = { 0 };
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	std::wstring::size_type pos = std::wstring(buffer).find_last_of(L"\\/");
+	auto a = std::wstring(buffer).substr(0, pos);
+
 	glfwInit();
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);

@@ -34,6 +34,9 @@
     <Filter Include="Effects\Raytracer2D">
       <UniqueIdentifier>{988c6da3-f6d7-43fb-8362-115ab14e3ec1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Effects\Raytracer2D\Utils">
+      <UniqueIdentifier>{3427d5bb-fdf0-4c3f-8fc0-3a018e7aceb2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Particles2dGravityEffect.cpp">
@@ -75,6 +78,21 @@
     </ClCompile>
     <ClCompile Include="Raytracer2D.cpp">
       <Filter>Effects\Raytracer2D</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="LightSource.cpp">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Structs.h">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Obstacles.cpp">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="BVH2D.cpp">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -128,6 +146,18 @@
     </ClInclude>
     <ClInclude Include="Raytracer2D.h">
       <Filter>Effects\Raytracer2D</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="LightSource.h">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Obstacles.h">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="BVH2D.h">
+      <Filter>Effects\Raytracer2D\Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -230,5 +260,13 @@
     <CopyFileToFolders Include="Raytracer2D_RenderToFloatTexture.vert">
       <Filter>Effects\Raytracer2D</Filter>
     </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Raytracer2D_DebugDraw.vert">
+      <Filter>Effects\Raytracer2D</Filter>
+    </None>
+    <None Include="Raytracer2D_DebugDraw.frag">
+      <Filter>Effects\Raytracer2D</Filter>
+    </None>
   </ItemGroup>
 </Project>

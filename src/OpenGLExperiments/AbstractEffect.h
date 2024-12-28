@@ -31,11 +31,7 @@ public:
 	bool isPaused = false;
 	bool isAdvanceOneFrame = false;
 
-#ifdef _DEBUG
-	const char* shadersFolder = "";
-#else
 	const char* shadersFolder = "shaders/";
-#endif
 
 protected:
 	struct ShaderParam
